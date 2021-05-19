@@ -6,10 +6,11 @@ import {
   establishConnection,
   establishPayer,
   checkProgram,
-  sayHello,
+  storeNumber,
   reportGreetings,
 } from './hello_world';
 
+const prompt = require('prompt-sync')();
 async function main() {
   console.log("Let's say hello to a Solana account...");
 
@@ -22,15 +23,16 @@ async function main() {
   // Check if the program has been deployed
   await checkProgram();
 
-  x = readline();
-  console.log(x);
+  const numb: number = +prompt("What is your number?");
+  
+  console.log("Hey, your number is ", numb);
   // Say hello to an account
-  //await sayHello();
+  await storeNumber(numb);
 
   // Find out how many times that account has been greeted
   //await reportGreetings();
 
-  console.log('Success');
+  //console.log('Success');
 }
 
 main().then(

@@ -206,12 +206,16 @@ export async function checkProgram(): Promise<void> {
 /**
  * Say hello
  */
-export async function sayHello(): Promise<void> {
+export async function storeNumber(numb: number): Promise<void> {
   console.log('Saying hello to', greetedPubkey.toBase58());
+  console.log(numb);
+  var buf = Buffer.allocUnsafe(4);
+  buf.writeInt32BE(numb, 0);
+  console.log(buf);
   const instruction = new TransactionInstruction({
     keys: [{pubkey: greetedPubkey, isSigner: false, isWritable: true}],
     programId,
-    data: Buffer.alloc(0), // All instructions are hellos
+    data: buf,
   });
   await sendAndConfirmTransaction(
     connection,

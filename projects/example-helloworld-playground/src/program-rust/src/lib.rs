@@ -7,6 +7,7 @@ use solana_program::{
     program_error::ProgramError,
     pubkey::Pubkey,
 };
+use std::convert::TryInto;
 
 /// Define the type of state stored in accounts
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
@@ -49,10 +50,11 @@ pub fn process_instruction(
 }
 
 fn unpack_number(input: &[u8]) -> Result<u32, ProgramError> {
+    msg!("{:x?}", input);
     let amount = input
-        .get(..4) //get 8 elements from array
+        .get(..4) //get 4 elements from array
         .and_then(|slice| slice.try_into().ok()) // turning it into slice?
-        .map(u32::from_le_bytes) // and into u64??
-        .ok_or(InvalidInstruction)?;
+        .map(u32::from_be_bytes) // and into u64??
+        .ok_or(ProgramError::IncorrectProgramId)?;
     Ok(amount)
 }
