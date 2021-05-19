@@ -16,6 +16,11 @@ pub struct GreetingAccount {
     pub number: u32,
 }
 
+pub enum Impact {
+    AddNumber,
+    SubNumber
+}
+
 // Declare and export the program's entrypoint
 entrypoint!(process_instruction);
 
@@ -41,7 +46,12 @@ pub fn process_instruction(
 
     // Increment and store the number of times the account has been greeted
     let mut greeting_account = GreetingAccount::try_from_slice(&account.data.borrow())?;
-    greeting_account.number = unpack_number(instruction_data)?;
+    let (impactType, data) = instruction_data.split_first().ok_or(InvalidInstruction)?;
+    match tag {
+        Impact::AddNumber => greeting_account.number += unpack_number(data)?;
+        Impact:SubNumber => greeting_account.number -= unpack_number(data)?;
+        _ => return Err(InvalidInstruction.into()),
+    }
     greeting_account.serialize(&mut &mut account.data.borrow_mut()[..])?;
 
     msg!("Stored number is now {}!", greeting_account.number);
