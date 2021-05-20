@@ -206,12 +206,35 @@ export async function checkProgram(): Promise<void> {
 /**
  * Say hello
  */
-export async function storeNumber(numb: number): Promise<void> {
+export async function changeNumber(operation: number, numb: number): Promise<void> {
   console.log('Saying hello to', greetedPubkey.toBase58());
   console.log(numb);
-  var buf = Buffer.allocUnsafe(4);
-  buf.writeInt32BE(numb, 0);
+  var buf = Buffer.allocUnsafe(5);
+  buf.writeInt8(operation, 0)
+  buf.writeInt32BE(numb, 1);
   console.log(buf);
+  const instruction = new TransactionInstruction({
+    keys: [{pubkey: greetedPubkey, isSigner: false, isWritable: true}],
+    programId,
+    data: buf,
+  });
+  await sendAndConfirmTransaction(
+    connection,
+    new Transaction().add(instruction),
+    [payerAccount],
+  );
+}
+
+export async function executeImpact(): Promise<void> {
+  console.log('Saying hello to', greetedPubkey.toBase58());
+  var buf = Buffer.allocUnsafe(24);
+  buf.writeInt32BE(1, 0); // impact.set
+  buf.writeInt32BE(2, 4); // amount = 2
+  buf.writeInt32BE(2, 8); // deal damage
+  buf.writeInt32BE(8, 12); // 12 damage
+  buf.writeInt32BE(3, 16); // heal
+  buf.writeInt32BE(17, 20); // 17 heal
+  console.log('Sending buffer', buf);
   const instruction = new TransactionInstruction({
     keys: [{pubkey: greetedPubkey, isSigner: false, isWritable: true}],
     programId,

@@ -6,9 +6,11 @@ import {
   establishConnection,
   establishPayer,
   checkProgram,
-  storeNumber,
+  changeNumber,
   reportGreetings,
+  executeImpact,
 } from './hello_world';
+
 
 const prompt = require('prompt-sync')();
 async function main() {
@@ -23,12 +25,12 @@ async function main() {
   // Check if the program has been deployed
   await checkProgram();
 
-  const numb: number = +prompt("What is your number?");
+  //const operation: number = +prompt("What to do? 0 = add, 1 = sub");
+  //const numb: number = +prompt("What is your number?");
   
-  console.log("Hey, your number is ", numb);
   // Say hello to an account
-  await storeNumber(numb);
-
+  //await changeNumber(operation, numb);
+  await executeImpact();
   // Find out how many times that account has been greeted
   //await reportGreetings();
 
