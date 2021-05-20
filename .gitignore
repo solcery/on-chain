@@ -1,7 +1,7 @@
-/node_modules
+*/node_modules/
 *.sw[po]
 /.cargo
-/dist
+*/dist/
 .env
 src/client/util/store
 test-ledger/
