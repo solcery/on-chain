@@ -1,4 +1,4 @@
-use crate::brick::{ Context, Brick, BorshResult, Value, Condition};
+use crate::brick::{ Context, Brick, BorshResult, Value};
 use std::io::Write;
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::convert::TryInto;
@@ -28,7 +28,7 @@ impl BorshDeserialize for Value {
 	}
 }
 
-#[derive(BorshSerialize, BorshDeserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct Const {
 	pub value: u32,
 }
@@ -40,7 +40,7 @@ impl Brick<u32> for Const {
 	fn b_to_vec(&self) -> Vec<u8> {
 		return self.try_to_vec().unwrap();
 	}
-	fn run(&mut self, ctx: &mut Context) -> u32 {	
+	fn run(&mut self, _ctx: &mut Context) -> u32 {	
 		return self.value
 	}	
 }

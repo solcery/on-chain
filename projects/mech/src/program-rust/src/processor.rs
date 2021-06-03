@@ -4,41 +4,85 @@ use solana_program::{
     entrypoint,
     msg,
     entrypoint::ProgramResult,
-    program_error::ProgramError,
     pubkey::Pubkey,
     
 };
-
-use crate::brick;
-
-use crate::fight::{ 
-	Fight, 
+use crate::brick::{
+    Action,
 };
+use crate::instruction::GrimmzInstruction;
 
 entrypoint!(process_instruction);
 pub fn process_instruction(
+
+
     program_id: &Pubkey, // Public key of the account the program was loaded into
     accounts: &[AccountInfo], // The account to store number in
     instruction_data: &[u8], // Ignored, all helloworld instructions are hellos
 ) -> ProgramResult {
 
-    // Iterating accounts is safer then indexing
-    let accounts_iter = &mut accounts.iter();
 
-    // Get the account to say hello to
-    let account = next_account_info(accounts_iter)?;
-
-    // The account must be owned by the program in order to modify its data
-    if account.owner != program_id {
-        msg!("Greeted account does not have the correct program id");
-        return Err(ProgramError::IncorrectProgramId);
+    let instruction = GrimmzInstruction::unpack(instruction_data)?;
+    match instruction {
+        GrimmzInstruction::CreateCard { data } => {
+            msg!("Instruction: CreateCard");
+            process_create_card(accounts, data, program_id)
+        }
+        GrimmzInstruction::Execute => {
+            msg!("Instruction: Execute");
+            process_execute(accounts, program_id)
+        }
     }
-    let mut fight = Fight::try_from_slice(&account.data.borrow())?;
-    msg!("And now - to fight");
-    msg!("fight is{:?}", fight);
-    let mut data = &instruction_data[..]; // Copying instruction_data to mutable slice
-    let mut action = brick::Action::try_from_slice(&data).unwrap();
+}
+
+
+
+pub fn process_create_card(
+    accounts: &[AccountInfo], // The account to store number in
+    instruction_data: Vec<u8>, // Ignored, all helloworld instructions are hellos
+    _program_id: &Pubkey, // Public key of the account the program was loaded into
+) -> ProgramResult {
+
+    let accounts_iter = &mut accounts.iter();
+    msg!("Process instruction");
     
-    fight.serialize(&mut &mut account.data.borrow_mut()[..])?;
+    // Get the account to say hello to
+    let card_account = next_account_info(accounts_iter)?;
+    let _mint_account = next_account_info(accounts_iter)?;
+    let _payer_account = next_account_info(accounts_iter)?;
+    let data = &instruction_data[..]; // Copying instruction_data to mutable slice
+    let action = Action::try_from_slice(&data).unwrap();
+    msg!("Action: {:?}", action);
+
+    action.serialize(&mut &mut card_account.data.borrow_mut()[..])?;
+
+    msg!("Card account {:?} saved: {:?}", card_account.key, card_account.data);
     Ok(())
 }
+
+pub fn process_execute(
+    accounts: &[AccountInfo], // The account to store number in
+    _program_id: &Pubkey, // Public key of the account the program was loaded into
+) -> ProgramResult {
+    let accounts_iter = &mut accounts.iter();
+    msg!("Process instruction");
+    
+    // Get the account to say hello to
+    let _mint_account = next_account_info(accounts_iter)?;
+    let _card_metadata_account = next_account_info(accounts_iter)?;
+
+    // let expected_pubkey = Pubkey::create_with_seed(
+    //     mint_account,
+    //     "CREATE CARD",
+    //     program_id,
+    // );
+
+    // if card_metadata_account.key != expected_pubkey {
+    //      return Err(ProgramError);
+    // }
+
+    //let mut action = brick::Action::try_from_slice(&mut mint_account.data.borrow()[..])?;
+    msg!("Action deserialized: {:?}");
+    Ok(())
+}
+

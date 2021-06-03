@@ -17,7 +17,7 @@ impl BorshSerialize for Condition {
 
 impl BorshDeserialize for Condition {
 	fn deserialize(buf: &mut &[u8]) -> std::result::Result<Self, std::io::Error> { 
-		let condition_code = u32::from_le_bytes(buf[..4].try_into().unwrap());
+		let _condition_code = u32::from_le_bytes(buf[..4].try_into().unwrap());
 		*buf = &buf[4..];
 		let code = u32::from_le_bytes(buf[..4].try_into().unwrap());
 		*buf = &buf[4..];
@@ -28,7 +28,7 @@ impl BorshDeserialize for Condition {
 	}
 }
 
-#[derive(BorshSerialize, BorshDeserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct True {}
 
 impl Brick<bool> for True {
@@ -38,7 +38,7 @@ impl Brick<bool> for True {
 	fn b_to_vec(&self) -> Vec<u8> {
 		return self.try_to_vec().unwrap();
 	}
-	fn run(&mut self, ctx: &mut Context) -> bool {	
+	fn run(&mut self, _ctx: &mut Context) -> bool {	
 		return true
 	}	
 }

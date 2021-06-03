@@ -5,3 +5,5 @@ pub mod brick;
 pub mod action;
 pub mod condition;
 pub mod value;
+pub mod instruction;
+pub mod error;

@@ -22,13 +22,5 @@ impl Fight {
 		units.push(second_unit);
 		return Fight { units }
 	}
-	
-	pub fn make_move(unit_id: u32, target_id: u32) {
-	
-	}
-	
-	pub fn dump_fight() {
-	
-	}
 }
 

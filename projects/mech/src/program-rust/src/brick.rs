@@ -1,5 +1,6 @@
-use borsh::{BorshDeserialize, BorshSerialize};
 use std::result;
+use borsh::{BorshDeserialize, BorshSerialize};
+use std::fmt::Debug;
 
 pub type Action = Box<dyn Brick<()>>;
 pub type Condition = Box<dyn Brick<bool>>;
@@ -16,9 +17,10 @@ pub struct Context<'a> {
 	pub obj: &'a mut dyn ContextObject,
 }
 
-pub trait Brick<T> {
+pub trait Brick<T> where Self: Debug {
 	fn get_code(&self) -> u32;
 	fn b_to_vec(&self) -> Vec<u8>;
 	fn run(&mut self, ctx: &mut Context) -> T;
 }
+
 

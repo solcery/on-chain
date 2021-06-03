@@ -27,7 +27,7 @@ impl BorshSerialize for Action {
 
 impl BorshDeserialize for Action {
 	fn deserialize(buf: &mut &[u8]) -> std::result::Result<Self, std::io::Error> { 
-		let action_code = u32::from_le_bytes(buf[..4].try_into().unwrap());
+		let _action_code = u32::from_le_bytes(buf[..4].try_into().unwrap());
 		*buf = &buf[4..];
 		let code = u32::from_le_bytes(buf[..4].try_into().unwrap());
 		*buf = &buf[4..];
@@ -42,7 +42,7 @@ impl BorshDeserialize for Action {
 	}
 }
 
-#[derive(BorshSerialize, BorshDeserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct Void {}
 
 impl Brick<()> for Void {
@@ -52,12 +52,12 @@ impl Brick<()> for Void {
 	fn b_to_vec(&self) -> Vec<u8> {
 		return self.try_to_vec().unwrap();
 	}
-	fn run(&mut self, ctx: &mut Context) -> () {}	
+	fn run(&mut self, _ctx: &mut Context) -> () {}	
 }
 
-#[derive(BorshSerialize, BorshDeserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct Set {
-	pub impacts: Vec<Action>,
+	pub actions: Vec<Action>,
 }
 impl Brick<()> for Set {
 	fn get_code(&self) -> u32 {
@@ -67,14 +67,14 @@ impl Brick<()> for Set {
 		return self.try_to_vec().unwrap();
 	}
 	fn run(&mut self, ctx: &mut Context) -> () {
-		let impact_iter = self.impacts.iter_mut();
-		for mut impact in impact_iter {
-			impact.run(ctx);
+		let action_iter = self.actions.iter_mut();
+		for action in action_iter {
+			action.run(ctx);
 		}
 	}	
 }
 
-#[derive(BorshSerialize, BorshDeserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct Conditional {
 	pub condition: Condition,
 	pub positive: Action,
@@ -97,7 +97,7 @@ impl Brick<()> for Conditional {
 	}	
 }
 
-#[derive(BorshSerialize, BorshDeserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct Damage {
 	pub amount: Value,
 }
@@ -114,7 +114,7 @@ impl Brick<()> for Damage {
 	}	
 }
 
-#[derive(BorshSerialize, BorshDeserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct Heal {
 	pub amount: Value,
 }
