@@ -99,6 +99,7 @@ impl Brick<()> for Conditional {
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct Damage {
+	pub object_index: u8,
 	pub amount: Value,
 }
 impl Brick<()> for Damage {
@@ -110,12 +111,13 @@ impl Brick<()> for Damage {
 	}
 	fn run(&mut self, ctx: &mut Context) -> () {
 		let amount = self.amount.run(ctx);
-		ctx.obj.damage(amount)
+		ctx.objects[self.object_index as usize].hp -= amount
 	}	
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct Heal {
+	pub object_index: u8,
 	pub amount: Value,
 }
 impl Brick<()> for Heal {
@@ -126,9 +128,7 @@ impl Brick<()> for Heal {
 		return self.try_to_vec().unwrap();
 	}
 	fn run(&mut self, ctx: &mut Context) -> () {
-		let amount = self.amount.run(ctx);
-		ctx.obj.heal(amount)
+		let amount = self.amount.run(ctx); 
+		ctx.objects[self.object_index as usize].hp -= amount
 	}	
 }
-
-

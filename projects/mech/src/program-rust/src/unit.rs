@@ -7,11 +7,11 @@ pub struct Unit {
 	pub hp: u32,
 }
 
-impl brick::ContextObject for Unit {
-	fn damage(&mut self, amount: u32) -> () {
-		self.hp -= amount;
-	}
-	fn heal(&mut self, amount: u32) -> () {
-		self.hp += amount;
-	}
-}
+// impl brick::ContextObject for Unit {
+// 	fn damage(&mut self, amount: u32) -> () {
+// 		self.hp -= amount;
+// 	}
+// 	fn heal(&mut self, amount: u32) -> () {
+// 		self.hp += amount;
+// 	}
+// }

@@ -9,16 +9,17 @@ use solana_program::{
 };
 use crate::brick::{
     Action,
+    Context,
 };
 use crate::instruction::GrimmzInstruction;
+use crate::fight::Fight;
+use crate::unit::Unit;
 
 entrypoint!(process_instruction);
 pub fn process_instruction(
-
-
-    program_id: &Pubkey, // Public key of the account the program was loaded into
-    accounts: &[AccountInfo], // The account to store number in
-    instruction_data: &[u8], // Ignored, all helloworld instructions are hellos
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    instruction_data: &[u8],
 ) -> ProgramResult {
 
 
@@ -28,9 +29,13 @@ pub fn process_instruction(
             msg!("Instruction: CreateCard");
             process_create_card(accounts, data, program_id)
         }
-        GrimmzInstruction::Execute => {
+        GrimmzInstruction::Cast { caster_id, target_id } => {
             msg!("Instruction: Execute");
-            process_execute(accounts, program_id)
+            process_cast(accounts, program_id, caster_id, target_id)
+        }
+        GrimmzInstruction::CreateFight  => {
+            msg!("Instruction: Execute");
+            process_create_fight(accounts, program_id)
         }
     }
 }
@@ -44,9 +49,6 @@ pub fn process_create_card(
 ) -> ProgramResult {
 
     let accounts_iter = &mut accounts.iter();
-    msg!("Process instruction");
-    
-    // Get the account to say hello to
     let card_account = next_account_info(accounts_iter)?;
     let _mint_account = next_account_info(accounts_iter)?;
     let _payer_account = next_account_info(accounts_iter)?;
@@ -60,29 +62,34 @@ pub fn process_create_card(
     Ok(())
 }
 
-pub fn process_execute(
+pub fn process_cast(
+    accounts: &[AccountInfo], // The account to store number in
+    _program_id: &Pubkey, // Public key of the account the program was loaded into
+    caster_id: u8,
+    target_id: u8,
+) -> ProgramResult {
+    let accounts_iter = &mut accounts.iter();
+    let fight_account = next_account_info(accounts_iter)?;
+    let _card_account = next_account_info(accounts_iter)?;
+    let card_metadata_account = next_account_info(accounts_iter)?;
+    let mut action = Action::try_from_slice(&card_metadata_account.data.borrow()[..])?;
+    let mut fight = Fight::try_from_slice(&fight_account.data.borrow()[..])?;
+    let ctx: &mut Context = &mut Context{ 
+         objects: &mut fight.units,
+    };
+    action.run(ctx);
+    Ok(())
+}
+
+pub fn process_create_fight(
     accounts: &[AccountInfo], // The account to store number in
     _program_id: &Pubkey, // Public key of the account the program was loaded into
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
-    msg!("Process instruction");
-    
-    // Get the account to say hello to
-    let _mint_account = next_account_info(accounts_iter)?;
-    let _card_metadata_account = next_account_info(accounts_iter)?;
-
-    // let expected_pubkey = Pubkey::create_with_seed(
-    //     mint_account,
-    //     "CREATE CARD",
-    //     program_id,
-    // );
-
-    // if card_metadata_account.key != expected_pubkey {
-    //      return Err(ProgramError);
-    // }
-
-    //let mut action = brick::Action::try_from_slice(&mut mint_account.data.borrow()[..])?;
-    msg!("Action deserialized: {:?}");
+    let payer_account = next_account_info(accounts_iter)?;
+    let fight_account = next_account_info(accounts_iter)?;
+    let fight = Fight::new(*payer_account.key);
+    fight.serialize(&mut &mut fight_account.data.borrow_mut()[..])?;
     Ok(())
 }
 
