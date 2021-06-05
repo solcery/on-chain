@@ -30,11 +30,11 @@ pub fn process_instruction(
             process_create_card(accounts, data, program_id)
         }
         GrimmzInstruction::Cast { caster_id, target_id } => {
-            msg!("Instruction: Execute");
+            msg!("Instruction: Cast");
             process_cast(accounts, program_id, caster_id, target_id)
         }
         GrimmzInstruction::CreateFight  => {
-            msg!("Instruction: Execute");
+            msg!("Instruction: CreateFight");
             process_create_fight(accounts, program_id)
         }
     }
@@ -53,11 +53,12 @@ pub fn process_create_card(
     let _mint_account = next_account_info(accounts_iter)?;
     let _payer_account = next_account_info(accounts_iter)?;
     let data = &instruction_data[..]; // Copying instruction_data to mutable slice
+    msg!("Slice: {:?}", data);
     let action = Action::try_from_slice(&data).unwrap();
     msg!("Action: {:?}", action);
 
     action.serialize(&mut &mut card_account.data.borrow_mut()[..])?;
-
+    msg!("{:?}", &mut &mut card_account.data.borrow_mut()[..]);
     msg!("Card account {:?} saved: {:?}", card_account.key, card_account.data);
     Ok(())
 }
@@ -69,15 +70,23 @@ pub fn process_cast(
     target_id: u8,
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
+    let payer_account = next_account_info(accounts_iter)?;
     let fight_account = next_account_info(accounts_iter)?;
-    let _card_account = next_account_info(accounts_iter)?;
+    msg!("fight acc here");
+    //let _card_account = next_account_info(accounts_iter)?;
+    //msg!("card acc here");
     let card_metadata_account = next_account_info(accounts_iter)?;
-    let mut action = Action::try_from_slice(&card_metadata_account.data.borrow()[..])?;
+    msg!("card_meta acc here");
+    msg!("{:?}", &card_metadata_account.data.borrow()[..]);
+    let mut action = Action::try_from_slice(&card_metadata_account.data.borrow()[..]).unwrap();
+    msg!("Action: {:?}", action);
+    msg!("{:?}", &fight_account.data.borrow()[..]);
     let mut fight = Fight::try_from_slice(&fight_account.data.borrow()[..])?;
     let ctx: &mut Context = &mut Context{ 
          objects: &mut fight.units,
     };
     action.run(ctx);
+    fight.serialize(&mut &mut fight_account.data.borrow_mut()[..])?;
     Ok(())
 }
 
@@ -90,6 +99,7 @@ pub fn process_create_fight(
     let fight_account = next_account_info(accounts_iter)?;
     let fight = Fight::new(*payer_account.key);
     fight.serialize(&mut &mut fight_account.data.borrow_mut()[..])?;
+    msg!("{:?}", &mut &mut fight_account.data.borrow_mut()[..]);
     Ok(())
 }
 

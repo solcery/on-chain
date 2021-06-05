@@ -7,26 +7,27 @@ use solana_program::{
 };
 use std::convert::TryInto;
 
+#[derive(BorshSerialize, BorshDeserialize)]
 pub struct Fight {
-	pub owner: Pubkey,
+	//pub owner: Pubkey,
 	pub units: Vec<Unit>,
 }
 
-impl BorshSerialize for Fight {
-	fn serialize<W: Write>(&self, writer: &mut W) -> BorshResult<()> {
-		writer.write_all(&self.owner.to_bytes());
-		self.units.serialize(writer);
-		Ok(())
-	}
-}
+// impl BorshSerialize for Fight {
+// 	fn serialize<W: Write>(&self, writer: &mut W) -> BorshResult<()> {
+// 		writer.write_all(&self.owner.to_bytes());
+// 		self.units.serialize(writer);
+// 		Ok(())
+// 	}
+// }
 
-impl BorshDeserialize for Fight {
-	fn deserialize(buf: &mut &[u8]) -> std::result::Result<Self, std::io::Error> { 
-		let owner = Pubkey::new(buf[..32].try_into().unwrap());
-		let units = Vec::<Unit>::try_from_slice(&buf[33..]).unwrap();
-		Ok(Fight { owner, units })
-	}
-}
+// impl BorshDeserialize for Fight {
+// 	fn deserialize(buf: &mut &[u8]) -> std::result::Result<Self, std::io::Error> { 
+// 		let owner = Pubkey::new(buf[..32].try_into().unwrap());
+// 		let units = Vec::<Unit>::try_from_slice(&buf[33..]).unwrap();
+// 		Ok(Fight { owner, units })
+// 	}
+// }
 
 
 impl Fight {
@@ -43,7 +44,7 @@ impl Fight {
 		units.push(first_unit);
 		units.push(second_unit);
 
-		return Fight { owner, units }
+		return Fight { units }
 	}
 	// pub fn get_units(&mut self) -> Vec<&mut Unit> {
 	// 	let x: Vec<&mut Unit> = Vec::new();
