@@ -1,4 +1,4 @@
-use crate::brick::{ Context, Brick, BorshResult, Value};
+use crate::brick::{ Context, Brick, BorshResult, Value, Condition};
 use std::io::Write;
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::convert::TryInto;
@@ -23,6 +23,7 @@ impl BorshDeserialize for Value {
 		*buf = &buf[4..];
 		match code {
 			0u32 => Ok(Box::new(Const::deserialize(buf)?)),
+			1u32 => Ok(Box::new(Hp::deserialize(buf)?)),
 			_ => Ok(Box::new(Const::deserialize(buf)?)),
 		}
 	}
@@ -45,3 +46,42 @@ impl Brick<u32> for Const {
 	}	
 }
 
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub struct Hp {
+	pub object_index: u32,
+}
+
+impl Brick<u32> for Hp {
+	fn get_code(&self) -> u32 {
+		return 1u32 
+	}
+	fn b_to_vec(&self) -> Vec<u8> {
+		return self.try_to_vec().unwrap();
+	}
+	fn run(&mut self, ctx: &mut Context) -> u32 {	
+		return ctx.objects[self.object_index as usize].hp;
+	}	
+}
+
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub struct Conditional {
+	pub condition: Condition,
+	pub positive: Value,
+	pub negative: Value,
+}
+impl Brick<u32> for Conditional {
+	fn get_code(&self) -> u32 {
+		return 2u32 
+	}
+	fn b_to_vec(&self) -> Vec<u8> {
+		return self.try_to_vec().unwrap();
+	}
+	fn run(&mut self, ctx: &mut Context) -> u32 {
+		let cond = self.condition.run(ctx);
+		if cond {
+			self.positive.run(ctx)
+		} else {
+			self.negative.run(ctx)
+		}
+	}	
+}

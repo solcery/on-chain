@@ -99,7 +99,7 @@ impl Brick<()> for Conditional {
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct Damage {
-	pub object_index: u8,
+	pub object_index: u32,
 	pub amount: Value,
 }
 impl Brick<()> for Damage {
@@ -117,7 +117,7 @@ impl Brick<()> for Damage {
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct Heal {
-	pub object_index: u8,
+	pub object_index: u32,
 	pub amount: Value,
 }
 impl Brick<()> for Heal {

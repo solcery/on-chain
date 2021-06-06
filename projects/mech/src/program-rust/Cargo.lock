@@ -2313,6 +2313,7 @@ dependencies = [
 name = "solana-bpf-brick_program"
 version = "0.0.1"
 dependencies = [
+ "arrayref",
  "bincode",
  "borsh 0.7.2",
  "serde",
