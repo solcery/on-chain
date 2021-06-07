@@ -13,9 +13,7 @@ use crate::brick::{
 };
 use crate::instruction::GrimmzInstruction;
 use crate::fight::Fight;
-use crate::unit::Unit;
 use std::convert::TryInto;
-use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use std::io::Write;
 
 
@@ -58,18 +56,12 @@ pub fn process_create_card(
     let mut data = &card_data[..]; // Copying instruction_data to mutable slice
 
     let client_metadata_size = u32::from_le_bytes(card_data[..4].try_into().unwrap());
-
-    msg!("Full data = {:?}", data);
-    msg!("Client metadata size = {:?}", client_metadata_size);
     data = &data[client_metadata_size as usize + 4..];
-    msg!("Card data {:?}", data);
     let action = Action::try_from_slice(&data[..]).unwrap();
-    msg!("Action: {:?}", action);
     { 
         let card_account_data = &mut &mut card_account.data.borrow_mut()[..];
         card_account_data.write_all(&card_data[..]);
     }
-    msg!("Card account {:?} saved: {:?}", card_account.key, card_account.data);
     Ok(())
 }
 
@@ -83,13 +75,8 @@ pub fn process_cast(
     let payer_account = next_account_info(accounts_iter)?;
     let fight_account = next_account_info(accounts_iter)?;
     let card_metadata_account = next_account_info(accounts_iter)?;
-    msg!("Card account key {:?}", card_metadata_account.key);
-    msg!("Card data {:?}", &card_metadata_account.data.borrow()[..]);
     let client_metadata_size = u32::from_le_bytes(card_metadata_account.data.borrow()[..4].try_into().unwrap());
-    msg!("Client metadata");
     let mut action = Action::try_from_slice(&card_metadata_account.data.borrow()[client_metadata_size as usize + 4..]).unwrap();
-    msg!("Action: {:?}", action);
-    msg!("{:?}", &fight_account.data.borrow()[..]);
     let mut fight = Fight::try_from_slice(&fight_account.data.borrow()[..])?;
     let ctx: &mut Context = &mut Context{ 
          objects: &mut fight.units,
@@ -108,7 +95,6 @@ pub fn process_create_fight(
     let fight_account = next_account_info(accounts_iter)?;
     let fight = Fight::new(*payer_account.key);
     fight.serialize(&mut &mut fight_account.data.borrow_mut()[..])?;
-    msg!("{:?}", &mut &mut fight_account.data.borrow_mut()[..]);
     Ok(())
 }
 

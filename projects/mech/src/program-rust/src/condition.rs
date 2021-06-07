@@ -150,7 +150,7 @@ impl Brick<bool> for GreaterThan {
 		return self.try_to_vec().unwrap();
 	}
 	fn run(&mut self, ctx: &mut Context) -> bool {	
-		return self.value1.run(ctx) > self.value2.run(ctx);
+		return self.value1.run(ctx) > self.value2.run(ctx)
 	}	
 }
 
