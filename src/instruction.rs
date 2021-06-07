@@ -1,11 +1,8 @@
-use solana_program::{
-    program_error::ProgramError,
-    msg,
-};
-use crate::error::BricksError;
+use solana_program::program_error::ProgramError;
+use crate::error::SolceryError;
 
 
-pub enum GrimmzInstruction{
+pub enum SolceryInstruction{
 
     CreateCard {
         data: Vec<u8>,
@@ -17,12 +14,9 @@ pub enum GrimmzInstruction{
     },
 }
 
-impl GrimmzInstruction {
-    /// Unpacks a byte buffer into a [EscrowInstruction](enum.EscrowInstruction.html).
+impl SolceryInstruction {
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
-        let (tag, rest) = input.split_first().ok_or(BricksError::InvalidInstruction)?; 
-        msg!("GrimmzInstruction");
-        msg!("{:?}", tag);
+        let (tag, rest) = input.split_first().ok_or(SolceryError::InvalidInstruction)?; 
         Ok(match tag {
             0 => Self::CreateCard{ data: rest.to_vec() },
             1 => Self::CreateFight,

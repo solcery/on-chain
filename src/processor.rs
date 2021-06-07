@@ -11,7 +11,7 @@ use crate::brick::{
     Action,
     Context,
 };
-use crate::instruction::GrimmzInstruction;
+use crate::instruction::SolceryInstruction;
 use crate::fight::Fight;
 use std::convert::TryInto;
 use std::io::Write;
@@ -25,17 +25,17 @@ pub fn process_instruction(
 ) -> ProgramResult {
 
 
-    let instruction = GrimmzInstruction::unpack(instruction_data)?;
+    let instruction = SolceryInstruction::unpack(instruction_data)?;
     match instruction {
-        GrimmzInstruction::CreateCard { data } => {
+        SolceryInstruction::CreateCard { data } => {
             msg!("Instruction: CreateCard");
             process_create_card(accounts, data, program_id)
         }
-        GrimmzInstruction::Cast { caster_id, target_id } => {
+        SolceryInstruction::Cast { caster_id, target_id } => {
             msg!("Instruction: Cast");
             process_cast(accounts, program_id, caster_id, target_id)
         }
-        GrimmzInstruction::CreateFight  => {
+        SolceryInstruction::CreateFight  => {
             msg!("Instruction: CreateFight");
             process_create_fight(accounts, program_id)
         }

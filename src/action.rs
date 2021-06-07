@@ -1,7 +1,12 @@
-use crate::brick::{ Context, Brick, BorshResult, Action, Condition, Value};
+use crate::brick::{ 
+	Context, Brick, BorshResult, Action, Condition, Value
+};
 use std::io::Write;
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::{
+	BorshDeserialize, BorshSerialize
+};
 use std::convert::TryInto;
+use std::cmp;
 
 #[repr(u32)]
 enum Actions { //TODO
@@ -110,7 +115,9 @@ impl Brick<()> for Damage {
 	}
 	fn run(&mut self, ctx: &mut Context) -> () {
 		let amount = self.amount.run(ctx);
-		ctx.objects[self.object_index as usize].hp -= amount
+		let ind = self.object_index as usize;
+		let unchecked_hp = ctx.objects[ind].hp - amount;
+		ctx.objects[ind].hp = cmp::max(amount, 0);
 	}	
 }
 
