@@ -128,6 +128,6 @@ impl Brick<()> for Heal {
 	}
 	fn run(&mut self, ctx: &mut Context) -> () {
 		let amount = self.amount.run(ctx); 
-		ctx.objects[self.object_index as usize].hp -= amount
+		ctx.objects[self.object_index as usize].hp += amount
 	}	
 }
