@@ -30,9 +30,10 @@ No farm yet.
 
 ## Links
 
-Rust program (you are here): https://github.com/grimmzz/solcery_rust
-Unity WebGL client repo: https://github.com/grimmzz/solcery_unity
-Dapp repo: https://github.com/grimmzz/solcery_dapp
+Projects repositories:
+* Rust program (you are here): https://github.com/grimmzz/solcery_rust
+* Unity WebGL client repo: https://github.com/grimmzz/solcery_unity
+* Dapp repo: https://github.com/grimmzz/solcery_dapp
 
 ### Credits?
 
