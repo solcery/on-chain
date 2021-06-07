@@ -67,7 +67,8 @@ impl Brick<bool> for False {
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct Or {
-	pub conditions: Vec<Condition>,
+	pub condition1: Condition,
+	pub condition2: Condition,
 }
 
 impl Brick<bool> for Or {
@@ -78,18 +79,14 @@ impl Brick<bool> for Or {
 		return self.try_to_vec().unwrap();
 	}
 	fn run(&mut self, ctx: &mut Context) -> bool {	
-		let condition_iter = self.conditions.iter_mut();
-		let mut result = false;
-		for condition in condition_iter {
-			result = result || condition.run(ctx);
-		}
-		return result;
+		self.condition1.run(ctx) || self.condition2.run(ctx)
 	}	
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct And {
-	pub conditions: Vec<Condition>,
+	pub condition1: Condition,
+	pub condition2: Condition,
 }
 
 impl Brick<bool> for And {
@@ -100,12 +97,7 @@ impl Brick<bool> for And {
 		return self.try_to_vec().unwrap();
 	}
 	fn run(&mut self, ctx: &mut Context) -> bool {	
-		let condition_iter = self.conditions.iter_mut();
-		let mut result = true;
-		for condition in condition_iter {
-			result = result && condition.run(ctx);
-		}
-		return result;
+		self.condition1.run(ctx) && self.condition2.run(ctx)
 	}	
 }
 
@@ -128,7 +120,8 @@ impl Brick<bool> for Not {
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct Equal {
-	pub values: Vec<Value>,
+	pub value1: Value,
+	pub value2: Value,
 }
 
 impl Brick<bool> for Equal {
@@ -139,13 +132,14 @@ impl Brick<bool> for Equal {
 		return self.try_to_vec().unwrap();
 	}
 	fn run(&mut self, ctx: &mut Context) -> bool {	
-		return self.values[0].run(ctx) == self.values[1].run(ctx);
+		return self.value1.run(ctx) == self.value2.run(ctx);
 	}	
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct GreaterThan {
-	pub values: Vec<Value>,
+	pub value1: Value,
+	pub value2: Value,
 }
 
 impl Brick<bool> for GreaterThan {
@@ -156,13 +150,14 @@ impl Brick<bool> for GreaterThan {
 		return self.try_to_vec().unwrap();
 	}
 	fn run(&mut self, ctx: &mut Context) -> bool {	
-		return self.values[0].run(ctx) > self.values[1].run(ctx);
+		return self.value1.run(ctx) > self.value2.run(ctx);
 	}	
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct LesserThan {
-	pub values: Vec<Value>,
+	pub value1: Value,
+	pub value2: Value,
 }
 
 impl Brick<bool> for LesserThan {
@@ -173,7 +168,7 @@ impl Brick<bool> for LesserThan {
 		return self.try_to_vec().unwrap();
 	}
 	fn run(&mut self, ctx: &mut Context) -> bool {	
-		return self.values[0].run(ctx) < self.values[1].run(ctx);
+		return self.value1.run(ctx) < self.value2.run(ctx);
 	}	
 }
 

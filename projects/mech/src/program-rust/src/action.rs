@@ -57,7 +57,8 @@ impl Brick<()> for Void {
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct Set {
-	pub actions: Vec<Action>,
+	pub action1: Action,
+	pub action2: Action,
 }
 impl Brick<()> for Set {
 	fn get_code(&self) -> u32 {
@@ -67,10 +68,8 @@ impl Brick<()> for Set {
 		return self.try_to_vec().unwrap();
 	}
 	fn run(&mut self, ctx: &mut Context) -> () {
-		let action_iter = self.actions.iter_mut();
-		for action in action_iter {
-			action.run(ctx);
-		}
+		self.action1.run(ctx);
+		self.action2.run(ctx);
 	}	
 }
 
