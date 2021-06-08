@@ -19,13 +19,14 @@ You can play it yourself <a href = "https://solcery.herokuapp.com">[here]</a>, o
 Create your own card with in-game node editor. 
 Card data is serialized in binary format and stored for each unique mint. 
 
-<img alt="Create" src="https://i.postimg.cc/W4QcsDd1/create.png" width="256" />
+<img alt="Create" src="https://i.postimg.cc/W4QcsDd1/create.png" width="512" />
 
 ### Play
 
 Project includes simple fight module with two units, to experiment with newly created cards.
 Create a couple of cards and watch them melt your enemy.
 
+<img alt="Play" src="https://i.postimg.cc/7ZJydMLW/play.png" width="512" />
 
 ### Farm (TODO)
 
