@@ -11,7 +11,7 @@ pub struct Fight {
 
 
 impl Fight {
-	pub fn new(owner: Pubkey) -> Fight {
+	pub fn new(_owner: Pubkey) -> Fight {
 		let mut units = Vec::new();
 		let first_unit = Unit {
 			id: 1,

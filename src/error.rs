@@ -5,7 +5,7 @@ use solana_program::program_error::ProgramError;
 #[derive(Error, Debug, Copy, Clone)]
 pub enum SolceryError {
     /// Invalid instruction
-    #[error("Invalid Instruction")]
+    #[error("Invalid instruction")]
     InvalidInstruction,
 }
 

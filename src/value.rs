@@ -7,17 +7,17 @@ impl BorshSerialize for Value {
 	fn serialize<W: Write>(&self, writer: &mut W) -> BorshResult<()> {
 		let value_code = 2u32.to_le_bytes();
 		let code = self.get_code();
-		writer.write_all(&value_code);
-		writer.write_all(&code.to_le_bytes());
+		writer.write_all(&value_code)?;
+		writer.write_all(&code.to_le_bytes())?;
 		let x = self.b_to_vec();
-		writer.write_all(&x);
+		writer.write_all(&x)?;
 		Ok(())
 	}
 }
 
 impl BorshDeserialize for Value {
 	fn deserialize(buf: &mut &[u8]) -> std::result::Result<Self, std::io::Error> { 
-		let value_code = u32::from_le_bytes(buf[..4].try_into().unwrap());
+		let _value_code = u32::from_le_bytes(buf[..4].try_into().unwrap());
 		*buf = &buf[4..];
 		let code = u32::from_le_bytes(buf[..4].try_into().unwrap());
 		*buf = &buf[4..];

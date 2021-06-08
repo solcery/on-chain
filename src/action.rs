@@ -8,24 +8,14 @@ use borsh::{
 use std::convert::TryInto;
 use std::cmp;
 
-#[repr(u32)]
-enum Actions { //TODO
-	Void = 0u32,
-	Set,
-	Conditional,
-	
-	Damage,
-	Heal,
-}
-
 impl BorshSerialize for Action {
 	fn serialize<W: Write>(&self, writer: &mut W) -> BorshResult<()> {
 		let action_code = 0u32.to_le_bytes();
 		let code = self.get_code();
-		writer.write_all(&action_code);
-		writer.write_all(&code.to_le_bytes());
+		writer.write_all(&action_code)?;
+		writer.write_all(&code.to_le_bytes())?;
 		let x = self.b_to_vec();
-		writer.write_all(&x);
+		writer.write_all(&x)?;
 		Ok(())
 	}
 }
@@ -117,7 +107,7 @@ impl Brick<()> for Damage {
 		let amount = self.amount.run(ctx);
 		let ind = self.object_index as usize;
 		let unchecked_hp = ctx.objects[ind].hp - amount;
-		ctx.objects[ind].hp = cmp::max(amount, 0);
+		ctx.objects[ind].hp = cmp::max(unchecked_hp, 0);
 	}	
 }
 

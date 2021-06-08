@@ -7,10 +7,10 @@ impl BorshSerialize for Condition {
 	fn serialize<W: Write>(&self, writer: &mut W) -> BorshResult<()> {
 		let condition_code = 1u32.to_le_bytes();
 		let code = self.get_code();
-		writer.write_all(&condition_code);
-		writer.write_all(&code.to_le_bytes());
+		writer.write_all(&condition_code)?;
+		writer.write_all(&code.to_le_bytes())?;
 		let x = self.b_to_vec();
-		writer.write_all(&x);
+		writer.write_all(&x)?;
 		Ok(())
 	}
 }
