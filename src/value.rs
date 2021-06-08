@@ -24,9 +24,9 @@ impl BorshDeserialize for Value {
 		match code {
 			0u32 => Ok(Box::new(Const::deserialize(buf)?)),
 			1u32 => Ok(Box::new(Conditional::deserialize(buf)?)),
-			3u32 => Ok(Box::new(Add::deserialize(buf)?)),
-			4u32 => Ok(Box::new(Sub::deserialize(buf)?)),
-			5u32 => Ok(Box::new(Hp::deserialize(buf)?)),
+			2u32 => Ok(Box::new(Add::deserialize(buf)?)),
+			3u32 => Ok(Box::new(Sub::deserialize(buf)?)),
+			4u32 => Ok(Box::new(Hp::deserialize(buf)?)),
 			_ => Ok(Box::new(Const::deserialize(buf)?)),
 		}
 	}
