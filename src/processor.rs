@@ -47,9 +47,9 @@ pub fn process_create_card(
 ) -> ProgramResult {
 
     let accounts_iter = &mut accounts.iter();
+    let _payer_account = next_account_info(accounts_iter)?; // ignored, we don't check card ownership for now
     let card_account = next_account_info(accounts_iter)?;
     let mint_account = next_account_info(accounts_iter)?; 
-    let _payer_account = next_account_info(accounts_iter)?; // ignored, we don't need user to own the card token now
     let expected_card_account_pubkey = Pubkey::create_with_seed(
         mint_account.key,
         "SOLCERYCARD",

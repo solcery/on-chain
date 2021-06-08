@@ -7,9 +7,9 @@ pub enum SolceryInstruction{
     /// Checks and stores card binary data into special account
     /// Accounts expected:
     ///
-    /// 2  `[signer]` The account of the person creating the card
-    /// 0. `[writable]` The account for card metadata storage, with allocated memory and owned by program
-    /// 1. `[]` Mint account of card NFT
+    /// 0  `[signer]` The account of the person creating the card
+    /// 1. `[writable]` The account for card metadata storage, with allocated memory and owned by program
+    /// 2. `[]` Mint account of card NFT
 
     CreateCard {
         data: Vec<u8>,

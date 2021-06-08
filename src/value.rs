@@ -24,7 +24,9 @@ impl BorshDeserialize for Value {
 		match code {
 			0u32 => Ok(Box::new(Const::deserialize(buf)?)),
 			1u32 => Ok(Box::new(Conditional::deserialize(buf)?)),
-			2u32 => Ok(Box::new(Hp::deserialize(buf)?)),
+			3u32 => Ok(Box::new(Add::deserialize(buf)?)),
+			4u32 => Ok(Box::new(Sub::deserialize(buf)?)),
+			5u32 => Ok(Box::new(Hp::deserialize(buf)?)),
 			_ => Ok(Box::new(Const::deserialize(buf)?)),
 		}
 	}
@@ -71,13 +73,49 @@ impl Brick<u32> for Conditional {
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub struct Add {
+	pub left: Value,
+	pub right: Value,
+}
+
+impl Brick<u32> for Add {
+	fn get_code(&self) -> u32 {
+		return 2u32 
+	}
+	fn b_to_vec(&self) -> Vec<u8> {
+		return self.try_to_vec().unwrap();
+	}
+	fn run(&mut self, ctx: &mut Context) -> u32 {	
+		return self.left.run(ctx) + self.right.run(ctx);
+	}	
+}
+
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub struct Sub {
+	pub left: Value,
+	pub right: Value,
+}
+
+impl Brick<u32> for Sub {
+	fn get_code(&self) -> u32 {
+		return 3u32 
+	}
+	fn b_to_vec(&self) -> Vec<u8> {
+		return self.try_to_vec().unwrap();
+	}
+	fn run(&mut self, ctx: &mut Context) -> u32 {	
+		return self.left.run(ctx) - self.right.run(ctx);
+	}	
+}
+
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct Hp {
 	pub object_index: u32,
 }
 
 impl Brick<u32> for Hp {
 	fn get_code(&self) -> u32 {
-		return 2u32 
+		return 4u32 
 	}
 	fn b_to_vec(&self) -> Vec<u8> {
 		return self.try_to_vec().unwrap();
@@ -86,3 +124,4 @@ impl Brick<u32> for Hp {
 		return ctx.objects[self.object_index as usize].hp;
 	}	
 }
+

@@ -124,7 +124,9 @@ impl Brick<()> for Heal {
 		return self.try_to_vec().unwrap();
 	}
 	fn run(&mut self, ctx: &mut Context) -> () {
-		let amount = self.amount.run(ctx); 
-		ctx.objects[self.object_index as usize].hp += amount
+		let amount = self.amount.run(ctx);
+		let ind = self.object_index as usize;
+		let unchecked_hp = ctx.objects[ind].hp + amount;
+		ctx.objects[ind].hp = cmp::max(unchecked_hp, 0);
 	}	
 }
