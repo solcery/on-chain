@@ -14,7 +14,7 @@ Solcery is a collectible card game built on Solana. All game logic is being proc
 <img alt="Cards" src="https://i.postimg.cc/ZR3dYDLv/cards.png" width="512" />
 
 
-This project is a submission for Solana Season Hackathon (May 15th - July 7th).
+This project is a submission for Solana Season Hackathon (May 15th - June 7th).
 
 You can play it yourself <a href = "https://solcery.herokuapp.com">[here]</a>, or watch a video <a href = "https://www.youtube.com/watch?v=ibFnwq9eAxM">[here]</a>
 
