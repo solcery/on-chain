@@ -2,6 +2,7 @@ use crate::brick::{ Context, Brick, BorshResult, Value, Condition};
 use std::io::Write;
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::convert::TryInto;
+use std::cell::RefCell;
 
 impl BorshSerialize for Value {
 	fn serialize<W: Write>(&self, writer: &mut W) -> BorshResult<()> {
@@ -121,7 +122,7 @@ impl Brick<u32> for Hp {
 		return self.try_to_vec().unwrap();
 	}
 	fn run(&mut self, ctx: &mut Context) -> u32 {	
-		return ctx.objects[self.object_index as usize].hp;
+		return ctx.objects[self.object_index as usize].borrow().hp;
 	}	
 }
 

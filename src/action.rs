@@ -51,7 +51,7 @@ impl Brick<()> for Void {
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
-pub struct Set {
+pub struct Set{
 	pub action1: Action,
 	pub action2: Action,
 }
@@ -106,8 +106,8 @@ impl Brick<()> for Damage {
 	fn run(&mut self, ctx: &mut Context) -> () {
 		let amount = self.amount.run(ctx);
 		let ind = self.object_index as usize;
-		let unchecked_hp = ctx.objects[ind].hp - amount;
-		ctx.objects[ind].hp = cmp::max(unchecked_hp, 0);
+		let unchecked_hp = ctx.objects[ind].borrow().hp - amount;
+		ctx.objects[ind].borrow_mut().hp = cmp::max(unchecked_hp, 0);
 	}	
 }
 
@@ -126,7 +126,7 @@ impl Brick<()> for Heal {
 	fn run(&mut self, ctx: &mut Context) -> () {
 		let amount = self.amount.run(ctx);
 		let ind = self.object_index as usize;
-		let unchecked_hp = ctx.objects[ind].hp + amount;
-		ctx.objects[ind].hp = cmp::max(unchecked_hp, 0);
+		let unchecked_hp = ctx.objects[ind].borrow().hp + amount;
+		ctx.objects[ind].borrow_mut().hp = cmp::max(unchecked_hp, 0);
 	}	
 }

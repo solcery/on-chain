@@ -1,5 +1,6 @@
 use solana_program::program_error::ProgramError;
 use crate::error::SolceryError;
+use std::convert::TryInto;
 
 
 pub enum SolceryInstruction{
@@ -29,8 +30,8 @@ pub enum SolceryInstruction{
     /// 1. `[writable]` Fight account
     /// 2. `[]` Card metadata account
     Cast {
-        caster_id: u8, // [ignored, always 1] // Id of unit which will cast the card
-        target_id: u8, // [ignored, always 2] // Id of unit which will be the target of the card
+        caster_id: u32, // [ignored, always 1] // Id of unit which will cast the card
+        target_id: u32, // [ignored, always 2] // Id of unit which will be the target of the card
     },
 }
 
@@ -40,7 +41,10 @@ impl SolceryInstruction {
         Ok(match tag {
             0 => Self::CreateCard{ data: rest.to_vec() },
             1 => Self::CreateFight,
-            2 => Self::Cast{ caster_id: input[0], target_id: input[1] },
+            2 => Self::Cast{ 
+                caster_id: u32::from_le_bytes(input[..4].try_into().unwrap()), 
+                target_id: u32::from_le_bytes(input[4..].try_into().unwrap()) 
+            },
             _ => return Err(ProgramError::InvalidAccountData.into()),
         })
     }

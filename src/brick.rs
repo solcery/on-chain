@@ -1,5 +1,6 @@
 use std::result;
 use std::fmt::Debug;
+use std::cell::RefCell;
 use crate::unit::Unit;
 
 pub type Action = Box<dyn Brick<()>>;
@@ -14,7 +15,7 @@ pub type BorshResult<T> = result::Result<T, std::io::Error>;
 // }
 
 pub struct Context<'a> {
-	pub objects: &'a mut Vec<Unit>,
+	pub objects: &'a mut Vec<&'a RefCell<Unit>>,
 }
 
 pub trait Brick<T> where Self: Debug {

@@ -70,8 +70,8 @@ pub fn process_create_card(
 pub fn process_cast(
     accounts: &[AccountInfo],
     _program_id: &Pubkey,
-    _caster_id: u8, // caster unit id (temporary ignored, target is always unit 1)
-    _target_id: u8, // target unit id (temporary ignored, target is always unit 2)
+    caster_id: u32, // caster unit id (temporary ignored, target is always unit 1)
+    target_id: u32, // target unit id (temporary ignored, target is always unit 2)
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
     let _payer_account = next_account_info(accounts_iter)?;
@@ -79,10 +79,13 @@ pub fn process_cast(
     let card_metadata_account = next_account_info(accounts_iter)?;
     let client_metadata_size = u32::from_le_bytes(card_metadata_account.data.borrow()[..4].try_into().unwrap());
     let mut action = Action::try_from_slice(&card_metadata_account.data.borrow()[client_metadata_size as usize + 4..]).unwrap();
-    let mut fight = Fight::try_from_slice(&fight_account.data.borrow()[..])?;
+
+    let fight = Fight::try_from_slice(&fight_account.data.borrow()[..])?;
     let ctx: &mut Context = &mut Context{ 
-         objects: &mut fight.units,
+         objects: &mut Vec::new(),
     };
+    ctx.objects.push(&fight.units[&caster_id]);
+    ctx.objects.push(&fight.units[&target_id]);
     action.run(ctx);
     fight.serialize(&mut &mut fight_account.data.borrow_mut()[..])?;
     Ok(())
