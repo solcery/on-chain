@@ -11,16 +11,15 @@ use solana_program::{
     msg,
 };
 use crate::brick::{
-    UnitAction,
+    Action,
     Context,
 };
+use crate::error::SolceryError;
 use crate::instruction::SolceryInstruction;
-use crate::fight::Fight;
 use crate::board::Board;
-use crate::unit::UnitType;
+use crate::player::Player;
 use std::convert::TryInto;
 use std::io::Write;
-use crate::board::PlaceId;
 use std::rc::Rc;
 use std::cell::{
     RefCell,
@@ -41,26 +40,21 @@ pub fn process_instruction(
         SolceryInstruction::CreateCard { data } => {
             process_create_card(accounts, program_id, data)
         }
-        SolceryInstruction::Cast { caster_id, position } => {
-            msg!("Instruction: Cast");
-            process_cast(accounts, program_id, caster_id, position)
+        SolceryInstruction::Cast { card_id } => {
+            process_cast(accounts, program_id, card_id)
         }
-        SolceryInstruction::CreateFight  => {
-            process_create_fight(accounts, program_id)
+        SolceryInstruction::CreateBoard  => {
+            msg!("Instruction: Create Board");
+            process_create_board(accounts, program_id)
         }
-        SolceryInstruction::SpawnUnit { position }  => {
-            msg!("Instruction: SpawnUnit");
-            process_spawn_unit(accounts, program_id, position)
-        }
-        SolceryInstruction::CreateUnit { data }  => {
-            msg!("Instruction: CreateUnit");
-            process_create_unit(accounts, program_id, data)
+        SolceryInstruction::JoinBoard  => {
+            process_join_board(accounts, program_id)
         }
     }
 }
 
 
-pub fn process_create_card(
+pub fn process_create_card( // TODO:: To create_entity
     accounts: &[AccountInfo], 
     _program_id: &Pubkey, 
     card_data: Vec<u8>,
@@ -80,107 +74,76 @@ pub fn process_create_card(
         return Err(ProgramError::InvalidAccountData);
     }
     let mut data = &card_data[..];
-    msg!("CARD DATA: {:?}", card_data);
     let client_metadata_size = u32::from_le_bytes(card_data[..4].try_into().unwrap()); // Skipping card visualisation data
     data = &data[client_metadata_size as usize + 4..];
-    let action = UnitAction::try_from_slice(&data[..])?; // 
-    msg!("Action: {:?}", action);
+    let action = Action::try_from_slice(&data[..])?; // 
     {
         let card_account_data = &mut &mut card_account.data.borrow_mut()[..];
         card_account_data.write_all(&card_data[..])?;
     }
-    msg!("CreateCard: {:?}", &card_account.data.borrow()[..]);
-    Ok(())
-}
-
-pub fn process_create_unit(
-    accounts: &[AccountInfo], 
-    _program_id: &Pubkey, 
-    unit_data: Vec<u8>,
-) -> ProgramResult {
-    let accounts_iter = &mut accounts.iter();
-
-    let _payer_account = next_account_info(accounts_iter)?; // ignored, we don't check card ownership for now
-    let unit_account = next_account_info(accounts_iter)?;
-    let mint_account = next_account_info(accounts_iter)?; 
-
-    let expected_unit_account_pubkey = Pubkey::create_with_seed(
-        mint_account.key,
-        "SOLCERYUNIT",
-        &id()
-    )?;
-    if expected_unit_account_pubkey != *unit_account.key {
-        return Err(ProgramError::InvalidAccountData);
-    }
-    let mut data = &unit_data[..];
-    let client_metadata_size = u32::from_le_bytes(unit_data[..4].try_into().unwrap()); // Skipping unit visualisation data
-    data = &data[client_metadata_size as usize + 4..];
-    let unit_type = UnitType::try_from_slice(&data[..])?; // 
-    let unit_account_data = &mut &mut unit_account.data.borrow_mut()[..];
-    unit_account_data.write_all(&unit_data[..])?;
     Ok(())
 }
 
 pub fn process_cast(
     accounts: &[AccountInfo],
     _program_id: &Pubkey,
-    caster_id: u32,
-    position: PlaceId,
+    card_id: u32,
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
-    let _payer_account = next_account_info(accounts_iter)?;
-    let _fight_account = next_account_info(accounts_iter)?;
+    let payer_account = next_account_info(accounts_iter)?;
     let board_account = next_account_info(accounts_iter)?;
     let card_metadata_account = next_account_info(accounts_iter)?;
+
+    let board = Board::deserialize(&mut &board_account.data.borrow_mut()[..])?;
+    let player_info = board.get_player_by_id(*payer_account.key).ok_or(SolceryError::NotAPlayer)?;
+    let card_info = board.get_card_by_id(card_id).ok_or(SolceryError::WrongCard)?;
+    if card_info.borrow().card_type != *card_metadata_account.key {
+        return Err(SolceryError::WrongCard.into())
+    }
+    if player_info.borrow().attrs[0] == 0 {
+        return Err(SolceryError::InGameError.into()) // Player inactive (enemy turn)
+    }
     let client_metadata_size = u32::from_le_bytes(card_metadata_account.data.borrow()[..4].try_into().unwrap());
-    msg!("PROCESS CAST: {:?}", &card_metadata_account.data.borrow()[client_metadata_size as usize + 4..]);
-    let mut action = UnitAction::try_from_slice(&card_metadata_account.data.borrow()[client_metadata_size as usize + 4..]).unwrap();
-    msg!("{:?}", action);
-    //let fight = Fight::try_from_slice(&fight_account.data.borrow()[..])?; 
+    let mut action = Action::try_from_slice(&card_metadata_account.data.borrow()[client_metadata_size as usize + 4..]).unwrap();    
     let ctx: &mut Context = &mut Context{ 
-         objects: Vec::new(),
-         place: position,
-         board: Board::deserialize(&mut &board_account.data.borrow_mut()[..])?,
+         object: card_info,
+         board: board,
     };
-    ctx.objects.push(ctx.board.get_unit_by_id(caster_id).unwrap());
     action.run(ctx);
     ctx.board.serialize(&mut &mut board_account.data.borrow_mut()[..])?;
-    msg!("Board serialized! {:?}", board_account.data.borrow());
     Ok(())
 }
 
-pub fn process_create_fight(
+pub fn process_create_board(
     accounts: &[AccountInfo],
     program_id: &Pubkey, // Public key of the account the program was loaded into
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
-
     let payer_account = next_account_info(accounts_iter)?;
-    let fight_account = next_account_info(accounts_iter)?;
-    let board_account = next_account_info(accounts_iter)?; 
-
-    let fight = Fight::new(*payer_account.key);
-    fight.serialize(&mut &mut fight_account.data.borrow_mut()[..])?;
-    let board = Board::new(8, 8);
-    board.serialize(&mut &mut board_account.data.borrow_mut()[..])?;
-    Ok(())
-}
-
-pub fn process_spawn_unit(
-    accounts: &[AccountInfo],
-    program_id: &Pubkey, // Public key of the account the program was loaded into
-    position: PlaceId,
-) -> ProgramResult {
-    let accounts_iter = &mut accounts.iter();
-
-    let payer_account = next_account_info(accounts_iter)?;
-    let _fight_account = next_account_info(accounts_iter)?;
     let board_account = next_account_info(accounts_iter)?;
-    let unit_metadata_account = next_account_info(accounts_iter)?;
-
-    let mut board = Board::deserialize(&mut &board_account.data.borrow()[..])?;
-    board.create_unit(*payer_account.key, *unit_metadata_account.key, position);
+    let board = Board::new();
     board.serialize(&mut &mut board_account.data.borrow_mut()[..])?;
+    Ok(())
+}
 
+pub fn process_join_board(
+    accounts: &[AccountInfo],
+    program_id: &Pubkey, // Public key of the account the program was loaded into
+) -> ProgramResult {
+    let accounts_iter = &mut accounts.iter();
+    let payer_account = next_account_info(accounts_iter)?;
+    let board_account = next_account_info(accounts_iter)?; 
+    let mut board = Board::deserialize(&mut &board_account.data.borrow_mut()[..])?;
+    if board.players.len() > 1 {
+        return Err(SolceryError::GameStarted.into());
+    }
+    board.players.push(Rc::new(RefCell::new(Player{
+        id: *payer_account.key,
+        attrs: [0, 0, 0],
+    })));
+    if board.players.len() > 1 {
+        board.start();
+    }
+    board.serialize(&mut &mut board_account.data.borrow_mut()[..])?;
     Ok(())
 }

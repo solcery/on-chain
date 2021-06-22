@@ -2,31 +2,47 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use std::marker::Copy;
 use solana_program::{
     pubkey::Pubkey,
+    declare_id,
     msg,
 };
-use crate::unit::Unit;
 use crate::brick::BorshResult;
+use crate::card::Card;
+use crate::rand::Rand;
+use crate::player::Player;
 use std::cell::RefCell;
 use std::io::Write;
+use std::cmp::PartialEq;
 use std::rc::{Rc, Weak};
 
-pub type PlaceId = (u32, u32);
 
+declare_id!("A1U9yQfGgNMn2tkE5HB576QYoBA3uAdNFdjJA439S4m6");
 
-pub struct Place {
-	pub id: PlaceId,
-	pub unit: Option<Weak<RefCell<Unit>>>,
+#[derive(Debug, Copy, Clone, BorshSerialize, BorshDeserialize, PartialEq)]
+pub enum Place { //4
+    Nowhere,
+    Deck,
+    Shop,
+    Hand1,
+    Hand2,
+    DrawPile1,
+    DrawPile2,
 }
 
-pub struct Board {
-	pub units: Vec<Rc<RefCell<Unit>>>, //4 + len * Unit.size. Max size is 8
+#[derive(Debug)]
+pub struct Board { // 2536
+	pub players: Vec<Rc<RefCell<Player>>>, //4 + 44 * 2
+	pub cards: Vec<Rc<RefCell<Card>>>, //4 + 37 * 61
 }
 
 impl BorshSerialize for Board {
 	fn serialize<W: Write>(&self, writer: &mut W) -> BorshResult<()> {
-		(self.units.len() as u32).serialize(writer);
-		for unit in self.units.iter() {
-			unit.borrow().serialize(writer);
+		(self.players.len() as u32).serialize(writer);
+		for player in self.players.iter() {
+			player.borrow().serialize(writer);
+		}
+		(self.cards.len() as u32).serialize(writer);
+		for card in self.cards.iter() {
+			card.borrow().serialize(writer);
 		}
 		Ok(())
 	}
@@ -34,65 +50,130 @@ impl BorshSerialize for Board {
 
 impl BorshDeserialize for Board {
 	fn deserialize(buf: &mut &[u8]) -> std::result::Result<Self, std::io::Error> {
-		let units_len = u32::deserialize(buf)?;
-		let mut units = Vec::new();
-		for i in 0..units_len {
-			let unit = Unit::deserialize(buf)?;
-			units.push(Rc::new(RefCell::new(unit)));
+		let players_len = u32::deserialize(buf)?;
+		let mut players = Vec::new();
+		for i in 0..players_len {
+			let player = Player::deserialize(buf)?;
+			players.push(Rc::new(RefCell::new(player)));
+		}
+		let cards_len = u32::deserialize(buf)?;
+		let mut cards = Vec::new();
+		for i in 0..cards_len {
+			let card = Card::deserialize(buf)?;
+			cards.push(Rc::new(RefCell::new(card)));
 		}
 		Ok(Board {
-			units,
+			players: players,
+			cards: cards,
 		})
 	}
 }
 
 impl Board{
-	pub fn new(size_x: u32, size_y: u32) -> Board {
-		let mut places = Vec::new();
-		for x in 0..size_x {
-			for y in 0..size_y {
-				places.push( Place {
-					id: (x, y),
-					unit: None,
-				});
-			}
+	pub fn new() -> Board {
+		let mut cards = Vec::new();
+		for i in 1..31 {
+			cards.push(Rc::new(RefCell::new(Card {
+				id: i,
+				card_type: id(),
+				place: Place::Deck,
+			})));
 		}
-		return Board { 
-			units: Vec::new(),
+		for i in 31..61 {
+			cards.push(Rc::new(RefCell::new(Card {
+				id: i,
+				card_type: id(),
+				place: Place::Deck,
+			})));
+		}
+		let mut rng = Rand::new(0);
+		rng.shuffle(&mut cards);
+
+		for i in 1..6 {
+			cards.pop().unwrap().borrow_mut().place = Place::Hand1;
+			cards.pop().unwrap().borrow_mut().place = Place::Hand2;
+		}
+		for i in 1..6 {
+			cards.pop().unwrap().borrow_mut().place = Place::DrawPile1;
+			cards.pop().unwrap().borrow_mut().place = Place::DrawPile2;
+		}
+		Board {
+			cards: cards,
+			players: Vec::new(),
 		}
 	}
 
-	pub fn get_unit_by_place(&self, place_id: PlaceId) -> Option<Rc<RefCell<Unit>>> {
-		for unit in self.units.iter() {
-			if unit.borrow().place == place_id {
-				return Some(Rc::clone(&unit))
+	pub fn start(&self) {
+		self.players[0].borrow_mut().attrs[0] = 1;
+	}
+
+	pub fn get_card_by_id(&self, id: u32) -> Option<Rc<RefCell<Card>>> {
+		for card in &self.cards {
+			if (card.borrow().id == id) {
+				return Some(Rc::clone(&card))
 			}
 		}
 		return None
 	}
 
-	pub fn get_unit_by_type(&self, unit_type: Pubkey) -> Option<Rc<RefCell<Unit>>> {
-		for unit in self.units.iter() {
-			if unit.borrow().unit_type == unit_type {
-				return Some(Rc::clone(&unit))
+	pub fn get_cards_by_place(&self, place: Place) -> Vec<Rc<RefCell<Card>>> {
+		let mut res = Vec::new();
+		for card in self.cards.iter() {
+			if (card.borrow().place == place) {
+				res.push(Rc::clone(&card));
+			}
+		}
+		return res
+	}
+
+	pub fn get_player(&self, index: u32) -> Option<Rc<RefCell<Player>>> {
+		if self.players.len() < index as usize {
+			return None
+		}
+		return Some(Rc::clone(&self.players[(index - 1) as usize]))
+	}
+
+	pub fn get_player_by_id(&self, id: Pubkey) -> Option<Rc<RefCell<Player>>> {
+		for player in &self.players {
+			if player.borrow().id == id {
+				return Some(Rc::clone(&player))
 			}
 		}
 		return None
-	}
-
-	pub fn get_unit_by_id(&self, id: u32) -> Option<Rc<RefCell<Unit>>> {
-		return Some(Rc::clone(&self.units[id as usize]))
-	}
-
-	pub fn create_unit(&mut self, owner:Pubkey, unit_type: Pubkey, place: PlaceId) {
-		let new_unit = Unit {
-			owner,
-			unit_type,
-			place,
-			hp: 20,
-		};
-		self.units.push(Rc::new(RefCell::new(new_unit)));
 	}
 }
+
+// 	pub fn get_unit_by_place(&self, place_id: PlaceId) -> Option<Rc<RefCell<Unit>>> {
+// 		for unit in self.units.iter() {
+// 			if unit.borrow().place == place_id {
+// 				return Some(Rc::clone(&unit))
+// 			}
+// 		}
+// 		return None
+// 	}
+
+// 	pub fn get_unit_by_type(&self, unit_type: Pubkey) -> Option<Rc<RefCell<Unit>>> {
+// 		for unit in self.units.iter() {
+// 			if unit.borrow().unit_type == unit_type {
+// 				return Some(Rc::clone(&unit))
+// 			}
+// 		}
+// 		return None
+// 	}
+
+// 	pub fn get_unit_by_id(&self, id: u32) -> Option<Rc<RefCell<Unit>>> {
+// 		return Some(Rc::clone(&self.units[id as usize]))
+// 	}
+
+// 	pub fn create_unit(&mut self, owner:Pubkey, unit_type: Pubkey, place: PlaceId) {
+// 		let new_unit = Unit {
+// 			owner,
+// 			unit_type,
+// 			place,
+// 			hp: 20,
+// 		};
+// 		self.units.push(Rc::new(RefCell::new(new_unit)));
+// 	}
+// }
 
 

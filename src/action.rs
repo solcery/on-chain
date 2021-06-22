@@ -6,6 +6,10 @@ use borsh::{
 	BorshDeserialize, BorshSerialize
 };
 use std::convert::TryInto;
+use std::rc::Rc;
+use crate::board::Place;
+use crate::player::Player;
+use crate::rand::Rand;
 use std::cmp;
 
 impl BorshSerialize for Action {
@@ -30,9 +34,12 @@ impl BorshDeserialize for Action {
 			0u32 => Ok(Box::new(Void::deserialize(buf)?)),
 			1u32 => Ok(Box::new(Set::deserialize(buf)?)),
 			2u32 => Ok(Box::new(Conditional::deserialize(buf)?)),
-			3u32 => Ok(Box::new(Damage::deserialize(buf)?)),
-			4u32 => Ok(Box::new(Heal::deserialize(buf)?)),
-			_ => Ok(Box::new(Damage::deserialize(buf)?)),
+			3u32 => Ok(Box::new(Loop::deserialize(buf)?)),
+			100u32 => Ok(Box::new(MoveTo::deserialize(buf)?)),
+			101u32 => Ok(Box::new(SetPlayerAttr::deserialize(buf)?)),
+			102u32 => Ok(Box::new(AddPlayerAttr::deserialize(buf)?)),
+			103u32 => Ok(Box::new(ApplyToRandomCardInPlace::deserialize(buf)?)),
+			_ => Ok(Box::new(Void{})),
 		}
 	}
 }
@@ -92,11 +99,11 @@ impl Brick<()> for Conditional {
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
-pub struct Damage {
-	pub object_index: u32,
-	pub amount: Value,
+pub struct Loop {
+	pub iterations: Value,
+	pub action: Action,
 }
-impl Brick<()> for Damage {
+impl Brick<()> for Loop {
 	fn get_code(&self) -> u32 {
 		return 3u32 
 	}
@@ -104,29 +111,101 @@ impl Brick<()> for Damage {
 		return self.try_to_vec().unwrap();
 	}
 	fn run(&mut self, ctx: &mut Context) -> () {
-		let amount = self.amount.run(ctx);
-		let ind = self.object_index as usize;
-		let unchecked_hp = ctx.objects[ind].hp - amount;
-		ctx.objects[ind].hp = cmp::max(unchecked_hp, 0);
+		let iterations = self.iterations.run(ctx);
+		for i in 1..iterations {
+			self.action.run(ctx);
+		}
 	}	
 }
 
+
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
-pub struct Heal {
-	pub object_index: u32,
-	pub amount: Value,
+pub struct MoveTo {
+	pub place: Place,
 }
-impl Brick<()> for Heal {
+impl Brick<()> for MoveTo {
 	fn get_code(&self) -> u32 {
-		return 4u32 
+		return 100u32 
 	}
 	fn b_to_vec(&self) -> Vec<u8> {
 		return self.try_to_vec().unwrap();
 	}
 	fn run(&mut self, ctx: &mut Context) -> () {
-		let amount = self.amount.run(ctx);
-		let ind = self.object_index as usize;
-		let unchecked_hp = ctx.objects[ind].hp + amount;
-		ctx.objects[ind].hp = cmp::max(unchecked_hp, 0);
+		let mut card = ctx.object.borrow_mut();
+		card.place = self.place;
 	}	
 }
+
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub struct SetPlayerAttr {
+	pub attr_index: u32,
+	pub player_index: Value,
+	pub attr_value: Value,
+}
+impl Brick<()> for SetPlayerAttr {
+	fn get_code(&self) -> u32 {
+		return 101u32 
+	}
+	fn b_to_vec(&self) -> Vec<u8> {
+		return self.try_to_vec().unwrap();
+	}
+	fn run(&mut self, ctx: &mut Context) -> () {
+		let card_place = ctx.object.borrow().place;
+		let attr_value = self.attr_value.run(ctx);
+		let player = match card_place {
+			Place::Hand1 | Place::DrawPile1 => ctx.board.get_player(0),
+			Place::Hand1 | Place::DrawPile1 => ctx.board.get_player(1),
+			_ => None,
+		};
+		player.unwrap().borrow_mut().attrs[self.attr_index as usize] = attr_value;
+	}	
+}
+
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub struct AddPlayerAttr {
+	pub attr_index: u32,
+	pub player_index: Value,
+	pub attr_value: Value,
+}
+impl Brick<()> for AddPlayerAttr {
+	fn get_code(&self) -> u32 {
+		return 102u32 
+	}
+	fn b_to_vec(&self) -> Vec<u8> {
+		return self.try_to_vec().unwrap();
+	}
+	fn run(&mut self, ctx: &mut Context) -> () {
+		let card_place = ctx.object.borrow().place;
+		let attr_value = self.attr_value.run(ctx);
+		let player = match card_place {
+			Place::Hand1 | Place::DrawPile1 => ctx.board.get_player(0),
+			Place::Hand2 | Place::DrawPile2 => ctx.board.get_player(1),
+			_ => None,
+		};
+		player.unwrap().borrow_mut().attrs[self.attr_index as usize] += attr_value;
+	}	
+}
+
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub struct ApplyToRandomCardInPlace {
+	pub place: Place,
+	pub action: Action,
+}
+impl Brick<()> for ApplyToRandomCardInPlace {
+	fn get_code(&self) -> u32 {
+		return 103u32 
+	}
+	fn b_to_vec(&self) -> Vec<u8> {
+		return self.try_to_vec().unwrap();
+	}
+	fn run(&mut self, ctx: &mut Context) -> () { // JUST TOO MUCH
+		let cards = ctx.board.get_cards_by_place(self.place);
+		let card_index = Rand::new(0).rand_range(0, (cards.len() - 1) as i32) as usize;
+		let new_object = Rc::clone(&cards[card_index]);
+		let old_object = Rc::clone(&ctx.object);
+		ctx.object = new_object;
+		self.action.run(ctx);
+		ctx.object = old_object;
+	}	
+}
+

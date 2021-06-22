@@ -1,6 +1,15 @@
-enums 
+enums
 
-Place
+enum Place {
+	Nowhere,
+	Deck,
+	Shop,
+	Hand(i32),
+	Draw(i32),
+
+}
+
+PlayerAttrs
 
 
 
@@ -10,6 +19,8 @@ structs
 Board {
 	players: vec<Player>,
 	cards: vec<Card>,
+
+	fn start()
 }
 
 Player {
@@ -19,7 +30,8 @@ Player {
 
 Card {
 	id: u32,
-	place: Place
+	type: Pubkey,
+	place: Place,
 }
 
 
@@ -34,7 +46,7 @@ ApplyToCardFromPlace
 
 -- conditions
 Generics
-IsAtPlace
+IsAtPlace // ???
 
 -- values
 
@@ -42,3 +54,11 @@ Generics
 GetPlayerAttr
 GetOwnerIndex
 GetPlaceCardsAmount
+
+
+instructions
+
+CreateCard
+CreateBoard
+JoinBoard
+UseCard //tmp check that we are active

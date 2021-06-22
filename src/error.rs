@@ -4,9 +4,16 @@ use solana_program::program_error::ProgramError;
 
 #[derive(Error, Debug, Copy, Clone)]
 pub enum SolceryError {
-    /// Invalid instruction
     #[error("Invalid instruction")]
     InvalidInstruction,
+    #[error("Not a player! First join the board via JoinBoard instruction to be able to play.")]
+    NotAPlayer,
+    #[error("WrongCard")]
+    WrongCard,
+    #[error("InGameError")]
+    InGameError,
+    #[error("Game started")]
+    GameStarted,
 }
 
 impl From<SolceryError> for ProgramError {

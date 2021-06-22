@@ -2,6 +2,7 @@ use crate::brick::{ Context, Brick, BorshResult, Value, Condition};
 use std::io::Write;
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::convert::TryInto;
+use crate::board::Place;
 
 impl BorshSerialize for Value {
 	fn serialize<W: Write>(&self, writer: &mut W) -> BorshResult<()> {
@@ -26,25 +27,27 @@ impl BorshDeserialize for Value {
 			1u32 => Ok(Box::new(Conditional::deserialize(buf)?)),
 			2u32 => Ok(Box::new(Add::deserialize(buf)?)),
 			3u32 => Ok(Box::new(Sub::deserialize(buf)?)),
-			4u32 => Ok(Box::new(Hp::deserialize(buf)?)),
-			_ => Ok(Box::new(Const::deserialize(buf)?)),
+			100u32 => Ok(Box::new(GetPlayerAttr::deserialize(buf)?)),
+			101u32 => Ok(Box::new(GetPlayerAttr::deserialize(buf)?)),
+			102u32 => Ok(Box::new(GetCardsAmount::deserialize(buf)?)),
+			_ => Ok(Box::new(Const { value: 0 })), // TODO Err
 		}
 	}
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct Const {
-	pub value: u32,
+	pub value: i32,
 }
 
-impl Brick<u32> for Const {
+impl Brick<i32> for Const {
 	fn get_code(&self) -> u32 {
 		return 0u32 
 	}
 	fn b_to_vec(&self) -> Vec<u8> {
 		return self.try_to_vec().unwrap();
 	}
-	fn run(&mut self, _ctx: &mut Context) -> u32 {	
+	fn run(&mut self, _ctx: &mut Context) -> i32 {	
 		return self.value
 	}	
 }
@@ -55,14 +58,14 @@ pub struct Conditional {
 	pub positive: Value,
 	pub negative: Value,
 }
-impl Brick<u32> for Conditional {
+impl Brick<i32> for Conditional {
 	fn get_code(&self) -> u32 {
 		return 1u32 
 	}
 	fn b_to_vec(&self) -> Vec<u8> {
 		return self.try_to_vec().unwrap();
 	}
-	fn run(&mut self, ctx: &mut Context) -> u32 {
+	fn run(&mut self, ctx: &mut Context) -> i32 {
 		let cond = self.condition.run(ctx);
 		if cond {
 			self.positive.run(ctx)
@@ -78,14 +81,14 @@ pub struct Add {
 	pub right: Value,
 }
 
-impl Brick<u32> for Add {
+impl Brick<i32> for Add {
 	fn get_code(&self) -> u32 {
 		return 2u32 
 	}
 	fn b_to_vec(&self) -> Vec<u8> {
 		return self.try_to_vec().unwrap();
 	}
-	fn run(&mut self, ctx: &mut Context) -> u32 {	
+	fn run(&mut self, ctx: &mut Context) -> i32 {	
 		return self.left.run(ctx) + self.right.run(ctx);
 	}	
 }
@@ -96,32 +99,74 @@ pub struct Sub {
 	pub right: Value,
 }
 
-impl Brick<u32> for Sub {
+impl Brick<i32> for Sub {
 	fn get_code(&self) -> u32 {
 		return 3u32 
 	}
 	fn b_to_vec(&self) -> Vec<u8> {
 		return self.try_to_vec().unwrap();
 	}
-	fn run(&mut self, ctx: &mut Context) -> u32 {	
+	fn run(&mut self, ctx: &mut Context) -> i32 {	
 		return self.left.run(ctx) - self.right.run(ctx);
 	}	
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
-pub struct Hp {
-	pub object_index: u32,
+pub struct GetPlayerAttr {
+	pub attr_index: u32,
+	pub player_index: Value,
 }
 
-impl Brick<u32> for Hp {
+impl Brick<i32> for GetPlayerAttr {
 	fn get_code(&self) -> u32 {
-		return 4u32 
+		return 100u32 
 	}
 	fn b_to_vec(&self) -> Vec<u8> {
 		return self.try_to_vec().unwrap();
 	}
-	fn run(&mut self, ctx: &mut Context) -> u32 {	
-		return ctx.objects[self.object_index as usize].hp;
+	fn run(&mut self, ctx: &mut Context) -> i32 {
+		let card_place = ctx.object.borrow().place;
+		let player = match card_place {
+			Place::Hand1 | Place::DrawPile1 => ctx.board.get_player(0),
+			Place::Hand2 | Place::DrawPile2 => ctx.board.get_player(1),
+			_ => None,
+		};
+		return player.unwrap().borrow_mut().attrs[self.attr_index as usize];
 	}	
 }
 
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub struct GetPlayerIndex {}
+
+impl Brick<i32> for GetPlayerIndex {
+	fn get_code(&self) -> u32 {
+		return 101u32 
+	}
+	fn b_to_vec(&self) -> Vec<u8> {
+		return self.try_to_vec().unwrap();
+	}
+	fn run(&mut self, ctx: &mut Context) -> i32 {
+		let card_place = ctx.object.borrow().place;
+		return match card_place {
+			Place::Hand1 | Place::DrawPile1 => 1,
+			Place::Hand2 | Place::DrawPile2 => 2,
+			_ => 0,
+		};
+	}	
+}
+
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub struct GetCardsAmount {
+	pub place: Place,
+}
+impl Brick<i32> for GetCardsAmount {
+	fn get_code(&self) -> u32 {
+		return 102u32 
+	}
+	fn b_to_vec(&self) -> Vec<u8> {
+		return self.try_to_vec().unwrap();
+	}
+	fn run(&mut self, ctx: &mut Context) -> i32 {
+		return ctx.board.get_cards_by_place(self.place).len() as i32;
+	}	
+}
