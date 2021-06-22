@@ -2,28 +2,38 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use crate::unit::Unit;
 use solana_program::{
     pubkey::Pubkey,
+    msg,
 };
+use crate::brick::BorshResult;
+use std::collections::HashMap;
+use crate::board::PlaceId;
+use std::cell::RefCell;
+use std::io::Write;
+use std::rc::Rc;
 
-#[derive(BorshSerialize, BorshDeserialize)]
+#[derive(Debug)]
 pub struct Fight {
-	pub units: Vec<Unit>,
+	pub owner: Pubkey, //32
 }
 
+impl BorshSerialize for Fight {
+	fn serialize<W: Write>(&self, writer: &mut W) -> BorshResult<()> {
+		self.owner.to_bytes().serialize(writer);
+		Ok(())
+	}
+}
 
-impl Fight {
-	pub fn new(_owner: Pubkey) -> Fight {
-		let mut units = Vec::new();
-		let first_unit = Unit {
-			id: 1,
-			hp: 20,
-		};
-		let second_unit = Unit {
-			id: 2,
-			hp: 20,
-		};
-		units.push(first_unit);
-		units.push(second_unit);
+impl BorshDeserialize for Fight {
+	fn deserialize(buf: &mut &[u8]) -> std::result::Result<Self, std::io::Error> {
+		let owner = Pubkey::new(&<[u8; 32]>::deserialize(buf)?);
+		Ok(Fight{ owner })
+	}
+}
 
-		return Fight { units }
+impl Fight{
+	pub fn new(owner: Pubkey) -> Fight {
+		return Fight { 
+			owner: owner,
+		}
 	}
 }

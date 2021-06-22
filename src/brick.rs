@@ -1,8 +1,14 @@
 use std::result;
 use std::fmt::Debug;
 use crate::unit::Unit;
+use crate::board::{
+	Board,
+	PlaceId
+};
+use std::rc::Rc;
 
-pub type Action = Box<dyn Brick<()>>;
+//pub type Action = Box<dyn Brick<()>>;
+pub type UnitAction = Box<dyn Brick<()>>;
 pub type Condition = Box<dyn Brick<bool>>;
 pub type Value = Box<dyn Brick<u32>>;
 
@@ -13,8 +19,10 @@ pub type BorshResult<T> = result::Result<T, std::io::Error>;
 // 	fn heal(&mut self, amount: u32) -> ();
 // }
 
-pub struct Context<'a> {
-	pub objects: &'a mut Vec<Unit>,
+pub struct Context {
+	pub objects: Vec<Rc<RefCell<Unit>>>,
+	pub place: PlaceId, //TODO to typed collection?
+	pub board: Board,
 }
 
 pub trait Brick<T> where Self: Debug {
