@@ -28,10 +28,41 @@ pub enum Place { //4
     DrawPile2,
 }
 
+impl Place {
+    pub fn from_u8(value: u8) -> Place {
+        match value {
+            1 => Place::Deck,
+            2 => Place::Shop,
+            3 => Place::Hand1,
+            4 => Place::Hand2,
+            5 => Place::DrawPile1,
+            6 => Place::DrawPile2,
+            _ => Place::Nowhere,
+        }
+    }
+
+    pub fn from_i32(value: i32) -> Place {
+    	match value {
+            1 => Place::Deck,
+            2 => Place::Shop,
+            3 => Place::Hand1,
+            4 => Place::Hand2,
+            5 => Place::DrawPile1,
+            6 => Place::DrawPile2,
+            _ => Place::Nowhere,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Board { // 2536
 	pub players: Vec<Rc<RefCell<Player>>>, //4 + 44 * 2
 	pub cards: Vec<Rc<RefCell<Card>>>, //4 + 37 * 61
+}
+
+#[derive(Debug)]
+pub struct Ruleset {
+	pub deck: Vec<(Pubkey, u32, Place)>,
 }
 
 impl BorshSerialize for Board {
@@ -70,32 +101,35 @@ impl BorshDeserialize for Board {
 }
 
 impl Board{
-	pub fn new() -> Board {
+	pub fn new(ruleset: Ruleset) -> Board {
 		let mut cards = Vec::new();
-		for i in 1..31 {
-			cards.push(Rc::new(RefCell::new(Card {
-				id: i,
-				card_type: id(),
-				place: Place::Deck,
-			})));
-		}
-		for i in 31..61 {
-			cards.push(Rc::new(RefCell::new(Card {
-				id: i,
-				card_type: id(),
-				place: Place::Deck,
-			})));
+		let mut card_id = 0;
+		for card_type in ruleset.deck.iter() {
+			for i in 0..card_type.1 {
+				cards.push(Rc::new(RefCell::new(Card {
+					id: card_id,
+					card_type: card_type.0,
+					place: card_type.2,
+				})));
+				card_id += 1;
+			}
 		}
 		let mut rng = Rand::new(0);
 		rng.shuffle(&mut cards);
-
-		for i in 1..6 {
-			cards.pop().unwrap().borrow_mut().place = Place::Hand1;
-			cards.pop().unwrap().borrow_mut().place = Place::Hand2;
+		let mut dealt_cards = Vec::new();
+		for card in &cards {
+			dealt_cards.push(Rc::clone(&card));
 		}
 		for i in 1..6 {
-			cards.pop().unwrap().borrow_mut().place = Place::DrawPile1;
-			cards.pop().unwrap().borrow_mut().place = Place::DrawPile2;
+			dealt_cards.pop().unwrap().borrow_mut().place = Place::Hand1;
+			dealt_cards.pop().unwrap().borrow_mut().place = Place::Hand2;
+		}
+		for i in 1..6 {
+			dealt_cards.pop().unwrap().borrow_mut().place = Place::DrawPile1;
+			dealt_cards.pop().unwrap().borrow_mut().place = Place::DrawPile2;
+		}
+		for i in 1..6 {
+			dealt_cards.pop().unwrap().borrow_mut().place = Place::Shop;
 		}
 		Board {
 			cards: cards,

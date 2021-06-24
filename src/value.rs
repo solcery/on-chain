@@ -28,8 +28,10 @@ impl BorshDeserialize for Value {
 			2u32 => Ok(Box::new(Add::deserialize(buf)?)),
 			3u32 => Ok(Box::new(Sub::deserialize(buf)?)),
 			100u32 => Ok(Box::new(GetPlayerAttr::deserialize(buf)?)),
-			101u32 => Ok(Box::new(GetPlayerAttr::deserialize(buf)?)),
+			101u32 => Ok(Box::new(GetPlayerIndex::deserialize(buf)?)),
 			102u32 => Ok(Box::new(GetCardsAmount::deserialize(buf)?)),
+			103u32 => Ok(Box::new(CurrentPlace::deserialize(buf)?)),
+			104u32 => Ok(Box::new(GetCtxVar::deserialize(buf)?)),
 			_ => Ok(Box::new(Const { value: 0 })), // TODO Err
 		}
 	}
@@ -126,11 +128,8 @@ impl Brick<i32> for GetPlayerAttr {
 	}
 	fn run(&mut self, ctx: &mut Context) -> i32 {
 		let card_place = ctx.object.borrow().place;
-		let player = match card_place {
-			Place::Hand1 | Place::DrawPile1 => ctx.board.get_player(0),
-			Place::Hand2 | Place::DrawPile2 => ctx.board.get_player(1),
-			_ => None,
-		};
+		let player_index = self.player_index.run(ctx);
+		let player = ctx.board.get_player(player_index.try_into().unwrap());
 		return player.unwrap().borrow_mut().attrs[self.attr_index as usize];
 	}	
 }
@@ -157,7 +156,7 @@ impl Brick<i32> for GetPlayerIndex {
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct GetCardsAmount {
-	pub place: Place,
+	pub place: Value,
 }
 impl Brick<i32> for GetCardsAmount {
 	fn get_code(&self) -> u32 {
@@ -167,6 +166,39 @@ impl Brick<i32> for GetCardsAmount {
 		return self.try_to_vec().unwrap();
 	}
 	fn run(&mut self, ctx: &mut Context) -> i32 {
-		return ctx.board.get_cards_by_place(self.place).len() as i32;
+		let place = self.place.run(ctx);
+		return ctx.board.get_cards_by_place(Place::from_i32(place)).len() as i32;
 	}	
 }
+
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub struct CurrentPlace {}
+
+impl Brick<i32> for CurrentPlace {
+	fn get_code(&self) -> u32 {
+		return 103u32 
+	}
+	fn b_to_vec(&self) -> Vec<u8> {
+		return self.try_to_vec().unwrap();
+	}
+	fn run(&mut self, ctx: &mut Context) -> i32 {
+		return ctx.object.borrow().place as i32;
+	}	
+}
+
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub struct GetCtxVar {
+	pub var_index: u32,
+}
+impl Brick<i32> for GetCtxVar {
+	fn get_code(&self) -> u32 {
+		return 104u32 
+	}
+	fn b_to_vec(&self) -> Vec<u8> {
+		return self.try_to_vec().unwrap();
+	}
+	fn run(&mut self, ctx: &mut Context) -> i32 {
+		return *ctx.vars.get(&self.var_index).or(Some(&0)).unwrap();
+	}	
+}
+

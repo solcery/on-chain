@@ -176,7 +176,7 @@ impl Brick<bool> for LesserThan {
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct IsAtPlace {
-	pub place: Place,
+	pub place: Value,
 }
 
 impl Brick<bool> for IsAtPlace {
@@ -187,6 +187,7 @@ impl Brick<bool> for IsAtPlace {
 		return self.try_to_vec().unwrap();
 	}
 	fn run(&mut self, ctx: &mut Context) -> bool {	
-		return ctx.object.borrow().place == self.place;
+		let place = self.place.run(ctx);
+		return ctx.object.borrow().place == Place::from_i32(place);
 	}	
 }

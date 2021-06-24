@@ -5,6 +5,7 @@ use crate::card::Card;
 use std::cell::RefCell;
 use std::io::Write;
 use std::rc::Rc;
+use std::collections::BTreeMap;
 
 pub type Action = Box<dyn Brick<()>>;
 pub type Condition = Box<dyn Brick<bool>>;
@@ -15,6 +16,7 @@ pub type BorshResult<T> = result::Result<T, std::io::Error>;
 pub struct Context {
 	pub object: Rc<RefCell<Card>>,
 	pub board: Board,
+	pub vars: BTreeMap<u32, i32>,
 }
 
 pub trait Brick<T> where Self: Debug {

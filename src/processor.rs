@@ -14,9 +14,14 @@ use crate::brick::{
     Action,
     Context,
 };
+use std::collections::BTreeMap;
 use crate::error::SolceryError;
 use crate::instruction::SolceryInstruction;
-use crate::board::Board;
+use crate::board::{
+    Board,
+    Ruleset,
+    Place
+};
 use crate::player::Player;
 use std::convert::TryInto;
 use std::io::Write;
@@ -43,9 +48,8 @@ pub fn process_instruction(
         SolceryInstruction::Cast { card_id } => {
             process_cast(accounts, program_id, card_id)
         }
-        SolceryInstruction::CreateBoard  => {
-            msg!("Instruction: Create Board");
-            process_create_board(accounts, program_id)
+        SolceryInstruction::CreateBoard { deck } => {
+            process_create_board(accounts, program_id, deck)
         }
         SolceryInstruction::JoinBoard  => {
             process_join_board(accounts, program_id)
@@ -63,16 +67,6 @@ pub fn process_create_card( // TODO:: To create_entity
 
     let _payer_account = next_account_info(accounts_iter)?; // ignored, we don't check card ownership for now
     let card_account = next_account_info(accounts_iter)?;
-    let mint_account = next_account_info(accounts_iter)?; 
-
-    let expected_card_account_pubkey = Pubkey::create_with_seed(
-        mint_account.key,
-        "SOLCERYCARD",
-        &id()
-    )?;
-    if expected_card_account_pubkey != *card_account.key {
-        return Err(ProgramError::InvalidAccountData);
-    }
     let mut data = &card_data[..];
     let client_metadata_size = u32::from_le_bytes(card_data[..4].try_into().unwrap()); // Skipping card visualisation data
     data = &data[client_metadata_size as usize + 4..];
@@ -108,6 +102,7 @@ pub fn process_cast(
     let ctx: &mut Context = &mut Context{ 
          object: card_info,
          board: board,
+         vars: BTreeMap::new(),
     };
     action.run(ctx);
     ctx.board.serialize(&mut &mut board_account.data.borrow_mut()[..])?;
@@ -117,11 +112,19 @@ pub fn process_cast(
 pub fn process_create_board(
     accounts: &[AccountInfo],
     program_id: &Pubkey, // Public key of the account the program was loaded into
+    cards_amount: Vec<(u32, Place)>,
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
     let payer_account = next_account_info(accounts_iter)?;
     let board_account = next_account_info(accounts_iter)?;
-    let board = Board::new();
+    let mut deck = Vec::new();
+    msg!("{:?}", cards_amount);
+    for i in 0..cards_amount.len() {
+        let card_account = next_account_info(accounts_iter)?;
+        deck.push((*card_account.key, cards_amount[i].0, cards_amount[i].1));
+    }
+    msg!("{:?}", deck);
+    let board = Board::new( Ruleset{ deck } );
     board.serialize(&mut &mut board_account.data.borrow_mut()[..])?;
     Ok(())
 }
@@ -139,7 +142,7 @@ pub fn process_join_board(
     }
     board.players.push(Rc::new(RefCell::new(Player{
         id: *payer_account.key,
-        attrs: [0, 0, 0],
+        attrs: [1, 20, 5],
     })));
     if board.players.len() > 1 {
         board.start();
