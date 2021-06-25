@@ -38,16 +38,3 @@ impl Rand{
         return a+(self.rand()%m) as i32;
     }
 }
-
-// fn main() {
-//   let mut rng = Rand::new(0);
-    
-//   // Throw a dice 100 times
-//   let v: Vec<i32> = (0..100).map(|_| rng.rand_range(1,6)).collect();
-//   println!("{:?}",v);
-
-//   // Shuffle an array
-//   let mut v: Vec<u32> = (1..101).collect();
-//   rng.shuffle(&mut v);
-//   println!("{:?}",v);
-// }

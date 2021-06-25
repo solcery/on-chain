@@ -8,7 +8,6 @@ use solana_program::{
     system_instruction,
     pubkey::Pubkey,
     declare_id,
-    msg,
 };
 use crate::brick::{
     Action,
@@ -48,8 +47,8 @@ pub fn process_instruction(
         SolceryInstruction::Cast { card_id } => {
             process_cast(accounts, program_id, card_id)
         }
-        SolceryInstruction::CreateBoard { deck } => {
-            process_create_board(accounts, program_id, deck)
+        SolceryInstruction::CreateBoard { deck, init } => {
+            process_create_board(accounts, program_id, deck, init)
         }
         SolceryInstruction::JoinBoard  => {
             process_join_board(accounts, program_id)
@@ -64,7 +63,6 @@ pub fn process_create_card( // TODO:: To create_entity
     card_data: Vec<u8>,
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
-
     let _payer_account = next_account_info(accounts_iter)?; // ignored, we don't check card ownership for now
     let card_account = next_account_info(accounts_iter)?;
     let mut data = &card_data[..];
@@ -91,40 +89,32 @@ pub fn process_cast(
     let board = Board::deserialize(&mut &board_account.data.borrow_mut()[..])?;
     let player_info = board.get_player_by_id(*payer_account.key).ok_or(SolceryError::NotAPlayer)?;
     let card_info = board.get_card_by_id(card_id).ok_or(SolceryError::WrongCard)?;
-    if card_info.borrow().card_type != *card_metadata_account.key {
-        return Err(SolceryError::WrongCard.into())
-    }
     if player_info.borrow().attrs[0] == 0 {
         return Err(SolceryError::InGameError.into()) // Player inactive (enemy turn)
     }
-    let client_metadata_size = u32::from_le_bytes(card_metadata_account.data.borrow()[..4].try_into().unwrap());
-    let mut action = Action::try_from_slice(&card_metadata_account.data.borrow()[client_metadata_size as usize + 4..]).unwrap();    
-    let ctx: &mut Context = &mut Context{ 
-         object: card_info,
-         board: board,
-         vars: BTreeMap::new(),
-    };
-    action.run(ctx);
-    ctx.board.serialize(&mut &mut board_account.data.borrow_mut()[..])?;
+    board.cast_card(card_id);
+    board.serialize(&mut &mut board_account.data.borrow_mut()[..])?;
     Ok(())
 }
 
 pub fn process_create_board(
     accounts: &[AccountInfo],
     program_id: &Pubkey, // Public key of the account the program was loaded into
-    cards_amount: Vec<(u32, Place)>,
+    deck: Vec<(u32, Place)>,
+    init: Vec<u32>,
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
     let payer_account = next_account_info(accounts_iter)?;
     let board_account = next_account_info(accounts_iter)?;
-    let mut deck = Vec::new();
-    msg!("{:?}", cards_amount);
-    for i in 0..cards_amount.len() {
+    let mut board_deck = Vec::new();
+    for deck_entry in deck.iter() {
         let card_account = next_account_info(accounts_iter)?;
-        deck.push((*card_account.key, cards_amount[i].0, cards_amount[i].1));
+        board_deck.push((card_account.clone(), deck_entry.0, deck_entry.1));
     }
-    msg!("{:?}", deck);
-    let board = Board::new( Ruleset{ deck } );
+    let board = Board::new( Ruleset{ deck: board_deck } );
+    for card_id in init.iter() {
+        board.cast_card(*card_id);
+    }
     board.serialize(&mut &mut board_account.data.borrow_mut()[..])?;
     Ok(())
 }

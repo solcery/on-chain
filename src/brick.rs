@@ -13,9 +13,9 @@ pub type Value = Box<dyn Brick<i32>>;
 
 pub type BorshResult<T> = result::Result<T, std::io::Error>;
 
-pub struct Context {
+pub struct Context<'a> {
 	pub object: Rc<RefCell<Card>>,
-	pub board: Board,
+	pub board: &'a Board,
 	pub vars: BTreeMap<u32, i32>,
 }
 

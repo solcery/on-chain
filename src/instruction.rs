@@ -1,9 +1,9 @@
 use solana_program::{
     program_error::ProgramError,
-    msg
 };
 use crate::error::SolceryError;
 use crate::board::Place;
+use borsh::BorshDeserialize;
 use std::convert::TryInto;
 
 
@@ -28,6 +28,7 @@ pub enum SolceryInstruction{
     /// 2+. [] Metadata account of cards used in board
     CreateBoard {
         deck: Vec<(u32, Place)>,
+        init: Vec<u32>,
     },
 
     /// Initializes new board and stores it in account
@@ -53,11 +54,12 @@ pub enum SolceryInstruction{
 
 impl SolceryInstruction {
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
-        let (tag, rest) = input.split_first().ok_or(SolceryError::InvalidInstruction)?; 
+        let (mut tag, mut rest) = input.split_first().ok_or(SolceryError::InvalidInstruction)?; 
         Ok(match tag {
             0 => Self::CreateCard{ data: rest.to_vec() },
             1 => Self::CreateBoard{ 
-                deck: Self::unpack_board_deck(rest),
+                deck: Vec::<(u32, Place)>::deserialize(&mut rest)?,
+                init: Vec::<u32>::deserialize(&mut rest)?,
             },
             2 => Self::JoinBoard,
             3 => Self::Cast{ 
@@ -68,7 +70,6 @@ impl SolceryInstruction {
     }
 
     pub fn unpack_board_deck(src: &[u8]) -> Vec<(u32, Place)> {
-
         let mut deck = Vec::new();
         for i in 0..src.len() / 5 {
             let amount = u32::from_le_bytes(src[5 * i .. 5 * (i + 1) - 1].try_into().unwrap());
@@ -77,4 +78,5 @@ impl SolceryInstruction {
         }
         return deck
     }
+
 }

@@ -2,7 +2,7 @@ use crate::brick::{
 	Context, Brick, BorshResult, Action, Condition, Value
 };
 use solana_program::{
-    msg,
+    pubkey::Pubkey,
 };
 use std::io::Write;
 use borsh::{
@@ -39,6 +39,7 @@ impl BorshDeserialize for Action {
 			1u32 => Ok(Box::new(Set::deserialize(buf)?)),
 			2u32 => Ok(Box::new(Conditional::deserialize(buf)?)),
 			3u32 => Ok(Box::new(Loop::deserialize(buf)?)),
+			4u32 => Ok(Box::new(Card::deserialize(buf)?)),
 			100u32 => Ok(Box::new(MoveTo::deserialize(buf)?)),
 			101u32 => Ok(Box::new(SetPlayerAttr::deserialize(buf)?)),
 			102u32 => Ok(Box::new(AddPlayerAttr::deserialize(buf)?)),
@@ -121,6 +122,25 @@ impl Brick<()> for Loop {
 		}
 	}	
 }
+
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub struct Card {
+	pub card_type: u32,
+}
+impl Brick<()> for Card {
+	fn get_code(&self) -> u32 {
+		return 4u32 
+	}
+	fn b_to_vec(&self) -> Vec<u8> {
+		return self.try_to_vec().unwrap();
+	}
+	fn run(&mut self, ctx: &mut Context) -> () {
+		let mut card_type = ctx.board.get_card_type_by_id(self.card_type);
+		let mut action = card_type.unwrap().borrow_mut().get_action(); 
+		action.run(ctx);
+	}	
+}
+
 
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
