@@ -2,6 +2,7 @@ use crate::brick::{ Context, Brick, BorshResult, Condition, Value };
 use std::io::Write;
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::convert::TryInto;
+use crate::board::Place;
 
 impl BorshSerialize for Condition {
 	fn serialize<W: Write>(&self, writer: &mut W) -> BorshResult<()> {
@@ -30,6 +31,7 @@ impl BorshDeserialize for Condition {
 			5u32 => Ok(Box::new(Equal::deserialize(buf)?)),
 			6u32 => Ok(Box::new(GreaterThan::deserialize(buf)?)),
 			7u32 => Ok(Box::new(LesserThan::deserialize(buf)?)),
+			100u32 => Ok(Box::new(IsAtPlace::deserialize(buf)?)),
 			_ => Ok(Box::new(True::deserialize(buf)?)),
 		}
 	}
@@ -172,3 +174,20 @@ impl Brick<bool> for LesserThan {
 	}	
 }
 
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub struct IsAtPlace {
+	pub place: Value,
+}
+
+impl Brick<bool> for IsAtPlace {
+	fn get_code(&self) -> u32 {
+		return 100u32 
+	}
+	fn b_to_vec(&self) -> Vec<u8> {
+		return self.try_to_vec().unwrap();
+	}
+	fn run(&mut self, ctx: &mut Context) -> bool {	
+		let place = self.place.run(ctx);
+		return ctx.object.borrow().place == Place::from_i32(place);
+	}	
+}

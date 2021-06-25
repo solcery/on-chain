@@ -1,21 +1,22 @@
 use std::result;
 use std::fmt::Debug;
+use crate::board::Board;
+use crate::card::Card;
 use std::cell::RefCell;
-use crate::unit::Unit;
+use std::io::Write;
+use std::rc::Rc;
+use std::collections::BTreeMap;
 
 pub type Action = Box<dyn Brick<()>>;
 pub type Condition = Box<dyn Brick<bool>>;
-pub type Value = Box<dyn Brick<u32>>;
+pub type Value = Box<dyn Brick<i32>>;
 
 pub type BorshResult<T> = result::Result<T, std::io::Error>;
 
-// pub trait ContextObject {
-// 	fn damage(&mut self, amount: u32) -> ();
-// 	fn heal(&mut self, amount: u32) -> ();
-// }
-
 pub struct Context<'a> {
-	pub objects: &'a mut Vec<&'a RefCell<Unit>>,
+	pub object: Rc<RefCell<Card>>,
+	pub board: &'a Board,
+	pub vars: BTreeMap<u32, i32>,
 }
 
 pub trait Brick<T> where Self: Debug {

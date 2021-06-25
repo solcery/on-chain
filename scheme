@@ -1,0 +1,64 @@
+enums
+
+enum Place {
+	Nowhere,
+	Deck,
+	Shop,
+	Hand(i32),
+	Draw(i32),
+
+}
+
+PlayerAttrs
+
+
+
+structs
+
+
+Board {
+	players: vec<Player>,
+	cards: vec<Card>,
+
+	fn start()
+}
+
+Player {
+	id: vec<Pubkey>
+	attrs: vec<i32, 3> //active = 0, hp = 1, mana = 2
+}
+
+Card {
+	id: u32,
+	type: Pubkey,
+	place: Place,
+}
+
+
+
+-- actions
+
+Generics + cycle
+MoveTo
+SetPlayerAttr
+AddPlayerAttr
+ApplyToCardFromPlace
+
+-- conditions
+Generics
+IsAtPlace // ???
+
+-- values
+
+Generics
+GetPlayerAttr
+GetOwnerIndex
+GetPlaceCardsAmount
+
+
+instructions
+
+CreateCard
+CreateBoard
+JoinBoard
+UseCard //tmp check that we are active
