@@ -17,6 +17,7 @@ pub struct Context<'a> {
 	pub object: Rc<RefCell<Card>>,
 	pub board: &'a Board,
 	pub vars: BTreeMap<u32, i32>,
+	pub caster_id: u32,
 }
 
 pub trait Brick<T> where Self: Debug {

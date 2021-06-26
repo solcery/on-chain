@@ -84,7 +84,6 @@ pub fn process_cast(
     let accounts_iter = &mut accounts.iter();
     let payer_account = next_account_info(accounts_iter)?;
     let board_account = next_account_info(accounts_iter)?;
-    let card_metadata_account = next_account_info(accounts_iter)?;
 
     let board = Board::deserialize(&mut &board_account.data.borrow_mut()[..])?;
     let player_info = board.get_player_by_id(*payer_account.key).ok_or(SolceryError::NotAPlayer)?;
@@ -92,7 +91,8 @@ pub fn process_cast(
     if player_info.borrow().attrs[0] == 0 {
         return Err(SolceryError::InGameError.into()) // Player inactive (enemy turn)
     }
-    board.cast_card(card_id);
+    let caster_id = board.get_player_index_by_id(*payer_account.key);
+    board.cast_card(card_id, caster_id);
     board.serialize(&mut &mut board_account.data.borrow_mut()[..])?;
     Ok(())
 }
@@ -113,7 +113,7 @@ pub fn process_create_board(
     }
     let board = Board::new( Ruleset{ deck: board_deck } );
     for card_id in init.iter() {
-        board.cast_card(*card_id);
+        board.cast_card(*card_id, 0);
     }
     board.serialize(&mut &mut board_account.data.borrow_mut()[..])?;
     Ok(())
@@ -132,7 +132,7 @@ pub fn process_join_board(
     }
     board.players.push(Rc::new(RefCell::new(Player{
         id: *payer_account.key,
-        attrs: [1, 20, 5],
+        attrs: [0, 20, 0],
     })));
     if board.players.len() > 1 {
         board.start();

@@ -32,6 +32,7 @@ impl BorshDeserialize for Value {
 			102u32 => Ok(Box::new(GetCardsAmount::deserialize(buf)?)),
 			103u32 => Ok(Box::new(CurrentPlace::deserialize(buf)?)),
 			104u32 => Ok(Box::new(GetCtxVar::deserialize(buf)?)),
+			105u32 => Ok(Box::new(CasterPlayerIndex::deserialize(buf)?)),
 			_ => Ok(Box::new(Const { value: 0 })), // TODO Err
 		}
 	}
@@ -199,6 +200,21 @@ impl Brick<i32> for GetCtxVar {
 	}
 	fn run(&mut self, ctx: &mut Context) -> i32 {
 		return *ctx.vars.get(&self.var_index).or(Some(&0)).unwrap();
+	}	
+}
+
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub struct CasterPlayerIndex {}
+
+impl Brick<i32> for CasterPlayerIndex {
+	fn get_code(&self) -> u32 {
+		return 105u32 
+	}
+	fn b_to_vec(&self) -> Vec<u8> {
+		return self.try_to_vec().unwrap();
+	}
+	fn run(&mut self, ctx: &mut Context) -> i32 {
+		return ctx.caster_id as i32;
 	}	
 }
 

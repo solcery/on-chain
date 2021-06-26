@@ -63,7 +63,7 @@ impl Brick<()> for Void {
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
-pub struct Set{
+pub struct Set {
 	pub action1: Action,
 	pub action2: Action,
 }

@@ -69,7 +69,7 @@ pub struct Board { // 2536
 }
 
 impl Board {
-	pub fn cast_card(&self, card_id: u32) {
+	pub fn cast_card(&self, card_id: u32, caster_id: u32) {
 		let card = self.get_card_by_id(card_id);
 		let card_type_id = card.unwrap().borrow().card_type;
 	    let card_type = self.get_card_type_by_id(card_type_id);
@@ -77,6 +77,7 @@ impl Board {
 	    let ctx: &mut Context = &mut Context{ 
 	         object: self.get_card_by_id(card_id).unwrap(),
 	         board: &self,
+	         caster_id: caster_id, //TODO: to vars
 	         vars: BTreeMap::new(),
 	    };
 	    action.run(ctx);
@@ -210,7 +211,16 @@ impl Board{
 		return Some(Rc::clone(&self.players[(index - 1) as usize]))
 	}
 
-	pub fn get_player_by_id(&self, id: Pubkey) -> Option<Rc<RefCell<Player>>> {
+	pub fn get_player_index_by_id(&self, id: Pubkey) -> u32 { // TODO: get_player_by_key
+		for i in 0..self.players.len() {
+			if self.players[i].borrow().id == id {
+				return i as u32 + 1
+			}
+		}
+		return 0
+	}
+
+	pub fn get_player_by_id(&self, id: Pubkey) -> Option<Rc<RefCell<Player>>> { // TODO: get_player_by_key
 		for player in &self.players {
 			if player.borrow().id == id {
 				return Some(Rc::clone(&player))
