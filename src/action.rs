@@ -1,6 +1,9 @@
 use crate::brick::{ 
 	Context, Brick, BorshResult, Action, Condition, Value
 };
+use solana_program::{
+    pubkey::Pubkey,
+};
 use std::io::Write;
 use borsh::{
 	BorshDeserialize, BorshSerialize
@@ -11,6 +14,7 @@ use crate::board::Place;
 use crate::player::Player;
 use crate::rand::Rand;
 use std::cmp;
+use std::collections::BTreeMap;
 
 impl BorshSerialize for Action {
 	fn serialize<W: Write>(&self, writer: &mut W) -> BorshResult<()> {
@@ -35,10 +39,11 @@ impl BorshDeserialize for Action {
 			1u32 => Ok(Box::new(Set::deserialize(buf)?)),
 			2u32 => Ok(Box::new(Conditional::deserialize(buf)?)),
 			3u32 => Ok(Box::new(Loop::deserialize(buf)?)),
+			4u32 => Ok(Box::new(Card::deserialize(buf)?)),
 			100u32 => Ok(Box::new(MoveTo::deserialize(buf)?)),
 			101u32 => Ok(Box::new(SetPlayerAttr::deserialize(buf)?)),
 			102u32 => Ok(Box::new(AddPlayerAttr::deserialize(buf)?)),
-			103u32 => Ok(Box::new(ApplyToRandomCardInPlace::deserialize(buf)?)),
+			103u32 => Ok(Box::new(ApplyToPlace::deserialize(buf)?)),
 			_ => Ok(Box::new(Void{})),
 		}
 	}
@@ -58,7 +63,7 @@ impl Brick<()> for Void {
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
-pub struct Set {
+pub struct Set{
 	pub action1: Action,
 	pub action2: Action,
 }
@@ -118,10 +123,29 @@ impl Brick<()> for Loop {
 	}	
 }
 
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub struct Card {
+	pub card_type: u32,
+}
+impl Brick<()> for Card {
+	fn get_code(&self) -> u32 {
+		return 4u32 
+	}
+	fn b_to_vec(&self) -> Vec<u8> {
+		return self.try_to_vec().unwrap();
+	}
+	fn run(&mut self, ctx: &mut Context) -> () {
+		let mut card_type = ctx.board.get_card_type_by_id(self.card_type);
+		let mut action = card_type.unwrap().borrow_mut().get_action(); 
+		action.run(ctx);
+	}	
+}
+
+
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct MoveTo {
-	pub place: Place,
+	pub place: Value,
 }
 impl Brick<()> for MoveTo {
 	fn get_code(&self) -> u32 {
@@ -131,8 +155,9 @@ impl Brick<()> for MoveTo {
 		return self.try_to_vec().unwrap();
 	}
 	fn run(&mut self, ctx: &mut Context) -> () {
+		let place = self.place.run(ctx);
 		let mut card = ctx.object.borrow_mut();
-		card.place = self.place;
+		card.place = Place::from_i32(place);
 	}	
 }
 
@@ -150,13 +175,9 @@ impl Brick<()> for SetPlayerAttr {
 		return self.try_to_vec().unwrap();
 	}
 	fn run(&mut self, ctx: &mut Context) -> () {
-		let card_place = ctx.object.borrow().place;
+		let player_index = self.player_index.run(ctx);
 		let attr_value = self.attr_value.run(ctx);
-		let player = match card_place {
-			Place::Hand1 | Place::DrawPile1 => ctx.board.get_player(0),
-			Place::Hand1 | Place::DrawPile1 => ctx.board.get_player(1),
-			_ => None,
-		};
+		let player = ctx.board.get_player(player_index.try_into().unwrap());
 		player.unwrap().borrow_mut().attrs[self.attr_index as usize] = attr_value;
 	}	
 }
@@ -175,23 +196,20 @@ impl Brick<()> for AddPlayerAttr {
 		return self.try_to_vec().unwrap();
 	}
 	fn run(&mut self, ctx: &mut Context) -> () {
-		let card_place = ctx.object.borrow().place;
+		let player_index = self.player_index.run(ctx);
 		let attr_value = self.attr_value.run(ctx);
-		let player = match card_place {
-			Place::Hand1 | Place::DrawPile1 => ctx.board.get_player(0),
-			Place::Hand2 | Place::DrawPile2 => ctx.board.get_player(1),
-			_ => None,
-		};
+		let player = ctx.board.get_player(player_index.try_into().unwrap());
 		player.unwrap().borrow_mut().attrs[self.attr_index as usize] += attr_value;
 	}	
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
-pub struct ApplyToRandomCardInPlace {
-	pub place: Place,
+pub struct ApplyToPlace {
+	pub place: Value,
 	pub action: Action,
+	pub limit: Value,
 }
-impl Brick<()> for ApplyToRandomCardInPlace {
+impl Brick<()> for ApplyToPlace {
 	fn get_code(&self) -> u32 {
 		return 103u32 
 	}
@@ -199,13 +217,39 @@ impl Brick<()> for ApplyToRandomCardInPlace {
 		return self.try_to_vec().unwrap();
 	}
 	fn run(&mut self, ctx: &mut Context) -> () { // JUST TOO MUCH
-		let cards = ctx.board.get_cards_by_place(self.place);
-		let card_index = Rand::new(0).rand_range(0, (cards.len() - 1) as i32) as usize;
-		let new_object = Rc::clone(&cards[card_index]);
+		let place = self.place.run(ctx);
+		let mut limit = self.limit.run(ctx);
+		let mut rng = Rand::new(0);
+		let mut cards = ctx.board.get_cards_by_place(Place::from_i32(place));
+		if limit == 0 {
+			limit = cards.len().try_into().unwrap();
+		}
 		let old_object = Rc::clone(&ctx.object);
-		ctx.object = new_object;
-		self.action.run(ctx);
+		for i in 0..limit {
+			rng.shuffle(&mut cards);
+			let new_object = Rc::clone(&cards.pop().unwrap());
+			ctx.object = new_object;
+			self.action.run(ctx);
+		}
 		ctx.object = old_object;
+	}	
+}
+
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub struct SetCtxVar{
+	pub var_index: u32,
+	pub value: Value,
+}
+impl Brick<()> for SetCtxVar {
+	fn get_code(&self) -> u32 {
+		return 104u32 
+	}
+	fn b_to_vec(&self) -> Vec<u8> {
+		return self.try_to_vec().unwrap();
+	}
+	fn run(&mut self, ctx: &mut Context) -> () {
+		let value = self.value.run(ctx);
+		ctx.vars.insert(self.var_index, value);
 	}	
 }
 

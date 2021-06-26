@@ -2,7 +2,6 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use std::marker::Copy;
 use solana_program::{
     pubkey::Pubkey,
-    msg,
 };
 use crate::brick::BorshResult;
 use crate::board::PlaceId;

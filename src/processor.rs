@@ -8,15 +8,19 @@ use solana_program::{
     system_instruction,
     pubkey::Pubkey,
     declare_id,
-    msg,
 };
 use crate::brick::{
     Action,
     Context,
 };
+use std::collections::BTreeMap;
 use crate::error::SolceryError;
 use crate::instruction::SolceryInstruction;
-use crate::board::Board;
+use crate::board::{
+    Board,
+    Ruleset,
+    Place
+};
 use crate::player::Player;
 use std::convert::TryInto;
 use std::io::Write;
@@ -43,9 +47,8 @@ pub fn process_instruction(
         SolceryInstruction::Cast { card_id } => {
             process_cast(accounts, program_id, card_id)
         }
-        SolceryInstruction::CreateBoard  => {
-            msg!("Instruction: Create Board");
-            process_create_board(accounts, program_id)
+        SolceryInstruction::CreateBoard { deck, init } => {
+            process_create_board(accounts, program_id, deck, init)
         }
         SolceryInstruction::JoinBoard  => {
             process_join_board(accounts, program_id)
@@ -60,19 +63,8 @@ pub fn process_create_card( // TODO:: To create_entity
     card_data: Vec<u8>,
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
-
     let _payer_account = next_account_info(accounts_iter)?; // ignored, we don't check card ownership for now
     let card_account = next_account_info(accounts_iter)?;
-    let mint_account = next_account_info(accounts_iter)?; 
-
-    let expected_card_account_pubkey = Pubkey::create_with_seed(
-        mint_account.key,
-        "SOLCERYCARD",
-        &id()
-    )?;
-    if expected_card_account_pubkey != *card_account.key {
-        return Err(ProgramError::InvalidAccountData);
-    }
     let mut data = &card_data[..];
     let client_metadata_size = u32::from_le_bytes(card_data[..4].try_into().unwrap()); // Skipping card visualisation data
     data = &data[client_metadata_size as usize + 4..];
@@ -97,31 +89,32 @@ pub fn process_cast(
     let board = Board::deserialize(&mut &board_account.data.borrow_mut()[..])?;
     let player_info = board.get_player_by_id(*payer_account.key).ok_or(SolceryError::NotAPlayer)?;
     let card_info = board.get_card_by_id(card_id).ok_or(SolceryError::WrongCard)?;
-    if card_info.borrow().card_type != *card_metadata_account.key {
-        return Err(SolceryError::WrongCard.into())
-    }
     if player_info.borrow().attrs[0] == 0 {
         return Err(SolceryError::InGameError.into()) // Player inactive (enemy turn)
     }
-    let client_metadata_size = u32::from_le_bytes(card_metadata_account.data.borrow()[..4].try_into().unwrap());
-    let mut action = Action::try_from_slice(&card_metadata_account.data.borrow()[client_metadata_size as usize + 4..]).unwrap();    
-    let ctx: &mut Context = &mut Context{ 
-         object: card_info,
-         board: board,
-    };
-    action.run(ctx);
-    ctx.board.serialize(&mut &mut board_account.data.borrow_mut()[..])?;
+    board.cast_card(card_id);
+    board.serialize(&mut &mut board_account.data.borrow_mut()[..])?;
     Ok(())
 }
 
 pub fn process_create_board(
     accounts: &[AccountInfo],
     program_id: &Pubkey, // Public key of the account the program was loaded into
+    deck: Vec<(u32, Place)>,
+    init: Vec<u32>,
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
     let payer_account = next_account_info(accounts_iter)?;
     let board_account = next_account_info(accounts_iter)?;
-    let board = Board::new();
+    let mut board_deck = Vec::new();
+    for deck_entry in deck.iter() {
+        let card_account = next_account_info(accounts_iter)?;
+        board_deck.push((card_account.clone(), deck_entry.0, deck_entry.1));
+    }
+    let board = Board::new( Ruleset{ deck: board_deck } );
+    for card_id in init.iter() {
+        board.cast_card(*card_id);
+    }
     board.serialize(&mut &mut board_account.data.borrow_mut()[..])?;
     Ok(())
 }
@@ -139,7 +132,7 @@ pub fn process_join_board(
     }
     board.players.push(Rc::new(RefCell::new(Player{
         id: *payer_account.key,
-        attrs: [0, 0, 0],
+        attrs: [1, 20, 5],
     })));
     if board.players.len() > 1 {
         board.start();
