@@ -8,4 +8,5 @@ pub mod action;
 pub mod value;
 pub mod condition;
 pub mod rand;
+pub mod ruleset;
 pub mod player;

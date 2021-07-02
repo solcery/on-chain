@@ -2,10 +2,9 @@ use solana_program::{
     program_error::ProgramError,
 };
 use crate::error::SolceryError;
-use crate::board::Place;
 use borsh::BorshDeserialize;
+use crate::processor::EntityType;
 use std::convert::TryInto;
-
 
 pub enum SolceryInstruction{
 
@@ -16,9 +15,16 @@ pub enum SolceryInstruction{
     /// 1. `[writable]` The account for card metadata storage, with allocated memory and owned by program
     /// 2. `[]` Mint account of card NFT
 
-    CreateCard {
+    SetEntity {
         data: Vec<u8>,
     },
+
+    /// Removes all lamports from card account to user account allowing to create new account with such key
+    /// Accounts expected:
+    ///
+    /// 0  `[signer]` The account of the person creating the card
+    /// 1. `[writable]` The account for card metadata storage, with allocated memory and owned by program
+    DeleteEntity,
 
     /// Initializes new board and stores it in account
     /// Accounts expected:
@@ -26,10 +32,7 @@ pub enum SolceryInstruction{
     /// 0. `[signer]` The account of the person starting the board
     /// 1. `[writable]` Memory account owned by program with preallocated necessary space
     /// 2+. [] Metadata account of cards used in board
-    CreateBoard {
-        deck: Vec<(u32, Place)>,
-        init: Vec<u32>,
-    },
+    CreateBoard,
 
     /// Initializes new board and stores it in account
     /// Accounts expected:
@@ -48,35 +51,20 @@ pub enum SolceryInstruction{
         card_id: u32,
     },
 
-
-
 }
 
 impl SolceryInstruction {
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         let (mut tag, mut rest) = input.split_first().ok_or(SolceryError::InvalidInstruction)?; 
         Ok(match tag {
-            0 => Self::CreateCard{ data: rest.to_vec() },
-            1 => Self::CreateBoard{ 
-                deck: Vec::<(u32, Place)>::deserialize(&mut rest)?,
-                init: Vec::<u32>::deserialize(&mut rest)?,
-            },
-            2 => Self::JoinBoard,
-            3 => Self::Cast{ 
+            0 => Self::SetEntity { data: rest.to_vec() },
+            1 => Self::DeleteEntity,
+            2 => Self::CreateBoard,
+            3 => Self::JoinBoard,
+            4 => Self::Cast{ 
                 card_id: u32::from_le_bytes(rest[..4].try_into().unwrap()),
             },
             _ => return Err(ProgramError::InvalidAccountData.into()),
         })
     }
-
-    pub fn unpack_board_deck(src: &[u8]) -> Vec<(u32, Place)> {
-        let mut deck = Vec::new();
-        for i in 0..src.len() / 5 {
-            let amount = u32::from_le_bytes(src[5 * i .. 5 * (i + 1) - 1].try_into().unwrap());
-            let place_u8 = src[5 * (i + 1) - 1];
-            deck.push((amount, Place::from_u8(place_u8)));
-        }
-        return deck
-    }
-
 }

@@ -20,46 +20,10 @@ use std::collections::BTreeMap;
 use std::cmp::PartialEq;
 use std::rc::{Rc, Weak};
 use crate::error::SolceryError;
+use crate::ruleset::Ruleset;
 
+declare_id!("5Ds6QvdZAqwVozdu2i6qzjXm8tmBttV6uHNg4YU8rB1P");
 
-declare_id!("A1U9yQfGgNMn2tkE5HB576QYoBA3uAdNFdjJA439S4m6");
-
-#[derive(Debug, Copy, Clone, BorshSerialize, BorshDeserialize, PartialEq)]
-pub enum Place { //4
-    Nowhere,
-    Deck,
-    Shop,
-    Hand1,
-    Hand2,
-    DrawPile1,
-    DrawPile2,
-}
-
-impl Place {
-    pub fn from_u8(value: u8) -> Place {
-        match value {
-            1 => Place::Deck,
-            2 => Place::Shop,
-            3 => Place::Hand1,
-            4 => Place::Hand2,
-            5 => Place::DrawPile1,
-            6 => Place::DrawPile2,
-            _ => Place::Nowhere,
-        }
-    }
-
-    pub fn from_i32(value: i32) -> Place {
-    	match value {
-            1 => Place::Deck,
-            2 => Place::Shop,
-            3 => Place::Hand1,
-            4 => Place::Hand2,
-            5 => Place::DrawPile1,
-            6 => Place::DrawPile2,
-            _ => Place::Nowhere,
-        }
-    }
-}
 
 #[derive(Debug)]
 pub struct Board { // 2536
@@ -82,11 +46,6 @@ impl Board {
 	    };
 	    action.run(ctx);
 	}
-}
-
-#[derive(Debug)]
-pub struct Ruleset<'a> {
-	pub deck: Vec<(AccountInfo<'a>, u32, Place)>,
 }
 
 impl BorshSerialize for Board {
@@ -136,32 +95,6 @@ impl BorshDeserialize for Board {
 }
 
 impl Board{
-	pub fn new(ruleset: Ruleset) -> Board {
-		let mut cards = Vec::new();
-		let mut card_types = Vec::new();
-		let mut card_id = 0;
-		let mut card_type = 0;
-		for ruleset_entry in ruleset.deck.iter() {
-			card_types.push(Rc::new(RefCell::new(
-				CardType::new(card_type, &ruleset_entry.0)
-			)));
-			for i in 0..ruleset_entry.1 {
-				cards.push(Rc::new(RefCell::new(Card {
-					id: card_id,
-					card_type: card_type,
-					place: ruleset_entry.2,
-				})));
-				card_id += 1;
-			}
-			card_type += 1;
-		}
-		let mut rng = Rand::new(0);
-		Board {
-			cards: cards,
-			card_types: card_types,
-			players: Vec::new(),
-		}
-	}
 
 	pub fn start(&self) {
 		self.players[0].borrow_mut().attrs[0] = 1;
@@ -194,7 +127,7 @@ impl Board{
 		return None
 	}
 
-	pub fn get_cards_by_place(&self, place: Place) -> Vec<Rc<RefCell<Card>>> {
+	pub fn get_cards_by_place(&self, place: u32) -> Vec<Rc<RefCell<Card>>> {
 		let mut res = Vec::new();
 		for card in self.cards.iter() {
 			if (card.borrow().place == place) {

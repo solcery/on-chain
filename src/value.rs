@@ -2,7 +2,6 @@ use crate::brick::{ Context, Brick, BorshResult, Value, Condition};
 use std::io::Write;
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::convert::TryInto;
-use crate::board::Place;
 
 impl BorshSerialize for Value {
 	fn serialize<W: Write>(&self, writer: &mut W) -> BorshResult<()> {
@@ -128,7 +127,6 @@ impl Brick<i32> for GetPlayerAttr {
 		return self.try_to_vec().unwrap();
 	}
 	fn run(&mut self, ctx: &mut Context) -> i32 {
-		let card_place = ctx.object.borrow().place;
 		let player_index = self.player_index.run(ctx);
 		let player = ctx.board.get_player(player_index.try_into().unwrap());
 		return player.unwrap().borrow_mut().attrs[self.attr_index as usize];
@@ -148,8 +146,8 @@ impl Brick<i32> for GetPlayerIndex {
 	fn run(&mut self, ctx: &mut Context) -> i32 {
 		let card_place = ctx.object.borrow().place;
 		return match card_place {
-			Place::Hand1 | Place::DrawPile1 => 1,
-			Place::Hand2 | Place::DrawPile2 => 2,
+			3 | 5 => 1,
+			4 | 6 => 2,
 			_ => 0,
 		};
 	}	
@@ -168,7 +166,7 @@ impl Brick<i32> for GetCardsAmount {
 	}
 	fn run(&mut self, ctx: &mut Context) -> i32 {
 		let place = self.place.run(ctx);
-		return ctx.board.get_cards_by_place(Place::from_i32(place)).len() as i32;
+		return ctx.board.get_cards_by_place(place.try_into().unwrap()).len() as i32;
 	}	
 }
 
@@ -183,7 +181,7 @@ impl Brick<i32> for CurrentPlace {
 		return self.try_to_vec().unwrap();
 	}
 	fn run(&mut self, ctx: &mut Context) -> i32 {
-		return ctx.object.borrow().place as i32;
+		return ctx.object.borrow().place.try_into().unwrap();
 	}	
 }
 

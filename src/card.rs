@@ -10,14 +10,13 @@ use crate::brick::{
 	BorshResult, 
 	Action
 };
-use crate::board::Place;
 use std::io::Write;
 
 #[derive(Debug, Clone, Copy, BorshDeserialize, BorshSerialize)]
 pub struct Card { //9
 	pub id: u32, // 4
 	pub card_type: u32, // 4
-	pub place: Place, //1
+	pub place: u32, //4
 }
 
 #[derive(Debug)]

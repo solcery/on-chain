@@ -6,7 +6,9 @@ use solana_program::{
     entrypoint::ProgramResult,
     program_error::ProgramError,
     system_instruction,
+    system_program,
     pubkey::Pubkey,
+    msg,
     declare_id,
 };
 use crate::brick::{
@@ -18,9 +20,8 @@ use crate::error::SolceryError;
 use crate::instruction::SolceryInstruction;
 use crate::board::{
     Board,
-    Ruleset,
-    Place
 };
+use crate::ruleset::Ruleset;
 use crate::player::Player;
 use std::convert::TryInto;
 use std::io::Write;
@@ -29,9 +30,44 @@ use std::cell::{
     RefCell,
     RefMut,
 };
+use crate::card::{
+    Card,
+    CardType
+};
 
+pub enum EntityType {
+    Custom,
+    Card,
+    Ruleset,
+    Collection,
+}
 
-declare_id!("A1U9yQfGgNMn2tkE5HB576QYoBA3uAdNFdjJA439S4m6");
+impl EntityType {
+    pub fn from_u8(value: u8) -> EntityType {
+        match value {
+            1 => EntityType::Card,
+            2 => EntityType::Ruleset,
+            3 => EntityType::Collection,
+            _ => EntityType::Custom,
+        }
+    }
+
+    pub fn get_name(&self) -> &[u8] {
+        match self {
+            EntityType::Custom => b"custom",
+            EntityType::Card => b"card",
+            EntityType::Ruleset => b"ruleset",
+            EntityType::Collection => b"collection",
+        }
+    }
+}
+
+declare_id!("5Ds6QvdZAqwVozdu2i6qzjXm8tmBttV6uHNg4YU8rB1P");
+
+pub fn validate_pointer(pointer: &AccountInfo, object: &AccountInfo ) -> bool {
+    msg!("poiner: {:?}, object.key: {:?}", pointer.data.borrow(), object.key.to_bytes());
+    return **pointer.data.borrow() == object.key.to_bytes();
+}
 
 entrypoint!(process_instruction);
 pub fn process_instruction(
@@ -41,14 +77,18 @@ pub fn process_instruction(
 ) -> ProgramResult {
     let instruction = SolceryInstruction::unpack(instruction_data)?;
     match instruction {
-        SolceryInstruction::CreateCard { data } => {
-            process_create_card(accounts, program_id, data)
+        SolceryInstruction::SetEntity { data } => {
+            msg!("instruction: SetEntity");
+            process_set_entity(accounts, program_id, data)
+        }
+        SolceryInstruction::DeleteEntity => {
+            process_delete_entity(accounts, program_id)
         }
         SolceryInstruction::Cast { card_id } => {
             process_cast(accounts, program_id, card_id)
         }
-        SolceryInstruction::CreateBoard { deck, init } => {
-            process_create_board(accounts, program_id, deck, init)
+        SolceryInstruction::CreateBoard => {
+            process_create_board(accounts, program_id)
         }
         SolceryInstruction::JoinBoard  => {
             process_join_board(accounts, program_id)
@@ -57,24 +97,36 @@ pub fn process_instruction(
 }
 
 
-pub fn process_create_card( // TODO:: To create_entity
+pub fn process_set_entity( // TODO:: To create_entity?
     accounts: &[AccountInfo], 
     _program_id: &Pubkey, 
-    card_data: Vec<u8>,
+    entity_data: Vec<u8>,
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
     let _payer_account = next_account_info(accounts_iter)?; // ignored, we don't check card ownership for now
-    let card_account = next_account_info(accounts_iter)?;
-    let mut data = &card_data[..];
-    let client_metadata_size = u32::from_le_bytes(card_data[..4].try_into().unwrap()); // Skipping card visualisation data
-    data = &data[client_metadata_size as usize + 4..];
-    let action = Action::try_from_slice(&data[..])?; // 
-    {
-        let card_account_data = &mut &mut card_account.data.borrow_mut()[..];
-        card_account_data.write_all(&card_data[..])?;
-    }
+    let entity_account = next_account_info(accounts_iter)?;
+    
+    // validation. skipped for now
+    // let client_metadata_size = u32::from_le_bytes(card_data[..4].try_into().unwrap()); // Skipping card visualisation data
+    // data = &data[client_metadata_size as usize + 4..];
+    msg!("Account {:?} saved: {:?}", entity_account.key, entity_data);
+    entity_account.data.borrow_mut().write_all(&entity_data[..])?;
     Ok(())
 }
+
+pub fn process_delete_entity(
+    accounts: &[AccountInfo],
+    program_id: &Pubkey, // Public key of the account the program was loaded into
+) -> ProgramResult {
+    let accounts_iter = &mut accounts.iter();
+    let payer_account = next_account_info(accounts_iter)?; // ignored, we don't check card ownership for now
+    let entity_account = next_account_info(accounts_iter)?;
+    **payer_account.lamports.borrow_mut() = payer_account.lamports() + entity_account.lamports();
+    **entity_account.lamports.borrow_mut() = 0;
+    *entity_account.data.borrow_mut() = &mut [];
+    Ok(())
+}
+
 
 pub fn process_cast(
     accounts: &[AccountInfo],
@@ -97,22 +149,54 @@ pub fn process_cast(
     Ok(())
 }
 
-pub fn process_create_board(
+pub fn process_create_board( 
     accounts: &[AccountInfo],
     program_id: &Pubkey, // Public key of the account the program was loaded into
-    deck: Vec<(u32, Place)>,
-    init: Vec<u32>,
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
     let payer_account = next_account_info(accounts_iter)?;
     let board_account = next_account_info(accounts_iter)?;
-    let mut board_deck = Vec::new();
-    for deck_entry in deck.iter() {
-        let card_account = next_account_info(accounts_iter)?;
-        board_deck.push((card_account.clone(), deck_entry.0, deck_entry.1));
+    msg!("payer + board");
+    let ruleset_pointer_account = next_account_info(accounts_iter)?;
+    let ruleset_data_account = next_account_info(accounts_iter)?;
+    msg!("rulesets");
+    if !validate_pointer(ruleset_pointer_account, ruleset_data_account) {
+        return Err(SolceryError::InvalidInstruction.into());
     }
-    let board = Board::new( Ruleset{ deck: board_deck } );
-    for card_id in init.iter() {
+    let ruleset = Ruleset::deserialize(&mut &ruleset_data_account.data.borrow_mut()[..])?;
+    let board = {
+        let mut cards = Vec::new();
+        let mut card_types = Vec::new();
+        let mut card_id = 0;
+        let mut card_type_id = 0;
+        for card_type in ruleset.card_types.iter() {
+            let card_pointer_account = next_account_info(accounts_iter)?;
+            let card_data_account = next_account_info(accounts_iter)?;
+            if !validate_pointer(card_pointer_account, card_data_account) {
+                return Err(SolceryError::InvalidInstruction.into());
+            }
+            card_types.push(Rc::new(RefCell::new(
+                CardType::new(card_type_id, card_data_account)
+            )));
+            card_type_id += 1;
+        }
+        for ruleset_deck_card in ruleset.deck.iter() {
+            for i in 0..ruleset_deck_card.2 {
+                cards.push(Rc::new(RefCell::new(Card {
+                    id: card_id,
+                    card_type: ruleset_deck_card.1,
+                    place: ruleset_deck_card.0,
+                })));
+                card_id += 1;
+            }
+        }
+        Board {
+            cards: cards,
+            card_types: card_types,
+            players: Vec::new(),
+        }
+    };
+    for card_id in ruleset.initializers.iter() {
         board.cast_card(*card_id, 0);
     }
     board.serialize(&mut &mut board_account.data.borrow_mut()[..])?;

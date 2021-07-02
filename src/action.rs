@@ -10,7 +10,6 @@ use borsh::{
 };
 use std::convert::TryInto;
 use std::rc::Rc;
-use crate::board::Place;
 use crate::player::Player;
 use crate::rand::Rand;
 use std::cmp;
@@ -157,7 +156,7 @@ impl Brick<()> for MoveTo {
 	fn run(&mut self, ctx: &mut Context) -> () {
 		let place = self.place.run(ctx);
 		let mut card = ctx.object.borrow_mut();
-		card.place = Place::from_i32(place);
+		card.place = place.try_into().unwrap();
 	}	
 }
 
@@ -220,7 +219,7 @@ impl Brick<()> for ApplyToPlace {
 		let place = self.place.run(ctx);
 		let mut limit = self.limit.run(ctx);
 		let mut rng = Rand::new(0);
-		let mut cards = ctx.board.get_cards_by_place(Place::from_i32(place));
+		let mut cards = ctx.board.get_cards_by_place(place.try_into().unwrap());
 		if limit == 0 {
 			limit = cards.len().try_into().unwrap();
 		}

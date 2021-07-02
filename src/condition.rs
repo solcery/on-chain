@@ -2,7 +2,6 @@ use crate::brick::{ Context, Brick, BorshResult, Condition, Value };
 use std::io::Write;
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::convert::TryInto;
-use crate::board::Place;
 
 impl BorshSerialize for Condition {
 	fn serialize<W: Write>(&self, writer: &mut W) -> BorshResult<()> {
@@ -188,6 +187,6 @@ impl Brick<bool> for IsAtPlace {
 	}
 	fn run(&mut self, ctx: &mut Context) -> bool {	
 		let place = self.place.run(ctx);
-		return ctx.object.borrow().place == Place::from_i32(place);
+		return ctx.object.borrow().place == place.try_into().unwrap();
 	}	
 }
