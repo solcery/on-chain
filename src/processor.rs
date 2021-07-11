@@ -65,7 +65,7 @@ impl EntityType {
 declare_id!("5Ds6QvdZAqwVozdu2i6qzjXm8tmBttV6uHNg4YU8rB1P");
 
 pub fn validate_pointer(pointer: &AccountInfo, object: &AccountInfo ) -> bool {
-    msg!("poiner: {:?}, object.key: {:?}", pointer.data.borrow(), object.key.to_bytes());
+    // msg!("poiner: {:?}, object.key: {:?}", pointer.data.borrow(), object.key.to_bytes());
     return **pointer.data.borrow() == object.key.to_bytes();
 }
 
@@ -109,7 +109,6 @@ pub fn process_set_entity( // TODO:: To create_entity?
     // validation. skipped for now
     // let client_metadata_size = u32::from_le_bytes(card_data[..4].try_into().unwrap()); // Skipping card visualisation data
     // data = &data[client_metadata_size as usize + 4..];
-    msg!("Account {:?} saved: {:?}", entity_account.key, entity_data);
     entity_account.data.borrow_mut().write_all(&entity_data[..])?;
     Ok(())
 }
@@ -136,7 +135,6 @@ pub fn process_cast(
     let accounts_iter = &mut accounts.iter();
     let payer_account = next_account_info(accounts_iter)?;
     let board_account = next_account_info(accounts_iter)?;
-
     let board = Board::deserialize(&mut &board_account.data.borrow_mut()[..])?;
     let player_info = board.get_player_by_id(*payer_account.key).ok_or(SolceryError::NotAPlayer)?;
     let card_info = board.get_card_by_id(card_id).ok_or(SolceryError::WrongCard)?;
@@ -156,10 +154,8 @@ pub fn process_create_board(
     let accounts_iter = &mut accounts.iter();
     let payer_account = next_account_info(accounts_iter)?;
     let board_account = next_account_info(accounts_iter)?;
-    msg!("payer + board");
     let ruleset_pointer_account = next_account_info(accounts_iter)?;
     let ruleset_data_account = next_account_info(accounts_iter)?;
-    msg!("rulesets");
     if !validate_pointer(ruleset_pointer_account, ruleset_data_account) {
         return Err(SolceryError::InvalidInstruction.into());
     }
@@ -180,14 +176,18 @@ pub fn process_create_board(
             )));
             card_type_id += 1;
         }
-        for ruleset_deck_card in ruleset.deck.iter() {
-            for i in 0..ruleset_deck_card.2 {
-                cards.push(Rc::new(RefCell::new(Card {
-                    id: card_id,
-                    card_type: ruleset_deck_card.1,
-                    place: ruleset_deck_card.0,
-                })));
-                card_id += 1;
+        for place in ruleset.deck.iter() {
+            let place_id = place.0;
+            let index_amounts = &place.1;
+            for card in index_amounts.iter() {
+                for i in 0..card.1 {
+                    cards.push(Rc::new(RefCell::new(Card {
+                        id: card_id,
+                        card_type: card.0,
+                        place: place_id,
+                    })));
+                    card_id += 1;
+                }
             }
         }
         Board {
@@ -196,9 +196,6 @@ pub fn process_create_board(
             players: Vec::new(),
         }
     };
-    for card_id in ruleset.initializers.iter() {
-        board.cast_card(*card_id, 0);
-    }
     board.serialize(&mut &mut board_account.data.borrow_mut()[..])?;
     Ok(())
 }
@@ -216,9 +213,9 @@ pub fn process_join_board(
     }
     board.players.push(Rc::new(RefCell::new(Player{
         id: *payer_account.key,
-        attrs: [0, 20, 0],
+        attrs: [1, 20, 0],
     })));
-    if board.players.len() > 1 {
+    if board.players.len() > 0 {
         board.start();
     }
     board.serialize(&mut &mut board_account.data.borrow_mut()[..])?;

@@ -97,7 +97,11 @@ impl BorshDeserialize for Board {
 impl Board{
 
 	pub fn start(&self) {
-		self.players[0].borrow_mut().attrs[0] = 1;
+		for card in self.cards.iter() {
+	        if (card.borrow().place == 0) {
+	            self.cast_card(card.borrow().id, 0);
+	        }
+	    }
 	}
 
 	pub fn get_card_by_id(&self, id: u32) -> Option<Rc<RefCell<Card>>> {
