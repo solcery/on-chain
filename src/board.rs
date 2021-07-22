@@ -25,11 +25,20 @@ use crate::ruleset::Ruleset;
 declare_id!("5Ds6QvdZAqwVozdu2i6qzjXm8tmBttV6uHNg4YU8rB1P");
 
 
+#[derive(Debug, BorshSerialize, BorshDeserialize)]
+pub struct Log {
+	pub nonce: u32,
+	pub message_len: u32,
+	pub message: [u8; 128],
+}
+
 #[derive(Debug)]
 pub struct Board { // 2536
 	pub players: Vec<Rc<RefCell<Player>>>, //4 + 44 * 2
 	pub card_types: Vec<Rc<RefCell<CardType>>>,
 	pub cards: Vec<Rc<RefCell<Card>>>, //4 + 37 * 61
+	pub log: Rc<RefCell<Log>>,
+	pub rand: Rc<RefCell<Rand>>,
 }
 
 impl Board {
@@ -62,6 +71,8 @@ impl BorshSerialize for Board {
 		for card in self.cards.iter() {
 			card.borrow().serialize(writer);
 		}
+		self.log.borrow().serialize(writer);
+		self.rand.borrow().serialize(writer);
 		Ok(())
 	}
 }
@@ -86,10 +97,14 @@ impl BorshDeserialize for Board {
 			let card = Card::deserialize(buf)?;
 			cards.push(Rc::new(RefCell::new(card)));
 		}
+		let log = Rc::new(RefCell::new(Log::deserialize(buf)?));
+		let rand = Rc::new(RefCell::new(Rand::deserialize(buf)?));
 		Ok(Board {
 			players,
 			card_types,
 			cards,
+			log,
+			rand,
 		})
 	}
 }

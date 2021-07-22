@@ -16,6 +16,7 @@ pub enum SolceryInstruction{
     /// 2. `[]` Mint account of card NFT
 
     SetEntity {
+        position: u32,
         data: Vec<u8>,
     },
 
@@ -32,7 +33,19 @@ pub enum SolceryInstruction{
     /// 0. `[signer]` The account of the person starting the board
     /// 1. `[writable]` Memory account owned by program with preallocated necessary space
     /// 2+. [] Metadata account of cards used in board
-    CreateBoard,
+    CreateBoard {
+        random_seed: u32,
+    },
+
+    /// Initializes new board and stores it in account
+    /// Accounts expected:
+    ///
+    /// 0. `[signer]` The account of the person starting the board
+    /// 1. `[writable]` Memory account owned by program with preallocated necessary space
+    /// 2+. [] Metadata account of cards used in board
+    AddCardsToBoard {
+        cards_amount: u32,
+    },
 
     /// Initializes new board and stores it in account
     /// Accounts expected:
@@ -57,11 +70,18 @@ impl SolceryInstruction {
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         let (mut tag, mut rest) = input.split_first().ok_or(SolceryError::InvalidInstruction)?; 
         Ok(match tag {
-            0 => Self::SetEntity { data: rest.to_vec() },
+            0 => {
+                let (mut position_slice, mut data) = rest.split_at(4);
+                Self::SetEntity { 
+                    position: u32::from_le_bytes(position_slice.try_into().unwrap()),
+                    data: data.to_vec() ,
+                }
+            }
             1 => Self::DeleteEntity,
-            2 => Self::CreateBoard,
-            3 => Self::JoinBoard,
-            4 => Self::Cast{ 
+            2 => Self::CreateBoard { random_seed: u32::from_le_bytes(rest.try_into().unwrap()) },
+            3 => Self::AddCardsToBoard { cards_amount: u32::from_le_bytes(rest.try_into().unwrap()) },
+            4 => Self::JoinBoard,
+            5 => Self::Cast{ 
                 card_id: u32::from_le_bytes(rest[..4].try_into().unwrap()),
             },
             _ => return Err(ProgramError::InvalidAccountData.into()),

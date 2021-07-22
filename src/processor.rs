@@ -9,7 +9,6 @@ use solana_program::{
     system_program,
     pubkey::Pubkey,
     msg,
-    declare_id,
 };
 use crate::brick::{
     Action,
@@ -20,12 +19,14 @@ use crate::error::SolceryError;
 use crate::instruction::SolceryInstruction;
 use crate::board::{
     Board,
+    Log,
 };
 use crate::ruleset::Ruleset;
 use crate::player::Player;
 use std::convert::TryInto;
 use std::io::Write;
 use std::rc::Rc;
+use crate::rand::Rand;
 use std::cell::{
     RefCell,
     RefMut,
@@ -40,6 +41,11 @@ pub enum EntityType {
     Card,
     Ruleset,
     Collection,
+}
+
+#[derive(BorshSerialize, BorshDeserialize)]
+struct Lobby {
+    pub boards: Vec<[u8; 32]>,
 }
 
 impl EntityType {
@@ -62,8 +68,6 @@ impl EntityType {
     }
 }
 
-declare_id!("5Ds6QvdZAqwVozdu2i6qzjXm8tmBttV6uHNg4YU8rB1P");
-
 pub fn validate_pointer(pointer: &AccountInfo, object: &AccountInfo ) -> bool {
     // msg!("poiner: {:?}, object.key: {:?}", pointer.data.borrow(), object.key.to_bytes());
     return **pointer.data.borrow() == object.key.to_bytes();
@@ -77,9 +81,8 @@ pub fn process_instruction(
 ) -> ProgramResult {
     let instruction = SolceryInstruction::unpack(instruction_data)?;
     match instruction {
-        SolceryInstruction::SetEntity { data } => {
-            msg!("instruction: SetEntity");
-            process_set_entity(accounts, program_id, data)
+        SolceryInstruction::SetEntity { position, data } => {
+            process_set_entity(accounts, program_id, position, data)
         }
         SolceryInstruction::DeleteEntity => {
             process_delete_entity(accounts, program_id)
@@ -87,10 +90,16 @@ pub fn process_instruction(
         SolceryInstruction::Cast { card_id } => {
             process_cast(accounts, program_id, card_id)
         }
-        SolceryInstruction::CreateBoard => {
-            process_create_board(accounts, program_id)
+        SolceryInstruction::CreateBoard { random_seed } => {
+            msg!("Instruction: CreateBoard");
+            process_create_board(accounts, program_id, random_seed)
+        }
+        SolceryInstruction::AddCardsToBoard { cards_amount } => {
+            msg!("Instruction: AddCardsToBoard");
+            process_add_cards_to_board(accounts, program_id, cards_amount)
         }
         SolceryInstruction::JoinBoard  => {
+            msg!("Instruction: JoinBoard");
             process_join_board(accounts, program_id)
         }
     }
@@ -100,6 +109,7 @@ pub fn process_instruction(
 pub fn process_set_entity( // TODO:: To create_entity?
     accounts: &[AccountInfo], 
     _program_id: &Pubkey, 
+    position: u32,
     entity_data: Vec<u8>,
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
@@ -109,7 +119,12 @@ pub fn process_set_entity( // TODO:: To create_entity?
     // validation. skipped for now
     // let client_metadata_size = u32::from_le_bytes(card_data[..4].try_into().unwrap()); // Skipping card visualisation data
     // data = &data[client_metadata_size as usize + 4..];
-    entity_account.data.borrow_mut().write_all(&entity_data[..])?;
+    let y = &mut &mut entity_account.data.borrow_mut()[position as usize..position as usize + entity_data.len()];
+    for i in 0..entity_data.len() {
+        y[i] = entity_data[i];
+    }
+    // let mut x = entity_account.data.borrow_mut()[position as usize..].to_vec();
+    // x.write_all(&entity_data[..])?;
     Ok(())
 }
 
@@ -143,6 +158,11 @@ pub fn process_cast(
     }
     let caster_id = board.get_player_index_by_id(*payer_account.key);
     board.cast_card(card_id, caster_id);
+    // if (board.players[1].borrow().attrs[12] > 0) { //bot behaviour
+    //     if (board.players[1].borrow().attrs[0] > 0) { //bot is active
+    //         board.cast_card(1, 2);
+    //     }
+    // }
     board.serialize(&mut &mut board_account.data.borrow_mut()[..])?;
     Ok(())
 }
@@ -150,9 +170,11 @@ pub fn process_cast(
 pub fn process_create_board( 
     accounts: &[AccountInfo],
     program_id: &Pubkey, // Public key of the account the program was loaded into
+    random_seed: u32,
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
     let payer_account = next_account_info(accounts_iter)?;
+    let lobby_account = next_account_info(accounts_iter)?;
     let board_account = next_account_info(accounts_iter)?;
     let ruleset_pointer_account = next_account_info(accounts_iter)?;
     let ruleset_data_account = next_account_info(accounts_iter)?;
@@ -164,18 +186,6 @@ pub fn process_create_board(
         let mut cards = Vec::new();
         let mut card_types = Vec::new();
         let mut card_id = 0;
-        let mut card_type_id = 0;
-        for card_type in ruleset.card_types.iter() {
-            let card_pointer_account = next_account_info(accounts_iter)?;
-            let card_data_account = next_account_info(accounts_iter)?;
-            if !validate_pointer(card_pointer_account, card_data_account) {
-                return Err(SolceryError::InvalidInstruction.into());
-            }
-            card_types.push(Rc::new(RefCell::new(
-                CardType::new(card_type_id, card_data_account)
-            )));
-            card_type_id += 1;
-        }
         for place in ruleset.deck.iter() {
             let place_id = place.0;
             let index_amounts = &place.1;
@@ -194,8 +204,44 @@ pub fn process_create_board(
             cards: cards,
             card_types: card_types,
             players: Vec::new(),
+            log: Rc::new(RefCell::new(Log {
+                message_len: 0,
+                nonce: 0,
+                message: [0; 128],
+            })),
+            rand: Rc::new(RefCell::new(Rand::new(random_seed))),
         }
     };
+    board.serialize(&mut &mut board_account.data.borrow_mut()[..])?;
+    Ok(())
+}
+
+pub fn process_add_cards_to_board( 
+    accounts: &[AccountInfo],
+    program_id: &Pubkey, // Public key of the account the program was loaded into
+    cards_amount: u32,
+) -> ProgramResult {
+    let accounts_iter = &mut accounts.iter();
+    let payer_account = next_account_info(accounts_iter)?;
+    let lobby_account = next_account_info(accounts_iter)?;
+    let board_account = next_account_info(accounts_iter)?;
+    let ruleset_pointer_account = next_account_info(accounts_iter)?;
+    let ruleset_data_account = next_account_info(accounts_iter)?;
+    if !validate_pointer(ruleset_pointer_account, ruleset_data_account) {
+        return Err(SolceryError::InvalidInstruction.into());
+    }
+    let ruleset = Ruleset::deserialize(&mut &ruleset_data_account.data.borrow_mut()[..])?;
+    let mut board = Board::deserialize(&mut &board_account.data.borrow_mut()[..])?;
+    for i in 1..cards_amount + 1 { // TODO: check validity
+        let card_pointer_account = next_account_info(accounts_iter)?;
+        let card_data_account = next_account_info(accounts_iter)?;
+        if !validate_pointer(card_pointer_account, card_data_account) {
+            return Err(SolceryError::InvalidInstruction.into());
+        }
+        board.card_types.push(Rc::new(RefCell::new(
+            CardType::new(board.card_types.len().try_into().unwrap(), card_data_account)
+        )));
+    }
     board.serialize(&mut &mut board_account.data.borrow_mut()[..])?;
     Ok(())
 }
@@ -206,18 +252,50 @@ pub fn process_join_board(
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
     let payer_account = next_account_info(accounts_iter)?;
+    let lobby_account = next_account_info(accounts_iter)?;
     let board_account = next_account_info(accounts_iter)?; 
+    // msg!("deserialize {:?}", &board_account.data.borrow()[..100]);
     let mut board = Board::deserialize(&mut &board_account.data.borrow_mut()[..])?;
+    // msg!("board");
     if board.players.len() > 1 {
+        // msg!("Too many players");
         return Err(SolceryError::GameStarted.into());
     }
     board.players.push(Rc::new(RefCell::new(Player{
         id: *payer_account.key,
-        attrs: [1, 20, 0],
+        attrs: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     })));
-    if board.players.len() > 0 {
+    // board.players.push(Rc::new(RefCell::new(Player{ // bot
+    //     id: *board_account.key,
+    //     attrs: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12],
+    // })));
+    if board.players.len() > 1 {
+        // msg!("START BOARD");
         board.start();
     }
+
+    if (board.players.len() == 1) {
+        // msg!("Add board to lobby");
+        let mut lobby = Lobby::deserialize(&mut &lobby_account.data.borrow_mut()[..])?;
+        lobby.boards.push(board_account.key.to_bytes());
+        lobby.serialize(&mut &mut lobby_account.data.borrow_mut()[..])?;
+        // msg!("{:?}", &lobby_account.data.borrow()[..60]);
+    }
+
+    if (board.players.len() == 2) {
+        // msg!("Remove board from lobby");
+        let mut lobby = Lobby::deserialize(&mut &lobby_account.data.borrow_mut()[..])?;
+        let index = lobby.boards.iter().position(|slice_key| *slice_key == board_account.key.to_bytes());
+        match index {
+            Some(index) => {
+                lobby.boards.remove(index);
+                lobby.serialize(&mut &mut lobby_account.data.borrow_mut()[..])?;
+            },
+            _ => return Err(SolceryError::GameStarted.into()),
+        }
+        // msg!("{:?}", &lobby_account.data.borrow()[..60]);
+    }
+
     board.serialize(&mut &mut board_account.data.borrow_mut()[..])?;
     Ok(())
 }

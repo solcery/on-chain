@@ -9,7 +9,7 @@ use std::io::Write;
 #[derive(Debug, Clone, Copy)]
 pub struct Player { //4
 	pub id: Pubkey, //32
-	pub attrs: [i32; 3],  //4 * 3
+	pub attrs: [i32; 13],  //4 * 13
 }
 
 impl BorshSerialize for Player {
@@ -23,7 +23,7 @@ impl BorshSerialize for Player {
 impl BorshDeserialize for Player {
 	fn deserialize(buf: &mut &[u8]) -> std::result::Result<Self, std::io::Error> {
 		let id = Pubkey::new(&<[u8; 32]>::deserialize(buf)?);
-		let attrs = <[i32;3]>::deserialize(buf)?;
+		let attrs = <[i32; 13]>::deserialize(buf)?;
 		Ok(Player {
 			id,
 			attrs,

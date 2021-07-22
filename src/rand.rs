@@ -1,8 +1,10 @@
+use borsh::{BorshDeserialize, BorshSerialize};
 const KX: u32 = 123456789;
 const KY: u32 = 362436069;
 const KZ: u32 = 521288629;
 const KW: u32 = 88675123;
 
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct Rand {
     x: u32, y: u32, z: u32, w: u32
 }

@@ -16,7 +16,7 @@ pub type BorshResult<T> = result::Result<T, std::io::Error>;
 pub struct Context<'a> {
 	pub object: Rc<RefCell<Card>>,
 	pub board: &'a Board,
-	pub vars: BTreeMap<u32, i32>,
+	pub vars: BTreeMap<Vec<u8>, i32>,
 	pub caster_id: u32,
 }
 
