@@ -22,11 +22,9 @@ use std::rc::{Rc, Weak};
 use crate::error::SolceryError;
 use crate::ruleset::Ruleset;
 
-declare_id!("5Ds6QvdZAqwVozdu2i6qzjXm8tmBttV6uHNg4YU8rB1P");
-
 
 #[derive(Debug, BorshSerialize, BorshDeserialize)]
-pub struct Log {
+pub struct Log { //TODO: rename
 	pub nonce: u32,
 	pub message_len: u32,
 	pub message: [u8; 128],
@@ -34,6 +32,8 @@ pub struct Log {
 
 #[derive(Debug)]
 pub struct Board { // 2536
+	pub last_update: u64,
+	pub step: u32,
 	pub players: Vec<Rc<RefCell<Player>>>, //4 + 44 * 2
 	pub card_types: Vec<Rc<RefCell<CardType>>>,
 	pub cards: Vec<Rc<RefCell<Card>>>, //4 + 37 * 61
@@ -59,6 +59,8 @@ impl Board {
 
 impl BorshSerialize for Board {
 	fn serialize<W: Write>(&self, writer: &mut W) -> BorshResult<()> {
+		self.last_update.serialize(writer);
+		self.step.serialize(writer);
 		(self.players.len() as u32).serialize(writer);
 		for player in self.players.iter() {
 			player.borrow().serialize(writer);
@@ -79,6 +81,8 @@ impl BorshSerialize for Board {
 
 impl BorshDeserialize for Board {
 	fn deserialize(buf: &mut &[u8]) -> std::result::Result<Self, std::io::Error> {
+		let last_update = u64::deserialize(buf)?;
+		let step = u32::deserialize(buf)?;
 		let players_len = u32::deserialize(buf)?;
 		let mut players = Vec::new();
 		for i in 0..players_len {
@@ -100,6 +104,8 @@ impl BorshDeserialize for Board {
 		let log = Rc::new(RefCell::new(Log::deserialize(buf)?));
 		let rand = Rc::new(RefCell::new(Rand::deserialize(buf)?));
 		Ok(Board {
+			last_update,
+			step,
 			players,
 			card_types,
 			cards,
@@ -110,14 +116,6 @@ impl BorshDeserialize for Board {
 }
 
 impl Board{
-
-	pub fn start(&self) {
-		for card in self.cards.iter() {
-	        if (card.borrow().place == 0) {
-	            self.cast_card(card.borrow().id, 0);
-	        }
-	    }
-	}
 
 	pub fn get_card_by_id(&self, id: u32) -> Option<Rc<RefCell<Card>>> {
 		for card in self.cards.iter() {
@@ -131,15 +129,6 @@ impl Board{
 	pub fn get_card_type_by_id(&self, id: u32) -> Option<Rc<RefCell<CardType>>> {
 		for card_type in &self.card_types {
 			if (card_type.borrow().id == id) {
-				return Some(Rc::clone(&card_type))
-			}
-		}
-		return None
-	}
-
-	pub fn get_card_type_by_key(&self, key: Pubkey) -> Option<Rc<RefCell<CardType>>> {
-		for card_type in &self.card_types {
-			if (card_type.borrow().key == key) {
 				return Some(Rc::clone(&card_type))
 			}
 		}

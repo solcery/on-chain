@@ -21,7 +21,6 @@ pub struct Card { //9
 #[derive(Debug)]
 pub struct CardType {
 	pub id: u32,
-	pub key: Pubkey,
 	pub data: Vec<u8>,
 }
 
@@ -29,7 +28,6 @@ impl CardType {
 	pub fn new(id: u32, account_info: &AccountInfo) -> CardType {
 		return CardType {
 			id: id,
-			key: *account_info.key,
 			data: account_info.data.borrow()[..].to_vec(),
 		}
 	}
@@ -48,7 +46,6 @@ impl CardType {
 impl BorshSerialize for CardType {
 	fn serialize<W: Write>(&self, writer: &mut W) -> BorshResult<()> {
 		self.id.serialize(writer);
-		self.key.to_bytes().serialize(writer);
 		self.data.serialize(writer);
 		Ok(())
 	}
@@ -57,11 +54,9 @@ impl BorshSerialize for CardType {
 impl BorshDeserialize for CardType {
 	fn deserialize(buf: &mut &[u8]) -> std::result::Result<Self, std::io::Error> {
 		let id = u32::deserialize(buf)?;
-		let key = Pubkey::new(&<[u8; 32]>::deserialize(buf)?);
 		let data = Vec::<u8>::deserialize(buf)?;
 		Ok(CardType {
 			id,
-			key,
 			data
 		})
 	}

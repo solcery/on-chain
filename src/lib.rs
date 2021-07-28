@@ -1,4 +1,5 @@
 pub mod processor;
+pub mod fight;
 pub mod card;
 pub mod brick;
 pub mod instruction;
