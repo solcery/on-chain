@@ -145,7 +145,7 @@ impl Board{
 		return res
 	}
 
-	pub fn get_player(&self, index: u32) -> Option<Rc<RefCell<Player>>> {
+	pub fn get_player(&self, index: u32) -> Option<Rc<RefCell<Player>>> { // gets player by id
 		if self.players.len() < index as usize {
 			return None
 		}

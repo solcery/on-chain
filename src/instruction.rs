@@ -5,6 +5,9 @@ use crate::error::SolceryError;
 use borsh::BorshDeserialize;
 use crate::processor::EntityType;
 use std::convert::TryInto;
+use crate::fight_log::{
+    FightLog,
+};
 
 pub enum SolceryInstruction{
 
@@ -60,8 +63,8 @@ pub enum SolceryInstruction{
     /// 0  `[signer]` The account of the person creating the unit
     /// 1. `[writable]` The account for unit metadata storage, with allocated memory and owned by program
     /// 2. `[]` Mint account of card NFT
-    Cast {
-        card_id: u32,
+    AddLog {
+        log: FightLog,
     },
 
 }
@@ -81,9 +84,7 @@ impl SolceryInstruction {
             2 => Self::CreateBoard { random_seed: u32::from_le_bytes(rest.try_into().unwrap()) },
             3 => Self::AddCardsToBoard { cards_amount: u32::from_le_bytes(rest.try_into().unwrap()) },
             4 => Self::JoinBoard,
-            5 => Self::Cast{ 
-                card_id: u32::from_le_bytes(rest[..4].try_into().unwrap()),
-            },
+            5 => Self::AddLog { log: FightLog::deserialize(&mut rest)?  },
             _ => return Err(ProgramError::InvalidAccountData.into()),
         })
     }

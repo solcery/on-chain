@@ -1,5 +1,5 @@
 pub mod processor;
-pub mod fight;
+pub mod fight_log;
 pub mod card;
 pub mod brick;
 pub mod instruction;
