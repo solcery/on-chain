@@ -158,7 +158,9 @@ pub fn process_add_log(
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
     let payer_account = next_account_info(accounts_iter)?;
+    let player_account = next_account_info(accounts_iter)?;
     let board_account = next_account_info(accounts_iter)?;
+    let fight_log_account = next_account_info(accounts_iter)?;
 
 
     // let caster_id = board.get_player_index_by_id(*payer_account.key);
@@ -172,7 +174,6 @@ pub fn process_add_log(
     //         }
     //     }
     // }
-    let fight_log_account = next_account_info(accounts_iter)?;
     // let mut fight_log = FightLog::deserialize(&mut &fight_log_account.data.borrow_mut()[..])?;
     // let log_iter = log.log.iter();
     // for log_entry in log_iter {
@@ -189,7 +190,6 @@ pub fn process_add_log(
 
 
     let log_size = u32::try_from_slice(&fight_log_account.data.borrow()[..4])?;
-    msg!("{:?}", log_size);
     let mut offset = log_size * 12 + 4;
     let log_iter = log.log.iter();
     for log_entry in log_iter {
@@ -198,28 +198,16 @@ pub fn process_add_log(
             action_type: log_entry.action_type,
             action_data: log_entry.action_data,
         };
+        if (log_entry.action_type == 1 && log_entry.action_data == 1) {
+            0.serialize(&mut &mut player_account.data.borrow_mut()[..]);
+            // None::<[u8; 32]>.serialize(&mut &mut player_account.data.borrow_mut()[..]);
+        }
         new_log.serialize(&mut &mut fight_log_account.data.borrow_mut()[offset as usize..offset as usize + 12]);
         offset += 12;
     }
     (log_size + log.log.len() as u32).serialize(&mut &mut fight_log_account.data.borrow_mut()[..4]);
-    // if (card_id > 7) {
-    //     let ix = Instruction {
-    //         program_id: id(),
-    //         accounts: vec![ 
-    //             AccountMeta::new(*payer_account.key, false ),
-    //             AccountMeta::new(id(), false ),
-    //         ],
-    //         data: vec![5, (card_id-1).try_into().unwrap(), 0, 0, 0],
-    //     };
-    //     invoke(
-    //         &ix,
-    //         &[
-    //             program_account.clone(),
-    //             payer_account.clone(),
-    //         ],
-    //     )?;
-    // }
-    
+
+
     // let card_info = board.get_card_by_id(card_id).ok_or(SolceryError::WrongCard)?;
     // if player_info.borrow().attrs[0] == 0 {
     //     return Err(SolceryError::InGameError.into()) // Player inactive (enemy turn)
@@ -335,16 +323,20 @@ pub fn process_join_board(
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
     let payer_account = next_account_info(accounts_iter)?;
+    let player_account = next_account_info(accounts_iter)?;
     let lobby_account = next_account_info(accounts_iter)?;
     let board_account = next_account_info(accounts_iter)?; 
     let fight_log_account = next_account_info(accounts_iter)?;
     // msg!("deserialize {:?}", &board_account.data.borrow()[..100]);
     let mut board = Board::deserialize(&mut &board_account.data.borrow_mut()[..])?;
     let mut fight_log = FightLog::deserialize(&mut &fight_log_account.data.borrow_mut()[..])?;
+    msg!("{:?}", board.players.len());
     if board.players.len() > 1 {
         // msg!("Too many players");
         return Err(SolceryError::GameStarted.into());
     }
+
+
     board.players.push(Rc::new(RefCell::new(Player{
         id: *payer_account.key,
         attrs: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -354,17 +346,20 @@ pub fn process_join_board(
         action_type: 1,
         action_data: 2,
     });
-    {
-        board.players.push(Rc::new(RefCell::new(Player{ // bot
-            id: *board_account.key,
-            attrs: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        })));
-        fight_log.log.push( LogEntry {
-            player_id: (board.players.len()).try_into().unwrap(),
-            action_type: 1,
-            action_data: 2,
-        });
-    }
+
+    // {
+    //     board.players.push(Rc::new(RefCell::new(Player{ // bot
+    //         id: *board_account.key,
+    //         attrs: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    //     })));
+    //     fight_log.log.push( LogEntry {
+    //         player_id: (board.players.len()).try_into().unwrap(),
+    //         action_type: 1,
+    //         action_data: 2,
+    //     });
+    // }
+
+
     if board.players.len() > 1 {
         for card in board.cards.iter() {
             if (card.borrow().place == 0) {
@@ -377,6 +372,7 @@ pub fn process_join_board(
         }
     }
     fight_log.serialize(&mut &mut fight_log_account.data.borrow_mut()[..])?;
+    
 
     // if (board.players.len() == 1) {
     //     let mut lobby = Lobby::deserialize(&mut &lobby_account.data.borrow_mut()[..])?;
@@ -397,5 +393,6 @@ pub fn process_join_board(
     // }
 
     board.serialize(&mut &mut board_account.data.borrow_mut()[..])?;
+    Some(board_account.key.to_bytes()).serialize(&mut &mut player_account.data.borrow_mut()[..])?;
     Ok(())
 }
