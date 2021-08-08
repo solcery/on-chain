@@ -19,7 +19,11 @@ use crate::brick::{
 };
 use std::collections::BTreeMap;
 use crate::error::SolceryError;
-use crate::instruction::SolceryInstruction;
+use crate::instruction::{
+    SolceryInstruction,
+    HostBoardParams,
+    JoinBoardParams,
+};
 use crate::board::{
     Board,
     Log,
@@ -102,14 +106,17 @@ pub fn process_instruction(
         SolceryInstruction::AddLog { log } => {
             process_add_log(accounts, program_id, log)
         }
-        SolceryInstruction::CreateBoard { random_seed } => {
-            process_create_board(accounts, program_id, random_seed)
+        SolceryInstruction::CompileBoard => {
+            process_compile_board(accounts, program_id)
         }
         SolceryInstruction::AddCardsToBoard { cards_amount } => {
             process_add_cards_to_board(accounts, program_id, cards_amount)
         }
-        SolceryInstruction::JoinBoard  => {
-            process_join_board(accounts, program_id)
+        SolceryInstruction::JoinBoard  { params } => {
+            process_join_board(accounts, program_id, params)
+        }
+        SolceryInstruction::HostBoard  { params } => {
+            process_host_board(accounts, program_id, params)
         }
     }
 }
@@ -227,16 +234,13 @@ pub fn process_add_log(
     Ok(())
 }
 
-pub fn process_create_board( 
+pub fn process_compile_board( 
     accounts: &[AccountInfo],
     program_id: &Pubkey, // Public key of the account the program was loaded into
-    random_seed: u32,
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
     let payer_account = next_account_info(accounts_iter)?;
-    let stat_account = next_account_info(accounts_iter)?;
-    let board_account = next_account_info(accounts_iter)?;
-    let fight_log_account = next_account_info(accounts_iter)?;
+    let board_src_account = next_account_info(accounts_iter)?;
     let ruleset_pointer_account = next_account_info(accounts_iter)?;
     let ruleset_data_account = next_account_info(accounts_iter)?;
     if !validate_pointer(ruleset_pointer_account, ruleset_data_account) {
@@ -272,19 +276,10 @@ pub fn process_create_board(
                 nonce: 0,
                 message: [0; 128],
             })),
-            rand: Rc::new(RefCell::new(Rand::new(random_seed))),
+            rand: Rc::new(RefCell::new(Rand::new(0))),
         }
     };
-    let mut stat = Lobby::deserialize(&mut &stat_account.data.borrow_mut()[..])?;
-    stat.boards.push(board_account.key.to_bytes());
-    stat.serialize(&mut &mut stat_account.data.borrow_mut()[..])?;
-    
-    let fight_log = FightLog {
-        log: Vec::new(),
-    };
-    fight_log.serialize(&mut &mut fight_log_account.data.borrow_mut()[..])?;
-
-    board.serialize(&mut &mut board_account.data.borrow_mut()[..])?;
+    board.serialize(&mut &mut board_src_account.data.borrow_mut()[..])?;
     Ok(())
 }
 
@@ -320,25 +315,22 @@ pub fn process_add_cards_to_board(
 pub fn process_join_board(
     accounts: &[AccountInfo],
     program_id: &Pubkey, // Public key of the account the program was loaded into
+    params: JoinBoardParams
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
     let payer_account = next_account_info(accounts_iter)?;
     let player_account = next_account_info(accounts_iter)?;
-    let lobby_account = next_account_info(accounts_iter)?;
     let board_account = next_account_info(accounts_iter)?; 
     let fight_log_account = next_account_info(accounts_iter)?;
-    // msg!("deserialize {:?}", &board_account.data.borrow()[..100]);
     let mut board = Board::deserialize(&mut &board_account.data.borrow_mut()[..])?;
     let mut fight_log = FightLog::deserialize(&mut &fight_log_account.data.borrow_mut()[..])?;
-    msg!("{:?}", board.players.len());
+
     if board.players.len() > 1 {
-        // msg!("Too many players");
         return Err(SolceryError::GameStarted.into());
     }
 
-
     board.players.push(Rc::new(RefCell::new(Player{
-        id: *payer_account.key,
+        id: if params.bot {*program_id} else {*payer_account.key},
         attrs: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     })));
     fight_log.log.push( LogEntry {
@@ -346,19 +338,6 @@ pub fn process_join_board(
         action_type: 1,
         action_data: 2,
     });
-
-    // {
-    //     board.players.push(Rc::new(RefCell::new(Player{ // bot
-    //         id: *board_account.key,
-    //         attrs: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    //     })));
-    //     fight_log.log.push( LogEntry {
-    //         player_id: (board.players.len()).try_into().unwrap(),
-    //         action_type: 1,
-    //         action_data: 2,
-    //     });
-    // }
-
 
     if board.players.len() > 1 {
         for card in board.cards.iter() {
@@ -371,28 +350,59 @@ pub fn process_join_board(
             }
         }
     }
-    fight_log.serialize(&mut &mut fight_log_account.data.borrow_mut()[..])?;
-    
 
-    // if (board.players.len() == 1) {
-    //     let mut lobby = Lobby::deserialize(&mut &lobby_account.data.borrow_mut()[..])?;
-    //     lobby.boards.push(board_account.key.to_bytes());
-    //     lobby.serialize(&mut &mut lobby_account.data.borrow_mut()[..])?;
-    // }
-
-    // if (board.players.len() == 2) {
-    //     let mut lobby = Lobby::deserialize(&mut &lobby_account.data.borrow_mut()[..])?;
-    //     let index = lobby.boards.iter().position(|slice_key| *slice_key == board_account.key.to_bytes());
-    //     match index {
-    //         Some(index) => {
-    //             lobby.boards.remove(index);
-    //             lobby.serialize(&mut &mut lobby_account.data.borrow_mut()[..])?;
-    //         },
-    //         _ => return Err(SolceryError::GameStarted.into()),
-    //     }
-    // }
+    if (params.remove_from_lobby) {
+        let lobby_account = next_account_info(accounts_iter)?;
+        let mut lobby = Lobby::deserialize(&mut &lobby_account.data.borrow_mut()[..])?;
+        let index = lobby.boards.iter().position(|slice_key| *slice_key == board_account.key.to_bytes());
+        match index {
+            Some(index) => {
+                lobby.boards.remove(index);
+                lobby.serialize(&mut &mut lobby_account.data.borrow_mut()[..])?;
+            },
+            _ => return Err(SolceryError::GameStarted.into()),
+        }
+    }
 
     board.serialize(&mut &mut board_account.data.borrow_mut()[..])?;
+    fight_log.serialize(&mut &mut fight_log_account.data.borrow_mut()[..])?;
     Some(board_account.key.to_bytes()).serialize(&mut &mut player_account.data.borrow_mut()[..])?;
+    Ok(())
+}
+
+
+pub fn process_host_board( 
+    accounts: &[AccountInfo],
+    program_id: &Pubkey, // Public key of the account the program was loaded into
+    params: HostBoardParams
+) -> ProgramResult {
+    let accounts_iter = &mut accounts.iter();
+    let payer_account = next_account_info(accounts_iter)?;
+    let board_src_account = next_account_info(accounts_iter)?;
+    let board_account = next_account_info(accounts_iter)?;
+    // board_account.data.borrow_mut() = &board_src_account.data.borrow_mut()[..];
+    let mut board = Board::deserialize(&mut &board_src_account.data.borrow_mut()[..])?;
+    board.rand = Rc::new(RefCell::new(Rand::new(params.random_seed)));
+    board.serialize(&mut &mut board_account.data.borrow_mut()[..])?;
+
+
+
+    if (params.send_stat) {
+        let stat_account = next_account_info(accounts_iter)?;
+        let stat_size = u32::try_from_slice(&stat_account.data.borrow()[..4])?;
+        let mut offset = stat_size * 32 + 4;
+        board_account.key.to_bytes().serialize(&mut &mut stat_account.data.borrow_mut()[offset as usize..offset as usize + 32]);
+        (stat_size + 1).serialize(&mut &mut stat_account.data.borrow_mut()[..]);
+    }
+
+    if (params.public) {
+        let lobby_account = next_account_info(accounts_iter)?;
+        msg!("{:?}", &lobby_account.data.borrow()[..40]);
+        let lobby_size = u32::try_from_slice(&lobby_account.data.borrow()[..4])?;
+        let mut offset = lobby_size * 32 + 4;
+        board_account.key.to_bytes().serialize(&mut &mut lobby_account.data.borrow_mut()[offset as usize..offset as usize + 32]);
+        (lobby_size + 1).serialize(&mut &mut lobby_account.data.borrow_mut()[..]);
+        msg!("{:?}", &lobby_account.data.borrow()[..40]);
+    }
     Ok(())
 }

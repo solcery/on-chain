@@ -9,6 +9,19 @@ use crate::fight_log::{
     FightLog,
 };
 
+#[derive(BorshDeserialize)]
+pub struct HostBoardParams {
+    pub send_stat: bool,
+    pub public: bool,
+    pub random_seed: u32,
+}
+
+#[derive(BorshDeserialize)]
+pub struct JoinBoardParams {
+    pub remove_from_lobby: bool,
+    pub bot: bool,
+}
+
 pub enum SolceryInstruction{
 
     /// Checks and stores card binary data into special account
@@ -36,9 +49,7 @@ pub enum SolceryInstruction{
     /// 0. `[signer]` The account of the person starting the board
     /// 1. `[writable]` Memory account owned by program with preallocated necessary space
     /// 2+. [] Metadata account of cards used in board
-    CreateBoard {
-        random_seed: u32,
-    },
+    CompileBoard,
 
     /// Initializes new board and stores it in account
     /// Accounts expected:
@@ -55,7 +66,9 @@ pub enum SolceryInstruction{
     ///
     /// 0. `[signer]` The account of the person joining the board
     /// 1. `[writable]` Active board account
-    JoinBoard,
+    JoinBoard {
+        params: JoinBoardParams,
+    },
 
     /// Checks and stores card binary data into special account
     /// Accounts expected:
@@ -66,6 +79,11 @@ pub enum SolceryInstruction{
     AddLog {
         log: FightLog,
     },
+
+
+    HostBoard {
+        params: HostBoardParams,
+    }
 
 }
 
@@ -81,10 +99,11 @@ impl SolceryInstruction {
                 }
             }
             1 => Self::DeleteEntity,
-            2 => Self::CreateBoard { random_seed: u32::from_le_bytes(rest.try_into().unwrap()) },
+            2 => Self::CompileBoard,
             3 => Self::AddCardsToBoard { cards_amount: u32::from_le_bytes(rest.try_into().unwrap()) },
-            4 => Self::JoinBoard,
+            4 => Self::JoinBoard { params: JoinBoardParams::deserialize(&mut rest)? },
             5 => Self::AddLog { log: FightLog::deserialize(&mut rest)?  },
+            6 => Self::HostBoard { params: HostBoardParams::deserialize(&mut rest)? },
             _ => return Err(ProgramError::InvalidAccountData.into()),
         })
     }
