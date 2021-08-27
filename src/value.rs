@@ -43,6 +43,44 @@ impl BorshDeserialize for Value {
     }
 }
 
+#[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
+pub enum ValueTerm {
+    Value(i32),
+    Add(Box<ValueTerm>, Box<ValueTerm>),
+    Sub(Box<ValueTerm>, Box<ValueTerm>),
+    Mul(Box<ValueTerm>, Box<ValueTerm>),
+    Div(Box<ValueTerm>, Box<ValueTerm>),
+    Mod(Box<ValueTerm>, Box<ValueTerm>),
+    RandRange(Box<ValueTerm>, Box<ValueTerm>),
+    Condition(Box<BoolTerm>, Box<ValueTerm>, Box<ValueTerm>),
+}
+
+impl ValueTerm {
+    #[inline]
+    pub fn evaluate(&mut self, ctx: &mut Context) -> i32 {
+        match self {
+            ValueTerm::Value(val) => *val,
+            ValueTerm::Add(val1, val2) => val1.evaluate(ctx) + val2.evaluate(ctx),
+            ValueTerm::Sub(val1, val2) => val1.evaluate(ctx) - val2.evaluate(ctx),
+            ValueTerm::Mul(val1, val2) => val1.evaluate(ctx) * val2.evaluate(ctx),
+            ValueTerm::Div(val1, val2) => val1.evaluate(ctx) / val2.evaluate(ctx),
+            ValueTerm::Mod(val1, val2) => val1.evaluate(ctx) % val2.evaluate(ctx),
+            ValueTerm::Condition(term, val1, _val2) => {
+                if term.evaluate(ctx) {
+                    val1.evaluate(ctx)
+                } else {
+                    val1.evaluate(ctx)
+                }
+            }
+            ValueTerm::RandRange(val1, val2) => ctx
+                .board
+                .rand
+                .borrow_mut()
+                .rand_range(val1.evaluate(ctx), val2.evaluate(ctx)),
+        }
+    }
+}
+
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct Const {
     pub value: i32,

@@ -37,6 +37,32 @@ impl BorshDeserialize for Condition {
     }
 }
 
+#[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
+pub enum BoolTerm {
+    Value(bool),
+    Not(Box<BoolTerm>),
+    And(Box<BoolTerm>, Box<BoolTerm>),
+    Or(Box<BoolTerm>, Box<BoolTerm>),
+    Equal(Box<ValueTerm>, Box<ValueTerm>),
+    GreaterThan(Box<ValueTerm>, Box<ValueTerm>),
+    //IsAtPlace(Box<ValueTerm>), // Это хрень какая-то
+}
+
+impl BoolTerm {
+    #[inline]
+    pub fn evaluate(&mut self, ctx: &mut Context) -> bool {
+        match self {
+            BoolTerm::Value(val) => *val,
+            BoolTerm::And(term1, term2) => term1.evaluate(ctx) && term2.evaluate(ctx),
+            BoolTerm::Or(term1, term2) => term1.evaluate(ctx) || term2.evaluate(ctx),
+            BoolTerm::Not(term) => !term.evaluate(ctx),
+            BoolTerm::Equal(term1, term2) => term1.evaluate(ctx) == term2.evaluate(ctx),
+            BoolTerm::GreaterThan(term1, term2) => term1.evaluate(ctx) > term2.evaluate(ctx),
+            //BoolTerm::IsAtPlace(val) => ctx.object.borrow().place == val.evaluate(ctx),
+        }
+    }
+}
+
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct True {}
 

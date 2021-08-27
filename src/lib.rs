@@ -1,3 +1,4 @@
+#![feature(trivial_bounds)]
 pub mod processor;
 pub mod fight_log;
 pub mod card;
