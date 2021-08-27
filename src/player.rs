@@ -14,8 +14,8 @@ pub struct Player { //4
 
 impl BorshSerialize for Player {
 	fn serialize<W: Write>(&self, writer: &mut W) -> BorshResult<()> {
-		self.id.to_bytes().serialize(writer);
-		self.attrs.serialize(writer);
+		self.id.to_bytes().serialize(writer)?;
+		self.attrs.serialize(writer)?;
 		Ok(())
 	}
 }

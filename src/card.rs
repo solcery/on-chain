@@ -3,7 +3,6 @@ use std::marker::Copy;
 use std::convert::TryInto;
 use solana_program::{
 	account_info::AccountInfo,
-    pubkey::Pubkey,
 };
 use crate::brick::{
 	BorshResult, 
@@ -45,8 +44,8 @@ impl CardType {
 
 impl BorshSerialize for CardType {
 	fn serialize<W: Write>(&self, writer: &mut W) -> BorshResult<()> {
-		self.id.serialize(writer);
-		self.data.serialize(writer);
+		self.id.serialize(writer)?;
+		self.data.serialize(writer)?;
 		Ok(())
 	}
 }

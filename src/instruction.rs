@@ -3,7 +3,7 @@ use solana_program::{
 };
 use crate::error::SolceryError;
 use borsh::BorshDeserialize;
-use crate::processor::EntityType;
+
 use std::convert::TryInto;
 use crate::fight_log::{
     FightLog,
@@ -89,10 +89,10 @@ pub enum SolceryInstruction{
 
 impl SolceryInstruction {
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
-        let (mut tag, mut rest) = input.split_first().ok_or(SolceryError::InvalidInstruction)?; 
+        let (tag, mut rest) = input.split_first().ok_or(SolceryError::InvalidInstruction)?; 
         Ok(match tag {
             0 => {
-                let (mut position_slice, mut data) = rest.split_at(4);
+                let (position_slice, data) = rest.split_at(4);
                 Self::SetEntity { 
                     position: u32::from_le_bytes(position_slice.try_into().unwrap()),
                     data: data.to_vec() ,

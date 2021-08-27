@@ -1,18 +1,16 @@
 use crate::brick::{ 
 	Context, Brick, BorshResult, Action, Condition, Value
 };
-use solana_program::{
-    pubkey::Pubkey,
-};
+
 use std::io::Write;
 use borsh::{
 	BorshDeserialize, BorshSerialize
 };
 use std::convert::TryInto;
 use std::rc::Rc;
-use crate::player::Player;
+
 use std::cmp;
-use std::collections::BTreeMap;
+
 
 impl BorshSerialize for Action {
 	fn serialize<W: Write>(&self, writer: &mut W) -> BorshResult<()> {
@@ -118,7 +116,7 @@ impl Brick<()> for Loop {
 	}
 	fn run(&mut self, ctx: &mut Context) -> () {
 		let iterations = self.iterations.run(ctx);
-		for i in 1..iterations {
+		for _ in 1..iterations {
 			self.action.run(ctx);
 		}
 	}	
@@ -136,7 +134,7 @@ impl Brick<()> for Card {
 		return self.try_to_vec().unwrap();
 	}
 	fn run(&mut self, ctx: &mut Context) -> () {
-		let mut card_type = ctx.board.get_card_type_by_id(self.card_type);
+		let card_type = ctx.board.get_card_type_by_id(self.card_type);
 		let mut action = card_type.unwrap().borrow_mut().get_action(); 
 		action.run(ctx);
 	}	
@@ -281,7 +279,6 @@ impl Brick<()> for ApplyToPlace {
 	fn run(&mut self, ctx: &mut Context) -> () { // JUST TOO MUCH
 		let place = self.place.run(ctx);
 		let mut limit = self.limit.run(ctx);
-		let log = ctx.board.log.borrow();
 		let mut cards = ctx.board.get_cards_by_place(place.try_into().unwrap());
 		ctx.board.rand.borrow_mut().shuffle(&mut cards); // 
 		if limit == 0 {
@@ -289,7 +286,7 @@ impl Brick<()> for ApplyToPlace {
 		}
 		let old_object = Rc::clone(&ctx.object);
 		limit = cmp::min(limit, cards.len().try_into().unwrap());
-		for i in 0..limit {
+		for _ in 0..limit {
 			let new_object = Rc::clone(&cards.pop().unwrap());
 			ctx.object = new_object;
 			self.action.run(ctx);

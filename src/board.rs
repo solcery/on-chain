@@ -1,10 +1,7 @@
 use borsh::{BorshDeserialize, BorshSerialize};
-use std::marker::Copy;
+
 use solana_program::{
-	program_error::ProgramError,
-	account_info::AccountInfo,
-    pubkey::Pubkey,
-    declare_id,
+	pubkey::Pubkey,
 };
 use crate::brick::BorshResult;
 use crate::card::{
@@ -17,10 +14,10 @@ use std::cell::RefCell;
 use std::io::Write;
 use crate::brick::Context;
 use std::collections::BTreeMap;
-use std::cmp::PartialEq;
-use std::rc::{Rc, Weak};
-use crate::error::SolceryError;
-use crate::ruleset::Ruleset;
+
+use std::rc::{Rc};
+
+
 
 
 #[derive(Debug, BorshSerialize, BorshDeserialize)]
@@ -46,7 +43,7 @@ impl Board {
 		let card = self.get_card_by_id(card_id);
 		let card_type_id = card.unwrap().borrow().card_type;
 	    let card_type = self.get_card_type_by_id(card_type_id);
-	    let mut action = &mut card_type.unwrap().borrow_mut().get_action();
+	    let action = &mut card_type.unwrap().borrow_mut().get_action();
 	    let ctx: &mut Context = &mut Context{ 
 	         object: self.get_card_by_id(card_id).unwrap(),
 	         board: &self,
@@ -59,22 +56,22 @@ impl Board {
 
 impl BorshSerialize for Board {
 	fn serialize<W: Write>(&self, writer: &mut W) -> BorshResult<()> {
-		self.last_update.serialize(writer);
-		self.step.serialize(writer);
-		(self.players.len() as u32).serialize(writer);
+		self.last_update.serialize(writer)?;
+		self.step.serialize(writer)?;
+		(self.players.len() as u32).serialize(writer)?;
 		for player in self.players.iter() {
-			player.borrow().serialize(writer);
+			player.borrow().serialize(writer)?;
 		}
-		(self.card_types.len() as u32).serialize(writer);
+		(self.card_types.len() as u32).serialize(writer)?;
 		for card_type in self.card_types.iter() {
-			card_type.borrow().serialize(writer);
+			card_type.borrow().serialize(writer)?;
 		}
-		(self.cards.len() as u32).serialize(writer);
+		(self.cards.len() as u32).serialize(writer)?;
 		for card in self.cards.iter() {
-			card.borrow().serialize(writer);
+			card.borrow().serialize(writer)?;
 		}
-		self.log.borrow().serialize(writer);
-		self.rand.borrow().serialize(writer);
+		self.log.borrow().serialize(writer)?;
+		self.rand.borrow().serialize(writer)?;
 		Ok(())
 	}
 }
@@ -85,19 +82,19 @@ impl BorshDeserialize for Board {
 		let step = u32::deserialize(buf)?;
 		let players_len = u32::deserialize(buf)?;
 		let mut players = Vec::new();
-		for i in 0..players_len {
+		for _ in 0..players_len {
 			let player = Player::deserialize(buf)?;
 			players.push(Rc::new(RefCell::new(player)));
 		}
 		let card_types_len = u32::deserialize(buf)?;
 		let mut card_types = Vec::new();
-		for i in 0..card_types_len {
+		for _ in 0..card_types_len {
 			let card_type = CardType::deserialize(buf)?;
 			card_types.push(Rc::new(RefCell::new(card_type)));
 		}
 		let cards_len = u32::deserialize(buf)?;
 		let mut cards = Vec::new();
-		for i in 0..cards_len {
+		for _ in 0..cards_len {
 			let card = Card::deserialize(buf)?;
 			cards.push(Rc::new(RefCell::new(card)));
 		}
@@ -119,7 +116,7 @@ impl Board{
 
 	pub fn get_card_by_id(&self, id: u32) -> Option<Rc<RefCell<Card>>> {
 		for card in self.cards.iter() {
-			if (card.borrow().id == id) {
+			if card.borrow().id == id {
 				return Some(Rc::clone(&card))
 			}
 		}
@@ -128,7 +125,7 @@ impl Board{
 
 	pub fn get_card_type_by_id(&self, id: u32) -> Option<Rc<RefCell<CardType>>> {
 		for card_type in &self.card_types {
-			if (card_type.borrow().id == id) {
+			if card_type.borrow().id == id {
 				return Some(Rc::clone(&card_type))
 			}
 		}
@@ -138,7 +135,7 @@ impl Board{
 	pub fn get_cards_by_place(&self, place: u32) -> Vec<Rc<RefCell<Card>>> {
 		let mut res = Vec::new();
 		for card in self.cards.iter() {
-			if (card.borrow().place == place) {
+			if card.borrow().place == place {
 				res.push(Rc::clone(&card));
 			}
 		}
