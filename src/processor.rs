@@ -137,7 +137,7 @@ pub fn process_set_entity( // TODO:: To create_entity?
 
 pub fn process_delete_entity(
     accounts: &[AccountInfo],
-    program_id: &Pubkey, // Public key of the account the program was loaded into
+    _program_id: &Pubkey, // Public key of the account the program was loaded into
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
     let payer_account = next_account_info(accounts_iter)?; // ignored, we don't check card ownership for now
@@ -151,13 +151,13 @@ pub fn process_delete_entity(
 
 pub fn process_add_log(
     accounts: &[AccountInfo],
-    program_id: &Pubkey,
+    _program_id: &Pubkey,
     log: FightLog,
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
-    let payer_account = next_account_info(accounts_iter)?;
+    let _payer_account = next_account_info(accounts_iter)?;
     let player_account = next_account_info(accounts_iter)?;
-    let board_account = next_account_info(accounts_iter)?;
+    let _board_account = next_account_info(accounts_iter)?;
     let fight_log_account = next_account_info(accounts_iter)?;
 
 
@@ -227,10 +227,10 @@ pub fn process_add_log(
 
 pub fn process_compile_board( 
     accounts: &[AccountInfo],
-    program_id: &Pubkey, // Public key of the account the program was loaded into
+    _program_id: &Pubkey, // Public key of the account the program was loaded into
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
-    let payer_account = next_account_info(accounts_iter)?;
+    let _payer_account = next_account_info(accounts_iter)?;
     let board_src_account = next_account_info(accounts_iter)?;
     let ruleset_pointer_account = next_account_info(accounts_iter)?;
     let ruleset_data_account = next_account_info(accounts_iter)?;
@@ -276,11 +276,11 @@ pub fn process_compile_board(
 
 pub fn process_add_cards_to_board( 
     accounts: &[AccountInfo],
-    program_id: &Pubkey, // Public key of the account the program was loaded into
+    _program_id: &Pubkey, // Public key of the account the program was loaded into
     cards_amount: u32,
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
-    let payer_account = next_account_info(accounts_iter)?;
+    let _payer_account = next_account_info(accounts_iter)?;
     let board_account = next_account_info(accounts_iter)?;
     let ruleset_pointer_account = next_account_info(accounts_iter)?;
     let ruleset_data_account = next_account_info(accounts_iter)?;
@@ -289,8 +289,8 @@ pub fn process_add_cards_to_board(
     }
     // let ruleset = Ruleset::deserialize(&mut &ruleset_data_account.data.borrow_mut()[..])?;
     let mut board = Board::deserialize(&mut &board_account.data.borrow_mut()[..])?;
-        let card_pointer_account = next_account_info(accounts_iter)?;
     for _ in 1..cards_amount + 1 { // TODO: check validity
+        let _card_pointer_account = next_account_info(accounts_iter)?;
         let card_data_account = next_account_info(accounts_iter)?;
         // if !validate_pointer(card_pointer_account, card_data_account) {
         //     return Err(SolceryError::InvalidInstruction.into());
@@ -364,11 +364,11 @@ pub fn process_join_board(
 
 pub fn process_host_board( 
     accounts: &[AccountInfo],
-    program_id: &Pubkey, // Public key of the account the program was loaded into
+    _program_id: &Pubkey, // Public key of the account the program was loaded into
     params: HostBoardParams
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
-    let payer_account = next_account_info(accounts_iter)?;
+    let _payer_account = next_account_info(accounts_iter)?;
     let board_src_account = next_account_info(accounts_iter)?;
     let board_account = next_account_info(accounts_iter)?;
     // board_account.data.borrow_mut() = &board_src_account.data.borrow_mut()[..];
