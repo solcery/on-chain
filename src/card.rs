@@ -14,7 +14,7 @@ use std::io::Write;
 pub struct Card { //9
 	pub id: u32, // 4
 	pub card_type: u32, // 4
-	pub place: u32, //4
+	pub place: u32, //4 //FIXME: should be enum
 }
 
 #[derive(Debug)]

@@ -23,11 +23,10 @@ pub struct JoinBoardParams {
 }
 
 pub enum SolceryInstruction{
-
-    /// Checks and stores card binary data into special account
+    /// Checks and stores card binary data into special account\
     /// Accounts expected:
     ///
-    /// 0  `[signer]` The account of the person creating the card
+    /// 0. `[signer]` The account of the person creating the card
     /// 1. `[writable]` The account for card metadata storage, with allocated memory and owned by program
     /// 2. `[]` Mint account of card NFT
 
@@ -39,7 +38,7 @@ pub enum SolceryInstruction{
     /// Removes all lamports from card account to user account allowing to create new account with such key
     /// Accounts expected:
     ///
-    /// 0  `[signer]` The account of the person creating the card
+    /// 0. `[signer]` The account of the person creating the card
     /// 1. `[writable]` The account for card metadata storage, with allocated memory and owned by program
     DeleteEntity,
 
@@ -73,7 +72,7 @@ pub enum SolceryInstruction{
     /// Checks and stores card binary data into special account
     /// Accounts expected:
     ///
-    /// 0  `[signer]` The account of the person creating the unit
+    /// 0. `[signer]` The account of the person creating the unit
     /// 1. `[writable]` The account for unit metadata storage, with allocated memory and owned by program
     /// 2. `[]` Mint account of card NFT
     AddLog {

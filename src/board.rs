@@ -24,7 +24,7 @@ use std::rc::{Rc};
 pub struct Log { //TODO: rename
 	pub nonce: u32,
 	pub message_len: u32,
-	pub message: [u8; 128],
+	pub message: [u8; 128], //FIXME: should be replaced by smallvec or something similar
 }
 
 #[derive(Debug)]
