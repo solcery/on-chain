@@ -322,7 +322,8 @@ pub fn process_join_board(
 
     board.players.push(Rc::new(RefCell::new(Player{
         id: if params.bot {*program_id} else {*payer_account.key},
-        attrs: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        bool_attrs: Vec::<bool>::new(),
+        numeral_attrs: Vec::<i32>::new(),
     })));
     fight_log.log.push( LogEntry {
         player_id: (board.players.len()).try_into().unwrap(),

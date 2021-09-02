@@ -46,6 +46,101 @@ impl BorshDeserialize for Action {
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub enum ActionTerm {
+    Void,
+    Set(Box<ActionTerm>, Box<ActionTerm>),
+    Conditional {
+        cond: BoolTerm,
+        if_true: Box<ActionTerm>,
+        if_false: Box<ActionTerm>,
+    },
+    Loop {
+        iterations: ValueTerm,
+        action: Box<ActionTerm>,
+    },
+    Card {
+        card_type: u32,
+    },
+    ShowMessage {
+        message: Vec<u8>,
+    },
+    SetCtxVar {
+        var_name: Vec<u8>,
+        value: ValueTerm,
+    },
+    MoveTo {
+        place: ValueTerm,
+    },
+    SetPlayerNumericAttr {
+        attr_index: u32,
+        player_index: ValueTerm,
+        attr_value: ValueTerm,
+    },
+}
+
+impl ActionTerm {
+    #[inline]
+    pub fn evaluate(&mut self, ctx: &mut Context) {
+        match self {
+            ActionTerm::Void => (),
+            ActionTerm::Set(term1, term2) => {
+                term1.evaluate(ctx);
+                term2.evaluate(ctx);
+            }
+            ActionTerm::Conditional {
+                cond,
+                if_true,
+                if_false,
+            } => {
+                if cond.evaluate(ctx) {
+                    if_true.evaluate(ctx);
+                } else {
+                    if_false.evaluate(ctx);
+                }
+            }
+            ActionTerm::Loop { iterations, action } => {
+                let times = iterations.evaluate(ctx);
+                for _ in 0..times {
+                    action.evaluate(ctx);
+                }
+            }
+            ActionTerm::Card { card_type } => {
+                let card_type = ctx.board.get_card_type_by_id(*card_type);
+                let mut action = card_type.unwrap().borrow_mut().get_action();
+                action.run(ctx);
+            }
+            ActionTerm::ShowMessage { message } => {
+                // FIXME: Needs heavy refactoring
+                let mut i = 0;
+                let log = &mut ctx.board.log.borrow_mut();
+                log.message_len = message.len().try_into().unwrap();
+                log.message = [0; 128];
+                for c in message.iter() {
+                    log.message[i] = *c;
+                    i += 1;
+                }
+                log.nonce += 1;
+            }
+            ActionTerm::SetCtxVar { var_name, value } => {
+                let value = value.evaluate(ctx);
+                ctx.vars.insert(var_name.clone(), value);
+            }
+            ActionTerm::MoveTo { place } => {
+                let place = place.evaluate(ctx);
+                let mut card = ctx.object.borrow_mut();
+                card.place = place.try_into().unwrap();
+            }
+            ActionTerm::SetPlayerNumericAttr{attr_index, player_index, attr_value} => {
+                let player_index = player_index.evaluate(ctx);
+                let attr_value = attr_value.evaluate(ctx);
+                let player = ctx.board.get_player(player_index.try_into().unwrap()); // This i32->u32 mess should be reworked
+                player.unwrap().borrow_mut().numeral_attrs[*attr_index as usize] = attr_value;
+            }
+        }
+    }
+}
+
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct Void {}
 
 impl Brick<()> for Void {

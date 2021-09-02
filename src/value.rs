@@ -262,7 +262,7 @@ impl Brick<i32> for GetPlayerAttr {
     fn run(&mut self, ctx: &mut Context) -> i32 {
         let player_index = self.player_index.run(ctx);
         let player = ctx.board.get_player(player_index.try_into().unwrap());
-        return player.unwrap().borrow_mut().attrs[self.attr_index as usize];
+        return player.unwrap().borrow_mut().numeral_attrs[self.attr_index as usize];
     }
 }
 
