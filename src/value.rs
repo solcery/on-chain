@@ -1,5 +1,4 @@
 use crate::brick::{BorshResult, Brick, Condition, Context, Value};
-use crate::condition::BoolTerm;
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::convert::TryInto;
 use std::io::Write;
