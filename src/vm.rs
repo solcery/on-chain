@@ -16,9 +16,9 @@
 //! ## Instruction Set Architecture
 //! - [x] Add
 //! - [x] Sub
-//! - [ ] Div
+//! - [x] Div
 //! - [x] Mul
-//! - [ ] Mod
+//! - [ ] Rem
 //! - [ ] Neg
 //! - [ ] Eq
 //! - [ ] Gt
@@ -83,7 +83,7 @@ impl Memory {
         }
     }
 
-    /// Substracts the last value from the stack from the previous one
+    /// Subtracts the last value from the stack from the previous one
     fn sub(&mut self) {
         let first_word = self.stack.pop();
         let second_word = self.stack.pop();
@@ -118,6 +118,52 @@ impl Memory {
             }
             (_, Some(Word::Boolean(_))) => {
                 panic!("Type mismatch: attempted to multiply boolean values.")
+            }
+            (_, None) => {
+                panic!("Not enough values on the stack.")
+            }
+            (None, _) => {
+                unreachable!();
+            }
+        }
+    }
+
+    /// Divides the last value from the stack by the previous one, returns the quotient
+    fn div(&mut self) {
+        let first_word = self.stack.pop();
+        let second_word = self.stack.pop();
+        match (first_word, second_word) {
+            (Some(Word::Numeric(x)), Some(Word::Numeric(y))) => {
+                self.stack.push(Word::Numeric(x / y));
+            }
+            (Some(Word::Boolean(_)), _) => {
+                panic!("Type mismatch: attempted to divide boolean values.")
+            }
+            (_, Some(Word::Boolean(_))) => {
+                panic!("Type mismatch: attempted to divide boolean values.")
+            }
+            (_, None) => {
+                panic!("Not enough values on the stack.")
+            }
+            (None, _) => {
+                unreachable!();
+            }
+        }
+    }
+
+    /// Divides the last value from the stack by the previous one, returnts the remainer
+    fn rem(&mut self) {
+        let first_word = self.stack.pop();
+        let second_word = self.stack.pop();
+        match (first_word, second_word) {
+            (Some(Word::Numeric(x)), Some(Word::Numeric(y))) => {
+                self.stack.push(Word::Numeric(x % y));
+            }
+            (Some(Word::Boolean(_)), _) => {
+                panic!("Type mismatch: attempted to take the remainer of the boolean values.")
+            }
+            (_, Some(Word::Boolean(_))) => {
+                panic!("Type mismatch: attempted to take the remainer of the boolean values.")
             }
             (_, None) => {
                 panic!("Not enough values on the stack.")
@@ -241,5 +287,75 @@ mod tests {
     fn mul_empty_stack() {
         let mut mem = prepare_memory(Vec::<Word>::new(), 0, 0);
         mem.mul();
+    }
+
+    #[test]
+    fn div_no_remainer() {
+        let mut mem = prepare_memory(vec![Word::Numeric(2), Word::Numeric(6)], 0, 0);
+        mem.div();
+        assert_eq!(mem.stack, array_vec!([Word; STACK_SIZE] => Word::Numeric(3)));
+    }
+
+    #[test]
+    fn div_remainer() {
+        let mut mem = prepare_memory(vec![Word::Numeric(2), Word::Numeric(7)], 0, 0);
+        mem.div();
+        assert_eq!(mem.stack, array_vec!([Word; STACK_SIZE] => Word::Numeric(3)));
+    }
+    
+    #[test]
+    #[should_panic(expected = "Type mismatch: attempted to divide boolean values.")]
+    fn div_boolean() {
+        let mut mem = prepare_memory(vec![Word::Numeric(1), Word::Boolean(true)], 0, 0);
+        mem.div();
+    }
+
+    #[test]
+    #[should_panic(expected = "Not enough values on the stack.")]
+    fn div_one_value_on_the_stack() {
+        let mut mem = prepare_memory(vec![Word::Numeric(1)], 0, 0);
+        mem.div();
+    }
+
+    #[test]
+    #[should_panic(expected = "Not enough values on the stack.")]
+    fn div_empty_stack() {
+        let mut mem = prepare_memory(Vec::<Word>::new(), 0, 0);
+        mem.div();
+    }
+
+    #[test]
+    fn rem_zero() {
+        let mut mem = prepare_memory(vec![Word::Numeric(2), Word::Numeric(6)], 0, 0);
+        mem.rem();
+        assert_eq!(mem.stack, array_vec!([Word; STACK_SIZE] => Word::Numeric(0)));
+    }
+
+    #[test]
+    fn rem_non_zero() {
+        let mut mem = prepare_memory(vec![Word::Numeric(3), Word::Numeric(7)], 0, 0);
+        mem.rem();
+        assert_eq!(mem.stack, array_vec!([Word; STACK_SIZE] => Word::Numeric(1)));
+    }
+    
+    #[test]
+    #[should_panic(expected = "Type mismatch: attempted to take the remainer of the boolean values.")]
+    fn rem_boolean() {
+        let mut mem = prepare_memory(vec![Word::Numeric(1), Word::Boolean(true)], 0, 0);
+        mem.rem();
+    }
+
+    #[test]
+    #[should_panic(expected = "Not enough values on the stack.")]
+    fn rem_one_value_on_the_stack() {
+        let mut mem = prepare_memory(vec![Word::Numeric(1)], 0, 0);
+        mem.rem();
+    }
+
+    #[test]
+    #[should_panic(expected = "Not enough values on the stack.")]
+    fn rem_empty_stack() {
+        let mut mem = prepare_memory(Vec::<Word>::new(), 0, 0);
+        mem.rem();
     }
 }
