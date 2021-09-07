@@ -125,6 +125,37 @@ impl Memory {
             }
         }
     }
+
+    fn mul(&mut self) {
+        let first_word = self.stack.pop();
+        let second_word = self.stack.pop();
+        match (first_word, second_word) {
+            (Some(Word::Signed(x)), Some(Word::Signed(y))) => {
+                self.stack.push(Word::Signed(x * y));
+            }
+            (Some(Word::Unsigned(x)), Some(Word::Unsigned(y))) => {
+                self.stack.push(Word::Unsigned(x * y));
+            }
+            (_, None) => {
+                panic!("Not enough values on the stack.")
+            }
+            (None, _) => {
+                unreachable!();
+            }
+            (Some(Word::Unsigned(_)), Some(Word::Signed(_))) => {
+                panic!("Type mismatch: attempted to multiply unsigned number by signed.\nUse `Convert` instruction to change Signed to Unsigned and vise versa.")
+            }
+            (Some(Word::Signed(_)), Some(Word::Unsigned(_))) => {
+                panic!("Type mismatch: attempted to multiply signed number by unsigned.\nUse `Convert` instruction to change Signed to Unsigned and vise versa.")
+            }
+            (Some(Word::Boolean(_)), _) => {
+                panic!("Type mismatch: attempted to multiply boolean values.")
+            }
+            (_, Some(Word::Boolean(_))) => {
+                panic!("Type mismatch: attempted to multiply boolean values.")
+            }
+        }
+    }
 }
 
 pub enum VMCommand {
@@ -246,5 +277,47 @@ mod tests {
     fn sub_empty_stack() {
         let mut mem = prepare_memory(Vec::<Word>::new(), 0, 0);
         mem.sub();
+    }
+
+    #[test]
+    fn mul_signed() {
+        let mut mem = prepare_memory(vec![Word::Signed(4), Word::Signed(2)], 0, 0);
+        mem.mul();
+        assert_eq!(mem.stack, array_vec!([Word; STACK_SIZE] => Word::Signed(8)));
+    }
+
+    #[test]
+    fn mul_unsigned() {
+        let mut mem = prepare_memory(vec![Word::Unsigned(4), Word::Unsigned(2)], 0, 0);
+        mem.mul();
+        assert_eq!(mem.stack, array_vec!([Word; STACK_SIZE] => Word::Unsigned(8)));
+    }
+
+    #[test]
+    #[should_panic(expected = "Type mismatch: attempted to multiply unsigned number by signed.\nUse `Convert` instruction to change Signed to Unsigned and vise versa.")]
+    fn mul_unsigned_to_unsigned() {
+        let mut mem = prepare_memory(vec![Word::Signed(1), Word::Unsigned(2)], 0, 0);
+        mem.mul();
+    }
+    
+    #[test]
+    #[should_panic(expected = "Type mismatch: attempted to multiply boolean values.")]
+    fn mul_boolean() {
+        let mut mem = prepare_memory(vec![Word::Signed(1), Word::Boolean(true)], 0, 0);
+        mem.mul();
+    }
+
+    #[test]
+    #[should_panic(expected = "Not enough values on the stack.")]
+    fn mul_one_value_on_the_stack() {
+        let mut mem = prepare_memory(vec![Word::Signed(1)], 0, 0);
+        mem.mul();
+    }
+
+    #[test]
+    #[should_panic(expected = "Not enough values on the stack.")]
+    fn mul_empty_stack() {
+        let mut mem = prepare_memory(Vec::<Word>::new(), 0, 0);
+        mem.mul();
     }
 }
