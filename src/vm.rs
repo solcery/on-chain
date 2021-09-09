@@ -105,7 +105,7 @@ impl Memory {
         match (first_word, second_word) {
             (Some(Word::Numeric(x)), Some(Word::Numeric(y))) => {
                 self.stack.push(Word::Numeric(x - y));
-        self.pc += 1;
+                self.pc += 1;
             }
             (Some(Word::Boolean(_)), _) => {
                 panic!("Type mismatch: attempted to substract boolean values.")
@@ -128,7 +128,7 @@ impl Memory {
         match (first_word, second_word) {
             (Some(Word::Numeric(x)), Some(Word::Numeric(y))) => {
                 self.stack.push(Word::Numeric(x * y));
-        self.pc += 1;
+                self.pc += 1;
             }
             (Some(Word::Boolean(_)), _) => {
                 panic!("Type mismatch: attempted to multiply boolean values.")
@@ -152,7 +152,7 @@ impl Memory {
         match (first_word, second_word) {
             (Some(Word::Numeric(x)), Some(Word::Numeric(y))) => {
                 self.stack.push(Word::Numeric(x / y));
-        self.pc += 1;
+                self.pc += 1;
             }
             (Some(Word::Boolean(_)), _) => {
                 panic!("Type mismatch: attempted to divide boolean values.")
@@ -176,7 +176,7 @@ impl Memory {
         match (first_word, second_word) {
             (Some(Word::Numeric(x)), Some(Word::Numeric(y))) => {
                 self.stack.push(Word::Numeric(x % y));
-        self.pc += 1;
+                self.pc += 1;
             }
             (Some(Word::Boolean(_)), _) => {
                 panic!("Type mismatch: attempted to take the remainer of the boolean values.")
@@ -241,12 +241,12 @@ pub enum VMCommand {
     //Not,
     Halt,
     PushConstant(Word),
-    PushBoardAttr{index: usize},
-    PopBoardAttr{index: usize},
-    PushLocal{index: usize},
-    PopLocal{index: usize},
-    PushArgument{index: usize},
-    PopArgument{index: usize},
+    PushBoardAttr { index: usize },
+    PopBoardAttr { index: usize },
+    PushLocal { index: usize },
+    PopLocal { index: usize },
+    PushArgument { index: usize },
+    PopArgument { index: usize },
     Goto(usize),
     //IfGoto(usize),
 }
@@ -274,7 +274,7 @@ impl<'a> VM<'a> {
             board,
         }
     }
-    fn run_one_instruction(&mut self) -> Result<(),()> {
+    fn run_one_instruction(&mut self) -> Result<(), ()> {
         //TODO: better handing for Halt instruction.
         //Probably, we need to propogate errors from the instructions to this function.
         let instruction = self.rom[self.memory.pc()];
@@ -303,30 +303,30 @@ impl<'a> VM<'a> {
                 self.memory.push_external(word);
                 Ok(())
             }
-            VMCommand::PushBoardAttr{index} => {
+            VMCommand::PushBoardAttr { index } => {
                 let attr = self.board.get_attr_by_index(index);
                 self.memory.push_external(attr);
                 Ok(())
             }
-            VMCommand::PopBoardAttr{index} => {
+            VMCommand::PopBoardAttr { index } => {
                 self.board.check_attr_index(index).unwrap();
                 let value = self.memory.pop_external();
                 self.board.set_attr_by_index(value, index);
                 Ok(())
             }
-            VMCommand::PushLocal{index} => {
+            VMCommand::PushLocal { index } => {
                 self.memory.push_local(index);
                 Ok(())
             }
-            VMCommand::PopLocal{index} => {
+            VMCommand::PopLocal { index } => {
                 self.memory.pop_local(index);
                 Ok(())
             }
-            VMCommand::PushArgument{index} => {
+            VMCommand::PushArgument { index } => {
                 self.memory.push_argument(index);
                 Ok(())
             }
-            VMCommand::PopArgument{index} => {
+            VMCommand::PopArgument { index } => {
                 self.memory.pop_argument(index);
                 Ok(())
             }
@@ -334,9 +334,7 @@ impl<'a> VM<'a> {
                 self.memory.jmp(instruction);
                 Ok(())
             }
-            VMCommand::Halt => {
-                Err(())
-            }
+            VMCommand::Halt => Err(()),
         }
     }
 
@@ -359,7 +357,12 @@ mod tests {
         assert!(pc <= data.len());
         let mut stack = ArrayVec::<[Word; STACK_SIZE]>::new();
         stack.fill(data);
-        Memory { stack, lcl, arg, pc}
+        Memory {
+            stack,
+            lcl,
+            arg,
+            pc,
+        }
     }
 
     #[test]
