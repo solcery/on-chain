@@ -210,6 +210,22 @@ impl Memory {
         }
     }
 
+    fn neg(&mut self) {
+        let value = self.stack.pop();
+        match value {
+            Some(Word::Numeric(x)) => {
+                self.stack.push(Word::Numeric(-x));
+                self.pc += 1;
+            }
+            Some(Word::Boolean(_)) => {
+                panic!("Attempted to negate boolean value.");
+            }
+            None => {
+                panic!("Not enough values on the stack.")
+            }
+        }
+    }
+
     fn push_external(&mut self, value: Word) {
         self.stack.push(value);
         self.pc += 1;
@@ -267,6 +283,68 @@ impl Memory {
             }
         }
     }
+
+    fn and(&mut self) {
+        let first_word = self.stack.pop();
+        let second_word = self.stack.pop();
+        match (first_word, second_word) {
+            (Some(Word::Boolean(x)), Some(Word::Boolean(y))) => {
+                self.stack.push(Word::Boolean(x && y));
+                self.pc += 1;
+            }
+            (Some(Word::Numeric(_)), Some(Word::Numeric(_))) => {
+                panic!("Type mismatch: attempted to AND numerical values.")
+            }
+            (Some(_), Some(_)) => {
+                panic!("Type mismatch: attempted to AND boolean to numerical.")
+            }
+            (_, None) => {
+                panic!("Not enough values on the stack.")
+            }
+            (None, _) => {
+                unreachable!();
+            }
+        }
+    }
+
+    fn or(&mut self) {
+        let first_word = self.stack.pop();
+        let second_word = self.stack.pop();
+        match (first_word, second_word) {
+            (Some(Word::Boolean(x)), Some(Word::Boolean(y))) => {
+                self.stack.push(Word::Boolean(x || y));
+                self.pc += 1;
+            }
+            (Some(Word::Numeric(_)), Some(Word::Numeric(_))) => {
+                panic!("Type mismatch: attempted to OR numerical values.")
+            }
+            (Some(_), Some(_)) => {
+                panic!("Type mismatch: attempted to OR boolean to numerical.")
+            }
+            (_, None) => {
+                panic!("Not enough values on the stack.")
+            }
+            (None, _) => {
+                unreachable!();
+            }
+        }
+    }
+
+    fn not(&mut self) {
+        let value = self.stack.pop();
+        match value {
+            Some(Word::Boolean(x)) => {
+                self.stack.push(Word::Boolean(!x));
+                self.pc += 1;
+            }
+            Some(Word::Numeric(_)) => {
+                panic!("Attempted to NOT numerical value.");
+            }
+            None => {
+                panic!("Not enough values on the stack.")
+            }
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -276,10 +354,11 @@ pub enum VMCommand {
     Div,
     Rem,
     Mul,
+    Neg,
     Eq,
-    //And,
-    //Or,
-    //Not,
+    And,
+    Or,
+    Not,
     Halt,
     PushConstant(Word),
     PushBoardAttr { index: usize },
@@ -340,8 +419,24 @@ impl<'a> VM<'a> {
                 self.memory.rem();
                 Ok(())
             }
+            VMCommand::Neg => {
+                self.memory.neg();
+                Ok(())
+            }
             VMCommand::Eq => {
                 self.memory.eq();
+                Ok(())
+            }
+            VMCommand::Or => {
+                self.memory.or();
+                Ok(())
+            }
+            VMCommand::And => {
+                self.memory.and();
+                Ok(())
+            }
+            VMCommand::Not => {
+                self.memory.not();
                 Ok(())
             }
             VMCommand::PushConstant(word) => {
