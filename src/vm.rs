@@ -73,6 +73,25 @@ impl Memory {
         self.pc = address;
     }
 
+    fn ifjmp(&mut self, address: usize) {
+        let value = self.stack.pop();
+        match value {
+            Some(Word::Boolean(val)) => {
+                if val {
+                    self.pc = address;
+                } else {
+                    self.pc += 1;
+                }
+            }
+            Some(Word::Numeric(_)) => {
+                panic!("Type mismatch: attempted to use numerical value in boolean condition.");
+            }
+            None => {
+                panic!("Not enough values on the stack.");
+            }
+        }
+    }
+
     fn add(&mut self) {
         let first_word = self.stack.pop();
         let second_word = self.stack.pop();
@@ -225,6 +244,29 @@ impl Memory {
         self.stack[self.arg + index] = value;
         self.pc += 1;
     }
+
+    fn eq(&mut self) {
+        let first_word = self.stack.pop();
+        let second_word = self.stack.pop();
+        match (first_word, second_word) {
+            (Some(Word::Numeric(x)), Some(Word::Numeric(y))) => {
+                self.stack.push(Word::Boolean(x == y));
+                self.pc += 1;
+            }
+            (Some(Word::Boolean(_)), Some(Word::Boolean(_))) => {
+                panic!("Type mismatch: attempted to check boolean values for equality. Use `XOR` instead.")
+            }
+            (Some(_), Some(_)) => {
+                panic!("Type mismatch: attempted to compare boolean to numerical.")
+            }
+            (_, None) => {
+                panic!("Not enough values on the stack.")
+            }
+            (None, _) => {
+                unreachable!();
+            }
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -234,6 +276,7 @@ pub enum VMCommand {
     Div,
     Rem,
     Mul,
+    Eq,
     //And,
     //Or,
     //Not,
@@ -246,7 +289,7 @@ pub enum VMCommand {
     PushArgument { index: usize },
     PopArgument { index: usize },
     Goto(usize),
-    //IfGoto(usize),
+    IfGoto(usize),
 }
 
 impl Default for VMCommand {
@@ -297,6 +340,10 @@ impl<'a> VM<'a> {
                 self.memory.rem();
                 Ok(())
             }
+            VMCommand::Eq => {
+                self.memory.eq();
+                Ok(())
+            }
             VMCommand::PushConstant(word) => {
                 self.memory.push_external(word);
                 Ok(())
@@ -330,6 +377,10 @@ impl<'a> VM<'a> {
             }
             VMCommand::Goto(instruction) => {
                 self.memory.jmp(instruction);
+                Ok(())
+            }
+            VMCommand::IfGoto(instruction) => {
+                self.memory.ifjmp(instruction);
                 Ok(())
             }
             VMCommand::Halt => Err(()),
