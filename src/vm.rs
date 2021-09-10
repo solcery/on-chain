@@ -48,7 +48,7 @@ const STACK_SIZE: usize = 512;
 type Stack = ArrayVec<[Word; STACK_SIZE]>;
 
 #[derive(Debug)]
-pub struct Memory {
+struct Memory {
     stack: Stack,
     lcl: usize,
     arg: usize,
@@ -65,12 +65,10 @@ impl Memory {
         }
     }
 
-    #[inline]
     fn pc(&self) -> usize {
         self.pc
     }
 
-    #[inline]
     fn jmp(&mut self, address: usize) {
         self.pc = address;
     }
