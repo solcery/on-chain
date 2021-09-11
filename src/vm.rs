@@ -1,5 +1,7 @@
 //! # The Sorcery Virtual Machine
+
 use crate::board::Board;
+use std::convert::TryFrom;
 use tinyvec::ArrayVec;
 
 /// Одна ячейка памяти на стеке может содержать либо число, либо логическое значение.
@@ -364,6 +366,26 @@ impl Memory {
             }
         }
     }
+
+    fn call(&mut self, address: usize, n_args: usize) {
+        let return_address = self.pc + 1;
+        self.stack
+            .push(Word::Numeric(i32::try_from(return_address).unwrap()));
+        self.stack
+            .push(Word::Numeric(i32::try_from(self.lcl).unwrap()));
+        self.stack
+            .push(Word::Numeric(i32::try_from(self.arg).unwrap()));
+        self.arg = self.stack.len() - n_args - 3;
+        self.lcl = self.stack.len();
+        self.pc = address;
+    }
+
+    fn function(&mut self, n_locals: usize) {
+        for _ in 0..n_locals {
+            self.stack.push(Word::Numeric(0));
+        }
+        self.pc += 1;
+    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -376,6 +398,7 @@ pub enum VMCommand {
     Rem,
     Neg,
     //Mod,
+
     // Logic
     Eq,
     Gt,
@@ -383,6 +406,7 @@ pub enum VMCommand {
     And,
     Or,
     Not,
+
     // Data transfer
     PushConstant(Word),
     PushBoardAttr { index: usize },
@@ -393,12 +417,13 @@ pub enum VMCommand {
     PopLocal { index: usize },
     PushArgument { index: usize },
     PopArgument { index: usize },
+
     // Flow control
     Goto(usize),
     IfGoto(usize),
     Halt,
-    //Function{n_locals: usize},
-    //Call{address: usize, n_args: usize},
+    Function { n_locals: usize },
+    Call { address: usize, n_args: usize },
     //Return,
 }
 
@@ -515,6 +540,14 @@ impl<'a> VM<'a> {
             }
             VMCommand::IfGoto(instruction) => {
                 self.memory.ifjmp(instruction);
+                Ok(())
+            }
+            VMCommand::Call { address, n_args } => {
+                self.memory.call(address, n_args);
+                Ok(())
+            }
+            VMCommand::Function { n_locals } => {
+                self.memory.function(n_locals);
                 Ok(())
             }
             VMCommand::Halt => Err(()),
