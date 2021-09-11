@@ -257,6 +257,52 @@ impl Memory {
         }
     }
 
+    fn gt(&mut self) {
+        let first_word = self.stack.pop();
+        let second_word = self.stack.pop();
+        match (first_word, second_word) {
+            (Some(Word::Numeric(x)), Some(Word::Numeric(y))) => {
+                self.stack.push(Word::Boolean(x > y));
+                self.pc += 1;
+            }
+            (Some(Word::Boolean(_)), Some(Word::Boolean(_))) => {
+                panic!("Type mismatch: attempted to check boolean values for equality. Use `XOR` instead.")
+            }
+            (Some(_), Some(_)) => {
+                panic!("Type mismatch: attempted to compare boolean to numerical.")
+            }
+            (_, None) => {
+                panic!("Not enough values on the stack.")
+            }
+            (None, _) => {
+                unreachable!();
+            }
+        }
+    }
+
+    fn lt(&mut self) {
+        let first_word = self.stack.pop();
+        let second_word = self.stack.pop();
+        match (first_word, second_word) {
+            (Some(Word::Numeric(x)), Some(Word::Numeric(y))) => {
+                self.stack.push(Word::Boolean(x < y));
+                self.pc += 1;
+            }
+            (Some(Word::Boolean(_)), Some(Word::Boolean(_))) => {
+                panic!("Type mismatch: attempted to check boolean values for equality. Use `XOR` instead.")
+            }
+            (Some(_), Some(_)) => {
+                panic!("Type mismatch: attempted to compare boolean to numerical.")
+            }
+            (_, None) => {
+                panic!("Not enough values on the stack.")
+            }
+            (None, _) => {
+                unreachable!();
+            }
+        }
+    }
+
     fn and(&mut self) {
         let first_word = self.stack.pop();
         let second_word = self.stack.pop();
@@ -332,6 +378,8 @@ pub enum VMCommand {
     //Mod,
     // Logic
     Eq,
+    Gt,
+    Lt,
     And,
     Or,
     Not,
@@ -408,6 +456,14 @@ impl<'a> VM<'a> {
             }
             VMCommand::Eq => {
                 self.memory.eq();
+                Ok(())
+            }
+            VMCommand::Gt => {
+                self.memory.gt();
+                Ok(())
+            }
+            VMCommand::Lt => {
+                self.memory.lt();
                 Ok(())
             }
             VMCommand::Or => {
