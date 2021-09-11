@@ -1,31 +1,4 @@
 //! # The Sorcery Virtual Machine
-//! ## Memory model
-//! Есть два основных региона памяти фиксированного размера: глобальный стек и память команд.
-//! В памяти команд будет храниться байт-код, который SVM будет исполнять.
-//! Глобальный стек будет использоваться как память общего назначения, в которой будут происходить
-//! _промежуточные_ вычисления. Т.е. между ходами состояние стека сохраняться не должно.
-//!
-//! ### Memory segments
-//! - local
-//! - arguments
-//! - constants
-//! - player_attrs - позволяет выбрать атрибут игрока
-//! - board_attrs - позволяет выбрать атрибут доски
-//! - card_attrs - позволяет выбрать атрибут карты
-//!
-//! ## Instruction Set Architecture
-//! - [x] Add
-//! - [x] Sub
-//! - [x] Div
-//! - [x] Mul
-//! - [ ] Rem
-//! - [ ] Neg
-//! - [ ] Eq
-//! - [ ] Gt
-//! - [ ] Lt
-//! - [ ] And
-//! - [ ] Or
-//! - [ ] Not
 use crate::board::Board;
 use tinyvec::ArrayVec;
 
@@ -349,26 +322,36 @@ impl Memory {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum VMCommand {
+    // Arithmetic
     Add,
     Sub,
     Div,
-    Rem,
     Mul,
+    Rem,
     Neg,
+    //Mod,
+    // Logic
     Eq,
     And,
     Or,
     Not,
-    Halt,
+    // Data transfer
     PushConstant(Word),
     PushBoardAttr { index: usize },
     PopBoardAttr { index: usize },
+    //PushCardAttr { card_index: usize, attr_index: usize },
+    //PopCardAttr { card_index: usize, attr_index: usize },
     PushLocal { index: usize },
     PopLocal { index: usize },
     PushArgument { index: usize },
     PopArgument { index: usize },
+    // Flow control
     Goto(usize),
     IfGoto(usize),
+    Halt,
+    //Function{n_locals: usize},
+    //Call{address: usize, n_args: usize},
+    //Return,
 }
 
 impl Default for VMCommand {
