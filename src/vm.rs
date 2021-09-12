@@ -43,7 +43,7 @@ pub enum VMCommand {
     Halt,
     Function { n_locals: usize },
     Call { address: usize, n_args: usize },
-    //Return,
+    Return,
 }
 
 impl Default for VMCommand {
@@ -167,6 +167,10 @@ impl<'a> VM<'a> {
             }
             VMCommand::Function { n_locals } => {
                 self.memory.function(n_locals);
+                Ok(())
+            }
+            VMCommand::Return => {
+                self.memory.fn_return();
                 Ok(())
             }
             VMCommand::Halt => Err(()),

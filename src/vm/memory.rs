@@ -369,6 +369,20 @@ impl Memory {
         }
         self.pc += 1;
     }
+
+    pub fn fn_return(&mut self) {
+        let frame = self.lcl;
+        let return_address = self.stack[frame - 3].unwrap_numeric();
+        let previous_lcl = self.stack[frame - 2].unwrap_numeric();
+        let previous_arg = self.stack[frame - 1].unwrap_numeric();
+        let return_value = self.stack.pop().unwrap();
+
+        self.stack.truncate(self.arg);
+        self.stack.push(return_value);
+        self.lcl = previous_lcl as usize;
+        self.arg = previous_arg as usize;
+        self.pc = return_address as usize;
+    }
 }
 
 #[cfg(test)]
