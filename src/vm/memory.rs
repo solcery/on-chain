@@ -389,6 +389,7 @@ impl Memory {
 mod tests {
     use super::*;
     use tinyvec::array_vec;
+
     fn prepare_memory(data: Vec<Word>, lcl: usize, arg: usize, pc: usize) -> Memory {
         assert!(lcl <= data.len());
         assert!(arg <= data.len());
@@ -405,7 +406,6 @@ mod tests {
 
     mod add {
         use super::*;
-        use tinyvec::array_vec;
 
         #[test]
         fn numeric() {
@@ -441,7 +441,6 @@ mod tests {
 
     mod sub {
         use super::*;
-        use tinyvec::array_vec;
 
         #[test]
         fn numeric() {
@@ -477,7 +476,6 @@ mod tests {
 
     mod mul {
         use super::*;
-        use tinyvec::array_vec;
 
         #[test]
         fn numeric() {
@@ -513,7 +511,6 @@ mod tests {
 
     mod div {
         use super::*;
-        use tinyvec::array_vec;
 
         #[test]
         fn no_remainer() {
@@ -559,7 +556,6 @@ mod tests {
 
     mod rem {
         use super::*;
-        use tinyvec::array_vec;
 
         #[test]
         fn zero() {
@@ -605,24 +601,29 @@ mod tests {
         }
     }
 
-    #[test]
-    fn push_external_data() {
-        let mut mem = Memory::new();
-        mem.push_external(Word::Numeric(0));
-        assert_eq!(
-            mem.stack,
-            array_vec!([Word; STACK_SIZE] => Word::Numeric(0))
-        );
-    }
-    #[test]
-    fn pop_external_data() {
-        let mut mem = prepare_memory(vec![Word::Numeric(2), Word::Numeric(6)], 0, 0, 0);
-        mem.pop_external();
-        assert_eq!(
-            mem.stack,
-            array_vec!([Word; STACK_SIZE] => Word::Numeric(2))
-        );
-        mem.pop_external();
-        assert_eq!(mem.stack, array_vec!([Word; STACK_SIZE]));
+    mod data_flow {
+        use super::*;
+
+        #[test]
+        fn push_external_data() {
+            let mut mem = Memory::new();
+            mem.push_external(Word::Numeric(0));
+            assert_eq!(
+                mem.stack,
+                array_vec!([Word; STACK_SIZE] => Word::Numeric(0))
+            );
+        }
+
+        #[test]
+        fn pop_external_data() {
+            let mut mem = prepare_memory(vec![Word::Numeric(2), Word::Numeric(6)], 0, 0, 0);
+            mem.pop_external();
+            assert_eq!(
+                mem.stack,
+                array_vec!([Word; STACK_SIZE] => Word::Numeric(2))
+            );
+            mem.pop_external();
+            assert_eq!(mem.stack, array_vec!([Word; STACK_SIZE]));
+        }
     }
 }
