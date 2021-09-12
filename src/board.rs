@@ -1,5 +1,5 @@
 use crate::card::{Card, CardType};
-use crate::vm::Word;
+use crate::word::Word;
 
 #[derive(Debug)]
 pub struct Board {
