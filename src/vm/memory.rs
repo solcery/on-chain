@@ -393,7 +393,6 @@ mod tests {
     fn prepare_memory(data: Vec<Word>, lcl: usize, arg: usize, pc: usize) -> Memory {
         assert!(lcl <= data.len());
         assert!(arg <= data.len());
-        assert!(pc <= data.len());
         let mut stack = ArrayVec::<[Word; STACK_SIZE]>::new();
         stack.fill(data);
         Memory {
