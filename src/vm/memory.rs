@@ -625,5 +625,139 @@ mod tests {
             mem.pop_external();
             assert_eq!(mem.stack, array_vec!([Word; STACK_SIZE]));
         }
+
+        #[test]
+        fn push_local_data() {
+            let mut mem = prepare_memory(
+                vec![Word::Numeric(2), Word::Numeric(6), Word::Numeric(8)],
+                1,
+                0,
+                0,
+            );
+            mem.push_local(0);
+            mem.push_local(1);
+            assert_eq!(
+                mem.stack,
+                array_vec!([Word; STACK_SIZE] =>
+                    Word::Numeric(2),
+                    Word::Numeric(6),
+                    Word::Numeric(8),
+                    Word::Numeric(6),
+                    Word::Numeric(8))
+            );
+        }
+
+        #[test]
+        fn pop_local_data() {
+            let mut mem = prepare_memory(
+                vec![
+                    Word::Numeric(2),
+                    Word::Numeric(6),
+                    Word::Numeric(8),
+                    Word::Numeric(16),
+                ],
+                0,
+                0,
+                0,
+            );
+            mem.pop_local(0);
+            mem.pop_local(1);
+            assert_eq!(
+                mem.stack,
+                array_vec!([Word; STACK_SIZE] => Word::Numeric(16), Word::Numeric(8))
+            );
+        }
+
+        #[test]
+        fn push_argument_data() {
+            let mut mem = prepare_memory(
+                vec![Word::Numeric(2), Word::Numeric(6), Word::Numeric(8)],
+                0,
+                1,
+                0,
+            );
+            mem.push_argument(0);
+            mem.push_argument(1);
+            assert_eq!(
+                mem.stack,
+                array_vec!([Word; STACK_SIZE] => Word::Numeric(2), Word::Numeric(6), Word::Numeric(8), Word::Numeric(6),Word::Numeric(8))
+            );
+        }
+
+        #[test]
+        fn pop_argument_data() {
+            let mut mem = prepare_memory(
+                vec![
+                    Word::Numeric(2),
+                    Word::Numeric(6),
+                    Word::Numeric(8),
+                    Word::Numeric(16),
+                ],
+                0,
+                0,
+                0,
+            );
+            mem.pop_argument(0);
+            mem.pop_argument(1);
+            assert_eq!(
+                mem.stack,
+                array_vec!([Word; STACK_SIZE] => Word::Numeric(16), Word::Numeric(8))
+            );
+        }
+    }
+
+    mod subroutine_calling {
+        use super::*;
+
+        #[test]
+        fn call() {
+            let mut mem = prepare_memory(vec![Word::Numeric(2), Word::Boolean(true)], 0, 1, 4);
+            mem.call(16, 2);
+            assert_eq!(
+                mem.stack,
+                array_vec!([Word; STACK_SIZE] => Word::Numeric(2), Word::Boolean(true), Word::Numeric(5), Word::Numeric(0), Word::Numeric(1))
+            );
+            assert_eq!(mem.lcl, 5);
+            assert_eq!(mem.arg, 0);
+            assert_eq!(mem.pc, 16);
+        }
+
+        #[test]
+        fn fn_return() {
+            let mut mem = prepare_memory(
+                vec![
+                    Word::Numeric(2),
+                    Word::Boolean(true),
+                    Word::Numeric(5),
+                    Word::Numeric(0),
+                    Word::Numeric(1),
+                    Word::Boolean(false),
+                ],
+                5,
+                0,
+                16,
+            );
+            mem.fn_return();
+            assert_eq!(
+                mem.stack,
+                array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
+            );
+            assert_eq!(mem.lcl, 0);
+            assert_eq!(mem.arg, 1);
+            assert_eq!(mem.pc, 5);
+        }
+
+        #[test]
+        fn function() {
+            let mut mem = prepare_memory(vec![Word::Numeric(2), Word::Boolean(true)], 2, 0, 16);
+            mem.function(3);
+            assert_eq!(
+                mem.stack,
+                array_vec!([Word; STACK_SIZE] => Word::Numeric(2), Word::Boolean(true), Word::Numeric(0), Word::Numeric(0), Word::Numeric(0))
+            );
+            assert_eq!(mem.lcl, 2);
+            assert_eq!(mem.arg, 0);
+            assert_eq!(mem.pc, 17);
+        }
     }
 }
