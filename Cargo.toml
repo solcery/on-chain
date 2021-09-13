@@ -10,14 +10,14 @@ edition = "2018"
 no-entrypoint = []
 
 [dependencies]
-solana-program = "=1.6.6"
-borsh = "0.7.1"
-thiserror = "1.0.24"
+#solana-program = "=1.6.6"
+#borsh = "0.7.1"
+#thiserror = "1.0.24"
 tinyvec = {version = "1.3.1", features = ["rustc_1_40"]}
 
 [dev-dependencies]
-solana-program-test = "=1.6.6"
-solana-sdk = "=1.6.6"
+#solana-program-test = "=1.6.6"
+#solana-sdk = "=1.6.6"
 
 [lib]
 name = "solcery"
