@@ -414,6 +414,7 @@ mod tests {
                 mem.stack,
                 array_vec!([Word; STACK_SIZE] => Word::Numeric(3))
             );
+            assert_eq!(mem.pc, 1);
         }
 
         #[test]
@@ -449,6 +450,7 @@ mod tests {
                 mem.stack,
                 array_vec!([Word; STACK_SIZE] => Word::Numeric(1))
             );
+            assert_eq!(mem.pc, 1);
         }
 
         #[test]
@@ -484,6 +486,7 @@ mod tests {
                 mem.stack,
                 array_vec!([Word; STACK_SIZE] => Word::Numeric(8))
             );
+            assert_eq!(mem.pc, 1);
         }
 
         #[test]
@@ -519,6 +522,7 @@ mod tests {
                 mem.stack,
                 array_vec!([Word; STACK_SIZE] => Word::Numeric(3))
             );
+            assert_eq!(mem.pc, 1);
         }
 
         #[test]
@@ -529,6 +533,7 @@ mod tests {
                 mem.stack,
                 array_vec!([Word; STACK_SIZE] => Word::Numeric(3))
             );
+            assert_eq!(mem.pc, 1);
         }
 
         #[test]
@@ -564,6 +569,7 @@ mod tests {
                 mem.stack,
                 array_vec!([Word; STACK_SIZE] => Word::Numeric(0))
             );
+            assert_eq!(mem.pc, 1);
         }
 
         #[test]
@@ -574,6 +580,7 @@ mod tests {
                 mem.stack,
                 array_vec!([Word; STACK_SIZE] => Word::Numeric(1))
             );
+            assert_eq!(mem.pc, 1);
         }
 
         #[test]
@@ -611,6 +618,7 @@ mod tests {
                 mem.stack,
                 array_vec!([Word; STACK_SIZE] => Word::Numeric(0))
             );
+            assert_eq!(mem.pc, 1);
         }
 
         #[test]
@@ -621,8 +629,10 @@ mod tests {
                 mem.stack,
                 array_vec!([Word; STACK_SIZE] => Word::Numeric(2))
             );
+            assert_eq!(mem.pc, 1);
             mem.pop_external();
             assert_eq!(mem.stack, array_vec!([Word; STACK_SIZE]));
+            assert_eq!(mem.pc, 2);
         }
 
         #[test]
@@ -644,6 +654,7 @@ mod tests {
                     Word::Numeric(6),
                     Word::Numeric(8))
             );
+            assert_eq!(mem.pc, 2);
         }
 
         #[test]
@@ -665,6 +676,7 @@ mod tests {
                 mem.stack,
                 array_vec!([Word; STACK_SIZE] => Word::Numeric(16), Word::Numeric(8))
             );
+            assert_eq!(mem.pc, 2);
         }
 
         #[test]
@@ -681,6 +693,7 @@ mod tests {
                 mem.stack,
                 array_vec!([Word; STACK_SIZE] => Word::Numeric(2), Word::Numeric(6), Word::Numeric(8), Word::Numeric(6),Word::Numeric(8))
             );
+            assert_eq!(mem.pc, 2);
         }
 
         #[test]
@@ -702,6 +715,7 @@ mod tests {
                 mem.stack,
                 array_vec!([Word; STACK_SIZE] => Word::Numeric(16), Word::Numeric(8))
             );
+            assert_eq!(mem.pc, 2);
         }
     }
 
