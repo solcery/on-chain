@@ -1,10 +1,14 @@
 use crate::card::{Card, CardType};
 use crate::word::Word;
+use tinyvec::ArrayVec;
+
+const DECK_SIZE: usize = 512;
+type Deck = ArrayVec<[Card; DECK_SIZE]>;
 
 #[derive(Debug)]
 pub struct Board {
     card_types: Vec<CardType>,
-    cards: Vec<Card>,
+    cards: Deck,
     attrs: Vec<Word>,
 }
 
