@@ -10,6 +10,10 @@ use memory::Memory;
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum VMCommand {
     // Arithmetic
+    /// Adds two topmost values from the stack
+    /// # Panics
+    /// Panics if there are no enough elements on the stack or if one of the arguments is
+    /// [Word::Boolean]
     Add,
     Sub,
     Div,
