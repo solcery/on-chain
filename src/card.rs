@@ -22,13 +22,19 @@ impl Default for Card {
     }
 }
 
-const DATA_VEC_SIZE: usize = 32;
-type Data = ArrayVec<[Word; DATA_VEC_SIZE]>;
+const TYPE_ATTRS_VEC_SIZE: usize = 32;
+type TypeAttrs = ArrayVec<[Word; TYPE_ATTRS_VEC_SIZE]>;
 
 #[derive(Debug)]
 pub struct CardType {
     pub id: u32,
-    pub data: Data,
+    pub attrs: TypeAttrs,
 }
-
-impl CardType {}
+impl Default for CardType {
+    fn default() -> Self {
+        CardType {
+            id: 0,
+            attrs: TypeAttrs::new(),
+        }
+    }
+}

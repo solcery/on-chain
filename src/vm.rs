@@ -3,6 +3,7 @@
 use crate::board::Board;
 use crate::word::Word;
 use tinyvec::ArrayVec;
+use std::convert::TryInto;
 
 mod memory;
 use memory::Memory;
@@ -244,6 +245,15 @@ impl<'a> VM<'a> {
             }
             VMCommand::Return => {
                 self.memory.fn_return();
+                Ok(())
+            }
+            VMCommand::PushDeckSize => {
+                let len = self.board.cards.len();
+                self.memory.push_external(Word::Numeric(TryInto::try_into(len).unwrap()));
+                Ok(())
+            }
+            VMCommand::PopArgument { index } => {
+                self.memory.pop_argument(index);
                 Ok(())
             }
             VMCommand::Halt => Err(()),
