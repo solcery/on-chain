@@ -159,6 +159,18 @@ impl<'a> VM<'a> {
                 self.memory.neg();
                 Ok(())
             }
+            VMCommand::Inc => {
+                self.memory.inc();
+                Ok(())
+            }
+            VMCommand::Dec => {
+                self.memory.dec();
+                Ok(())
+            }
+            VMCommand::Abs => {
+                self.memory.abs();
+                Ok(())
+            }
             VMCommand::Eq => {
                 self.memory.eq();
                 Ok(())

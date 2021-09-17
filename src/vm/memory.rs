@@ -184,6 +184,54 @@ impl Memory {
         }
     }
 
+    pub fn inc(&mut self) {
+        let value = self.stack.pop();
+        match value {
+            Some(Word::Numeric(x)) => {
+                self.stack.push(Word::Numeric(x+1));
+                self.pc += 1;
+            }
+            Some(Word::Boolean(_)) => {
+                panic!("Attempted to increment boolean value.");
+            }
+            None => {
+                panic!("Not enough values on the stack.")
+            }
+        }
+    }
+
+    pub fn dec(&mut self) {
+        let value = self.stack.pop();
+        match value {
+            Some(Word::Numeric(x)) => {
+                self.stack.push(Word::Numeric(x-1));
+                self.pc += 1;
+            }
+            Some(Word::Boolean(_)) => {
+                panic!("Attempted to decrement boolean value.");
+            }
+            None => {
+                panic!("Not enough values on the stack.")
+            }
+        }
+    }
+
+    pub fn abs(&mut self) {
+        let value = self.stack.pop();
+        match value {
+            Some(Word::Numeric(x)) => {
+                self.stack.push(Word::Numeric(x.abs()));
+                self.pc += 1;
+            }
+            Some(Word::Boolean(_)) => {
+                panic!("Attempted to find modulus of boolean value.");
+            }
+            None => {
+                panic!("Not enough values on the stack.")
+            }
+        }
+    }
+
     pub fn push_external(&mut self, value: Word) {
         self.stack.push(value);
         self.pc += 1;
