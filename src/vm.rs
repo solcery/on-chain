@@ -20,7 +20,11 @@ pub enum VMCommand {
     Mul,
     Rem,
     Neg,
-    //Mod,
+    /// Increments the topmost value on the stack
+    Inc,
+    /// Decrements the topmost value on the stack
+    Dec,
+    Abs,
 
     // Logic
     Eq,
@@ -38,24 +42,6 @@ pub enum VMCommand {
     PopBoardAttr {
         index: usize,
     },
-    //PushCardAttr { card_index: usize, attr_index: usize },
-    //PopCardAttr { card_index: usize, attr_index: usize },
-    //PushCardAttrById { id: usize, card_index: usize, attr_index: usize },
-    //PopCardAttrById { id: usize, card_index: usize, attr_index: usize },
-    //PushCardTypeAttr { cardtype_index: usize, attr_index: usize },
-    //PushDeckSize,
-    //PushCardTypeDeckSize,
-    //PushCardCountWithCardTypeAttr { attr_index: usize, attr: Word }
-    // Pushes `attr_index` attribute of the `card_index` card. `card_index` is the index of the
-    // card in the set of all the cards with the given value of the `type_attr_index` attribute of
-    // the [CardType](crate::card::CardType)
-    //PushCardAttrByCardTypeAttr {
-    //card_index: usize,
-    //attr_index: usize,
-    //typeattr_index: usize,
-    //attr: Word,
-    //},
-    //PopCardAttr { card_index: usize, attr_index: usize },
     PushLocal {
         index: usize,
     },
@@ -81,6 +67,44 @@ pub enum VMCommand {
         n_args: usize,
     },
     Return,
+
+    // Interactions with cards
+    /// Pushes total number of cards on the board to the stack
+    PushDeckSize,
+    /// Pushes [CardType](crate::card::CardType) on the `i`-th card, where `i` is the topmost value on the stack
+    PushCardType,
+    /// Pushes total number of cards with [CardType](crate::card::CardType) popped from the stack
+    PushCardCountWithCardType,
+    /// Pushes `attr_index`-th attribute of the [CardType](crate::card::CardType), those index
+    /// among [CardTypes](crate::card::CardType) is on the top of the stack
+    PushCardTypeAttrByTypeIndex {
+        attr_index: usize,
+    },
+    /// Pushes `attr_index`-th attribute of the [CardType](crate::card::CardType) of the card,
+    /// those index is on the top of the stack
+    PushCardTypeAttrByCardIndex {
+        attr_index: usize,
+    },
+    /// Pushes `attr_index`-th attribute of the [Card](crate::card::Card),
+    /// those index is on the top of the stack
+    PushCardAttr {
+        attr_index: usize,
+    },
+    /// Pops `attr_index`-th attribute of the [Card](crate::card::Card),
+    /// those index is on the top of the stack
+    PopCardAttr {
+        attr_index: usize,
+    },
+    /// Pushes `attr_index`-th attribute of the [Card](crate::card::Card),
+    /// those [CardType](crate::card::CardType) and index is on the top of the stack
+    PushCardAttrByType {
+        attr_index: usize,
+    },
+    /// Pops `attr_index`-th attribute of the [Card](crate::card::Card),
+    /// those [CardType](crate::card::CardType) and index is on the top of the stack
+    PopCardAttrByType {
+        attr_index: usize,
+    },
 }
 
 impl Default for VMCommand {
@@ -211,6 +235,9 @@ impl<'a> VM<'a> {
                 Ok(())
             }
             VMCommand::Halt => Err(()),
+            _ => {
+                unimplemented!();
+            }
         }
     }
 
