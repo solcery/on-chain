@@ -32,21 +32,54 @@ pub enum VMCommand {
 
     // Data transfer
     PushConstant(Word),
-    PushBoardAttr { index: usize },
-    PopBoardAttr { index: usize },
+    PushBoardAttr {
+        index: usize,
+    },
+    PopBoardAttr {
+        index: usize,
+    },
     //PushCardAttr { card_index: usize, attr_index: usize },
     //PopCardAttr { card_index: usize, attr_index: usize },
-    PushLocal { index: usize },
-    PopLocal { index: usize },
-    PushArgument { index: usize },
-    PopArgument { index: usize },
+    //PushCardAttrById { id: usize, card_index: usize, attr_index: usize },
+    //PopCardAttrById { id: usize, card_index: usize, attr_index: usize },
+    //PushCardTypeAttr { cardtype_index: usize, attr_index: usize },
+    //PushDeckSize,
+    //PushCardTypeDeckSize,
+    //PushCardCountWithCardTypeAttr { attr_index: usize, attr: Word }
+    // Pushes `attr_index` attribute of the `card_index` card. `card_index` is the index of the
+    // card in the set of all the cards with the given value of the `type_attr_index` attribute of
+    // the [CardType](crate::card::CardType)
+    //PushCardAttrByCardTypeAttr {
+    //card_index: usize,
+    //attr_index: usize,
+    //typeattr_index: usize,
+    //attr: Word,
+    //},
+    //PopCardAttr { card_index: usize, attr_index: usize },
+    PushLocal {
+        index: usize,
+    },
+    PopLocal {
+        index: usize,
+    },
+    PushArgument {
+        index: usize,
+    },
+    PopArgument {
+        index: usize,
+    },
 
     // Flow control
     Goto(usize),
     IfGoto(usize),
     Halt,
-    Function { n_locals: usize },
-    Call { address: usize, n_args: usize },
+    Function {
+        n_locals: usize,
+    },
+    Call {
+        address: usize,
+        n_args: usize,
+    },
     Return,
 }
 
