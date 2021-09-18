@@ -9,7 +9,17 @@ type Attrs = ArrayVec<[Word; ATTRS_VEC_SIZE]>;
 pub struct Card {
     id: u32,
     card_type: u32,
-    attrs: Attrs,
+    pub attrs: Attrs,
+}
+
+impl Card {
+    pub fn id(&self) -> u32 {
+        self.id
+    }
+
+    pub fn card_type(&self) -> u32 {
+        self.card_type
+    }
 }
 
 impl Default for Card {
@@ -27,8 +37,18 @@ type TypeAttrs = ArrayVec<[Word; TYPE_ATTRS_VEC_SIZE]>;
 
 #[derive(Debug)]
 pub struct CardType {
-    pub id: u32,
-    pub attrs: TypeAttrs,
+    id: u32,
+    attrs: TypeAttrs,
+}
+
+impl CardType {
+    pub fn id(&self) -> u32 {
+        self.id
+    }
+
+    pub fn get_attr_by_index(&self, index: usize) -> Word {
+        self.attrs[index]
+    }
 }
 impl Default for CardType {
     fn default() -> Self {

@@ -131,6 +131,15 @@ impl<'a> VM<'a> {
             board,
         }
     }
+
+    pub fn execute(&mut self, instruction_limit: usize) {
+        for _ in 0..instruction_limit {
+            if self.run_one_instruction().is_err() {
+                break;
+            }
+        }
+    }
+
     fn run_one_instruction(&mut self) -> Result<(), ()> {
         //TODO: better handing for Halt instruction.
         //Probably, we need to propogate errors from the instructions to this function.
@@ -201,14 +210,13 @@ impl<'a> VM<'a> {
                 Ok(())
             }
             VMCommand::PushBoardAttr { index } => {
-                let attr = self.board.get_attr_by_index(index);
+                let attr = self.board.attrs[index];
                 self.memory.push_external(attr);
                 Ok(())
             }
             VMCommand::PopBoardAttr { index } => {
-                self.board.check_attr_index(index).unwrap();
                 let value = self.memory.pop_external();
-                self.board.set_attr_by_index(value, index);
+                self.board.attrs[index] = value;
                 Ok(())
             }
             VMCommand::PushLocal { index } => {
@@ -263,11 +271,5 @@ impl<'a> VM<'a> {
         }
     }
 
-    pub fn execute(&mut self, instruction_limit: usize) {
-        for _ in 0..instruction_limit {
-            if self.run_one_instruction().is_err() {
-                break;
-            }
-        }
     }
 }
