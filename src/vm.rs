@@ -18,13 +18,28 @@ pub enum VMCommand {
     Add,
     Sub,
     Div,
+    /// Multiplies two topmost values from the stack
+    /// # Panics
+    /// Panics if there are no enough elements on the stack or if one of the arguments is
+    /// [Word::Boolean]
     Mul,
     Rem,
+    /// Negates the topmost value on the stack
+    /// # Panics
+    /// Panics if there are no enough elements on the stack or if  the argumentsis
+    /// [Word::Boolean]
     Neg,
     /// Increments the topmost value on the stack
+    /// Panics if there are no enough elements on the stack or if  the argumentsis
+    /// [Word::Boolean]
     Inc,
     /// Decrements the topmost value on the stack
+    /// Panics if there are no enough elements on the stack or if  the argumentsis
+    /// [Word::Boolean]
     Dec,
+    /// Computes the absolute value of the topmost value on the stack
+    /// Panics if there are no enough elements on the stack or if  the argumentsis
+    /// [Word::Boolean]
     Abs,
 
     // Logic
@@ -70,9 +85,9 @@ pub enum VMCommand {
     Return,
 
     // Interactions with cards
-    /// Pushes total number of cards on the board to stack
+    /// Pushes total number of cards to the stack
     PushCardCount,
-    /// Pushes total number of card types on the board to stack
+    /// Pushes total number of card types to the stack
     PushTypeCount,
     /// Pushes [CardType](crate::card::CardType) on the `i`-th card, where `i` is the topmost value on the stack
     PushCardType,
