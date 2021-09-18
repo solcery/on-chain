@@ -243,6 +243,11 @@ impl Memory {
         value
     }
 
+    pub fn pop_external_no_pc_inc(&mut self) -> Word {
+        let value = self.stack.pop().unwrap();
+        value
+    }
+
     pub fn push_local(&mut self, index: usize) {
         let value = self.stack[self.lcl + index];
         self.stack.push(value);

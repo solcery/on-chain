@@ -260,8 +260,8 @@ impl<'a> VM<'a> {
                 self.memory.push_external(Word::Numeric(TryInto::try_into(len).unwrap()));
                 Ok(())
             }
-            VMCommand::PopArgument { index } => {
-                self.memory.pop_argument(index);
+            VMCommand::PushCardType => {
+                self.push_card_type();
                 Ok(())
             }
             VMCommand::Halt => Err(()),
@@ -271,5 +271,16 @@ impl<'a> VM<'a> {
         }
     }
 
+    fn push_card_type(&mut self) {
+                let index = self.memory.pop_external_no_pc_inc();
+                match index {
+                    Word::Numeric(i) => {
+                        let card_type = self.board.cards[i as usize].card_type();
+                        self.memory.push_external(Word::Numeric(TryInto::try_into(card_type).unwrap()));
+                    }
+                    Word::Boolean(_) => {
+                        panic!("Type mismath: bool can not be interpreted as index.")
+                    }
+                }
     }
 }
