@@ -264,6 +264,10 @@ impl<'a> VM<'a> {
                 self.push_card_type();
                 Ok(())
             }
+            VMCommand::PushCardCountWithCardType => {
+                self.push_card_count_with_type();
+                Ok(())
+            }
             VMCommand::Halt => Err(()),
             _ => {
                 unimplemented!();
@@ -282,5 +286,23 @@ impl<'a> VM<'a> {
                         panic!("Type mismath: bool can not be interpreted as index.")
                     }
                 }
+    }
+    fn push_card_count_with_type(&mut self) {
+        let card_type = self.memory.pop_external_no_pc_inc();
+        match card_type {
+            Word::Numeric(id) => {
+                let count = self
+                    .board
+                    .cards
+                    .iter()
+                    .filter(|card| card.card_type() == id.try_into().unwrap())
+                    .count();
+                self.memory
+                    .push_external(Word::Numeric(TryInto::try_into(count).unwrap()));
+            }
+            Word::Boolean(_) => {
+                panic!("Type mismath: bool can not be interpreted as index.")
+            }
+        }
     }
 }
