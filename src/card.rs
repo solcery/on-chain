@@ -1,11 +1,10 @@
 use crate::word::Word;
-use std::marker::Copy;
 use tinyvec::ArrayVec;
 
 const ATTRS_VEC_SIZE: usize = 32;
 type Attrs = ArrayVec<[Word; ATTRS_VEC_SIZE]>;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct Card {
     id: u32,
     card_type: u32,

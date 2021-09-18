@@ -345,7 +345,12 @@ impl<'a> VM<'a> {
             Word::Numeric(id) => {
                 let card = &self.board.cards[id as usize];
                 let card_type_id = card.card_type();
-                let card_type = self.board.card_types.iter().find(|card_type| card_type.id() == card_type_id).unwrap();
+                let card_type = self
+                    .board
+                    .card_types
+                    .iter()
+                    .find(|card_type| card_type.id() == card_type_id)
+                    .unwrap();
                 let attr_value = card_type.get_attr_by_index(attr_index);
 
                 let word = attr_value;
