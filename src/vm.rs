@@ -70,8 +70,10 @@ pub enum VMCommand {
     Return,
 
     // Interactions with cards
-    /// Pushes total number of cards on the board to the stack
-    PushDeckSize,
+    /// Pushes total number of cards on the board to stack
+    PushCardCount,
+    /// Pushes total number of card types on the board to stack
+    PushTypeCount,
     /// Pushes [CardType](crate::card::CardType) on the `i`-th card, where `i` is the topmost value on the stack
     PushCardType,
     /// Pushes total number of cards with [CardType](crate::card::CardType) popped from the stack
@@ -94,16 +96,6 @@ pub enum VMCommand {
     /// Pops `attr_index`-th attribute of the [Card](crate::card::Card),
     /// those index is on the top of the stack
     PopCardAttr {
-        attr_index: usize,
-    },
-    /// Pushes `attr_index`-th attribute of the [Card](crate::card::Card),
-    /// those [CardType](crate::card::CardType) and index is on the top of the stack
-    PushCardAttrByType {
-        attr_index: usize,
-    },
-    /// Pops `attr_index`-th attribute of the [Card](crate::card::Card),
-    /// those [CardType](crate::card::CardType) and index is on the top of the stack
-    PopCardAttrByType {
         attr_index: usize,
     },
 }
@@ -255,43 +247,41 @@ impl<'a> VM<'a> {
                 self.memory.fn_return();
                 Ok(())
             }
-            VMCommand::PushDeckSize => {
+            VMCommand::PushCardCount => {
                 let len = self.board.cards.len();
                 self.memory
                     .push_external(Word::Numeric(TryInto::try_into(len).unwrap()));
                 Ok(())
             }
-            VMCommand::PushCardType => {
-                self.push_card_type();
+            VMCommand::PushTypeCount => {
+                let len = self.board.card_types.len();
+                self.memory
+                    .push_external(Word::Numeric(TryInto::try_into(len).unwrap()));
                 Ok(())
             }
             VMCommand::PushCardCountWithCardType => {
                 self.push_card_count_with_type();
                 Ok(())
             }
+            VMCommand::PushCardType => {
+                self.push_card_type();
+                Ok(())
+            }
             VMCommand::PushCardTypeAttrByTypeIndex { attr_index } => {
-                unimplemented!();
-                //Ok(())
-            }
-            VMCommand::PushCardAttr { attr_index } => {
-                unimplemented!();
-                //Ok(())
-            }
-            VMCommand::PushCardAttrByType { attr_index } => {
-                unimplemented!();
-                //Ok(())
-            }
-            VMCommand::PopCardAttrByType { attr_index } => {
-                unimplemented!();
-                //Ok(())
-            }
-            VMCommand::PopCardAttr { attr_index } => {
-                unimplemented!();
-                //Ok(())
+                self.push_card_type_attr_by_type_index(attr_index);
+                Ok(())
             }
             VMCommand::PushCardTypeAttrByCardIndex { attr_index } => {
-                unimplemented!();
-                //Ok(())
+                self.push_card_type_attr_by_card_index(attr_index);
+                Ok(())
+            }
+            VMCommand::PushCardAttr { attr_index } => {
+                self.push_card_attr(attr_index);
+                Ok(())
+            }
+            VMCommand::PopCardAttr { attr_index } => {
+                self.pop_card_attr(attr_index);
+                Ok(())
             }
             VMCommand::Halt => Err(()),
         }
@@ -326,6 +316,71 @@ impl<'a> VM<'a> {
 
                 let word = Word::Numeric(TryInto::try_into(count).unwrap());
                 self.memory.push_external(word);
+            }
+            Word::Boolean(_) => {
+                panic!("Type mismath: bool can not be interpreted as index.")
+            }
+        }
+    }
+
+    fn push_card_type_attr_by_type_index(&mut self, attr_index: usize) {
+        let type_index = self.memory.pop_external_no_pc_inc();
+        match type_index {
+            Word::Numeric(id) => {
+                let card_type = &self.board.card_types[id as usize];
+                let attr_value = card_type.get_attr_by_index(attr_index);
+
+                let word = attr_value;
+                self.memory.push_external(word);
+            }
+            Word::Boolean(_) => {
+                panic!("Type mismath: bool can not be interpreted as index.")
+            }
+        }
+    }
+
+    fn push_card_type_attr_by_card_index(&mut self, attr_index: usize) {
+        let card_index = self.memory.pop_external_no_pc_inc();
+        match card_index {
+            Word::Numeric(id) => {
+                let card = &self.board.cards[id as usize];
+                let card_type_id = card.card_type();
+                let card_type = self.board.card_types.iter().find(|card_type| card_type.id() == card_type_id).unwrap();
+                let attr_value = card_type.get_attr_by_index(attr_index);
+
+                let word = attr_value;
+                self.memory.push_external(word);
+            }
+            Word::Boolean(_) => {
+                panic!("Type mismath: bool can not be interpreted as index.")
+            }
+        }
+    }
+
+    fn push_card_attr(&mut self, attr_index: usize) {
+        let card_index = self.memory.pop_external_no_pc_inc();
+        match card_index {
+            Word::Numeric(id) => {
+                let card = &self.board.cards[id as usize];
+                let attr_value = card.attrs[attr_index];
+
+                let word = attr_value;
+                self.memory.push_external(word);
+            }
+            Word::Boolean(_) => {
+                panic!("Type mismath: bool can not be interpreted as index.")
+            }
+        }
+    }
+
+    fn pop_card_attr(&mut self, attr_index: usize) {
+        let card_index = self.memory.pop_external_no_pc_inc();
+        match card_index {
+            Word::Numeric(id) => {
+                let card = &mut self.board.cards[id as usize];
+                let attr_value = self.memory.pop_external();
+
+                card.attrs[attr_index] = attr_value;
             }
             Word::Boolean(_) => {
                 panic!("Type mismath: bool can not be interpreted as index.")
