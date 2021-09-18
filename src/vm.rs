@@ -2,8 +2,8 @@
 
 use crate::board::Board;
 use crate::word::Word;
-use tinyvec::ArrayVec;
 use std::convert::TryInto;
+use tinyvec::ArrayVec;
 
 mod memory;
 use memory::Memory;
@@ -257,7 +257,8 @@ impl<'a> VM<'a> {
             }
             VMCommand::PushDeckSize => {
                 let len = self.board.cards.len();
-                self.memory.push_external(Word::Numeric(TryInto::try_into(len).unwrap()));
+                self.memory
+                    .push_external(Word::Numeric(TryInto::try_into(len).unwrap()));
                 Ok(())
             }
             VMCommand::PushCardType => {
@@ -276,29 +277,36 @@ impl<'a> VM<'a> {
     }
 
     fn push_card_type(&mut self) {
-                let index = self.memory.pop_external_no_pc_inc();
-                match index {
-                    Word::Numeric(i) => {
-                        let card_type = self.board.cards[i as usize].card_type();
-                        self.memory.push_external(Word::Numeric(TryInto::try_into(card_type).unwrap()));
-                    }
-                    Word::Boolean(_) => {
-                        panic!("Type mismath: bool can not be interpreted as index.")
-                    }
-                }
+        let index = self.memory.pop_external_no_pc_inc();
+        match index {
+            Word::Numeric(i) => {
+                let card_type = self.board.cards[i as usize].card_type();
+                let word = Word::Numeric(TryInto::try_into(card_type).unwrap());
+                self.memory
+                    .push_external(word);
+            }
+            Word::Boolean(_) => {
+                panic!("Type mismath: bool can not be interpreted as index.")
+            }
+        }
     }
+
     fn push_card_count_with_type(&mut self) {
         let card_type = self.memory.pop_external_no_pc_inc();
         match card_type {
             Word::Numeric(id) => {
+                // Word::Numeric contains i32, but card_type is u32, so convert is needed
+                let signed_card_type = id.try_into().unwrap();
                 let count = self
                     .board
                     .cards
                     .iter()
-                    .filter(|card| card.card_type() == id.try_into().unwrap())
+                    .filter(|card| card.card_type() == signed_card_type)
                     .count();
+
+                let word = Word::Numeric(TryInto::try_into(count).unwrap());
                 self.memory
-                    .push_external(Word::Numeric(TryInto::try_into(count).unwrap()));
+                    .push_external(word);
             }
             Word::Boolean(_) => {
                 panic!("Type mismath: bool can not be interpreted as index.")
