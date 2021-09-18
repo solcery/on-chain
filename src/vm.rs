@@ -269,10 +269,31 @@ impl<'a> VM<'a> {
                 self.push_card_count_with_type();
                 Ok(())
             }
-            VMCommand::Halt => Err(()),
-            _ => {
+            VMCommand::PushCardTypeAttrByTypeIndex { attr_index } => {
                 unimplemented!();
+                //Ok(())
             }
+            VMCommand::PushCardAttr { attr_index } => {
+                unimplemented!();
+                //Ok(())
+            }
+            VMCommand::PushCardAttrByType { attr_index } => {
+                unimplemented!();
+                //Ok(())
+            }
+            VMCommand::PopCardAttrByType { attr_index } => {
+                unimplemented!();
+                //Ok(())
+            }
+            VMCommand::PopCardAttr { attr_index } => {
+                unimplemented!();
+                //Ok(())
+            }
+            VMCommand::PushCardTypeAttrByCardIndex { attr_index } => {
+                unimplemented!();
+                //Ok(())
+            }
+            VMCommand::Halt => Err(()),
         }
     }
 
@@ -282,8 +303,7 @@ impl<'a> VM<'a> {
             Word::Numeric(i) => {
                 let card_type = self.board.cards[i as usize].card_type();
                 let word = Word::Numeric(TryInto::try_into(card_type).unwrap());
-                self.memory
-                    .push_external(word);
+                self.memory.push_external(word);
             }
             Word::Boolean(_) => {
                 panic!("Type mismath: bool can not be interpreted as index.")
@@ -305,8 +325,7 @@ impl<'a> VM<'a> {
                     .count();
 
                 let word = Word::Numeric(TryInto::try_into(count).unwrap());
-                self.memory
-                    .push_external(word);
+                self.memory.push_external(word);
             }
             Word::Boolean(_) => {
                 panic!("Type mismath: bool can not be interpreted as index.")
