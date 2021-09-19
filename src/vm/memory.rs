@@ -255,11 +255,8 @@ impl Memory {
             (Some(_), Some(_)) => {
                 panic!("Type mismatch: attempted to compare boolean to numerical.");
             }
-            (_, None) => {
+            (_, None) | (None, _) => {
                 panic!("Not enough values on the stack.");
-            }
-            (None, _) => {
-                unreachable!();
             }
         }
     }
@@ -278,11 +275,8 @@ impl Memory {
             (Some(_), Some(_)) => {
                 panic!("Type mismatch: attempted to compare boolean to numerical.");
             }
-            (_, None) => {
+            (_, None) | (None, _) => {
                 panic!("Not enough values on the stack.");
-            }
-            (None, _) => {
-                unreachable!();
             }
         }
     }
@@ -301,11 +295,8 @@ impl Memory {
             (Some(_), Some(_)) => {
                 panic!("Type mismatch: attempted to compare boolean to numerical.");
             }
-            (_, None) => {
+            (_, None) | (None, _) => {
                 panic!("Not enough values on the stack.");
-            }
-            (None, _) => {
-                unreachable!();
             }
         }
     }
@@ -324,11 +315,8 @@ impl Memory {
             (Some(_), Some(_)) => {
                 panic!("Type mismatch: attempted to AND boolean to numerical.");
             }
-            (_, None) => {
+            (_, None) | (None, _) => {
                 panic!("Not enough values on the stack.");
-            }
-            (None, _) => {
-                unreachable!();
             }
         }
     }
@@ -347,11 +335,8 @@ impl Memory {
             (Some(_), Some(_)) => {
                 panic!("Type mismatch: attempted to OR boolean to numerical.");
             }
-            (_, None) => {
+            (_, None) | (None, _) => {
                 panic!("Not enough values on the stack.");
-            }
-            (None, _) => {
-                unreachable!();
             }
         }
     }
@@ -444,8 +429,15 @@ mod tests {
 
             #[test]
             #[should_panic(expected = "Type mismatch: attempted to add boolean values.")]
-            fn boolean() {
+            fn boolean_first() {
                 let mut mem = prepare_memory(vec![Word::Numeric(1), Word::Boolean(true)], 0, 0, 0);
+                mem.add();
+            }
+
+            #[test]
+            #[should_panic(expected = "Type mismatch: attempted to add boolean values.")]
+            fn boolean_second() {
+                let mut mem = prepare_memory(vec![Word::Boolean(true), Word::Numeric(1)], 0, 0, 0);
                 mem.add();
             }
 
@@ -632,27 +624,457 @@ mod tests {
             }
         }
 
-        mod neg {}
+        mod neg {
+            use super::*;
 
-        mod inc {}
+            #[test]
+            fn numeric() {
+                let mut mem = prepare_memory(vec![Word::Numeric(1), Word::Numeric(2)], 0, 0, 0);
+                mem.neg();
+                assert_eq!(
+                    mem.stack,
+                    array_vec!([Word; STACK_SIZE] => Word::Numeric(1), Word::Numeric(-2))
+                );
+                assert_eq!(mem.pc, 1);
+            }
 
-        mod dec {}
+            #[test]
+            #[should_panic(expected = "Attempted to negate boolean value.")]
+            fn boolean() {
+                let mut mem = prepare_memory(vec![Word::Numeric(1), Word::Boolean(true)], 0, 0, 0);
+                mem.neg();
+            }
 
-        mod abs {}
+            #[test]
+            #[should_panic(expected = "Not enough values on the stack.")]
+            fn empty_stack() {
+                let mut mem = prepare_memory(Vec::<Word>::new(), 0, 0, 0);
+                mem.neg();
+            }
+        }
+
+        mod inc {
+            use super::*;
+
+            #[test]
+            fn numeric() {
+                let mut mem = prepare_memory(vec![Word::Numeric(1), Word::Numeric(2)], 0, 0, 0);
+                mem.inc();
+                assert_eq!(
+                    mem.stack,
+                    array_vec!([Word; STACK_SIZE] => Word::Numeric(1), Word::Numeric(3))
+                );
+                assert_eq!(mem.pc, 1);
+            }
+
+            #[test]
+            #[should_panic(expected = "Attempted to increment boolean value.")]
+            fn boolean() {
+                let mut mem = prepare_memory(vec![Word::Numeric(1), Word::Boolean(true)], 0, 0, 0);
+                mem.inc();
+            }
+
+            #[test]
+            #[should_panic(expected = "Not enough values on the stack.")]
+            fn empty_stack() {
+                let mut mem = prepare_memory(Vec::<Word>::new(), 0, 0, 0);
+                mem.inc();
+            }
+        }
+
+        mod dec {
+            use super::*;
+
+            #[test]
+            fn numeric() {
+                let mut mem = prepare_memory(vec![Word::Numeric(1), Word::Numeric(2)], 0, 0, 0);
+                mem.dec();
+                assert_eq!(
+                    mem.stack,
+                    array_vec!([Word; STACK_SIZE] => Word::Numeric(1), Word::Numeric(1))
+                );
+                assert_eq!(mem.pc, 1);
+            }
+
+            #[test]
+            #[should_panic(expected = "Attempted to decrement boolean value.")]
+            fn boolean() {
+                let mut mem = prepare_memory(vec![Word::Numeric(1), Word::Boolean(true)], 0, 0, 0);
+                mem.dec();
+            }
+
+            #[test]
+            #[should_panic(expected = "Not enough values on the stack.")]
+            fn empty_stack() {
+                let mut mem = prepare_memory(Vec::<Word>::new(), 0, 0, 0);
+                mem.dec();
+            }
+        }
+
+        mod abs {
+            use super::*;
+
+            #[test]
+            fn positive() {
+                let mut mem = prepare_memory(vec![Word::Numeric(1), Word::Numeric(2)], 0, 0, 0);
+                mem.abs();
+                assert_eq!(
+                    mem.stack,
+                    array_vec!([Word; STACK_SIZE] => Word::Numeric(1), Word::Numeric(2))
+                );
+                assert_eq!(mem.pc, 1);
+            }
+
+            #[test]
+            fn negative() {
+                let mut mem = prepare_memory(vec![Word::Numeric(1), Word::Numeric(-2)], 0, 0, 0);
+                mem.abs();
+                assert_eq!(
+                    mem.stack,
+                    array_vec!([Word; STACK_SIZE] => Word::Numeric(1), Word::Numeric(2))
+                );
+                assert_eq!(mem.pc, 1);
+            }
+
+            #[test]
+            #[should_panic(expected = "Attempted to find modulus of boolean value.")]
+            fn boolean() {
+                let mut mem = prepare_memory(vec![Word::Numeric(1), Word::Boolean(true)], 0, 0, 0);
+                mem.abs();
+            }
+
+            #[test]
+            #[should_panic(expected = "Not enough values on the stack.")]
+            fn empty_stack() {
+                let mut mem = prepare_memory(Vec::<Word>::new(), 0, 0, 0);
+                mem.abs();
+            }
+        }
     }
 
     mod logic {
-        mod eq {}
+        use super::*;
 
-        mod gt {}
+        mod eq {
+            use super::*;
 
-        mod lt {}
+            #[test]
+            fn equal() {
+                let mut mem = prepare_memory(vec![Word::Numeric(4), Word::Numeric(4)], 0, 0, 0);
+                mem.eq();
+                assert_eq!(
+                    mem.stack,
+                    array_vec!([Word; STACK_SIZE] => Word::Boolean(true))
+                );
+                assert_eq!(mem.pc, 1);
+            }
 
-        mod and {}
+            #[test]
+            fn non_equal() {
+                let mut mem = prepare_memory(vec![Word::Numeric(5), Word::Numeric(4)], 0, 0, 0);
+                mem.eq();
+                assert_eq!(
+                    mem.stack,
+                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
+                );
+                assert_eq!(mem.pc, 1);
+            }
 
-        mod or {}
+            #[test]
+            #[should_panic(expected = "Type mismatch: attempted to compare boolean to numerical.")]
+            fn type_mismatch() {
+                let mut mem = prepare_memory(vec![Word::Numeric(1), Word::Boolean(true)], 0, 0, 0);
+                mem.eq();
+            }
 
-        mod not {}
+            #[test]
+            #[should_panic(
+                expected = "Type mismatch: attempted to check boolean values for equality. Use `XOR` instead."
+            )]
+            fn boolean() {
+                let mut mem =
+                    prepare_memory(vec![Word::Boolean(true), Word::Boolean(true)], 0, 0, 0);
+                mem.eq();
+            }
+
+            #[test]
+            #[should_panic(expected = "Not enough values on the stack.")]
+            fn one_value_on_the_stack() {
+                let mut mem = prepare_memory(vec![Word::Numeric(1)], 0, 0, 0);
+                mem.eq();
+            }
+
+            #[test]
+            #[should_panic(expected = "Not enough values on the stack.")]
+            fn empty_stack() {
+                let mut mem = prepare_memory(Vec::<Word>::new(), 0, 0, 0);
+                mem.eq();
+            }
+        }
+
+        mod gt {
+            use super::*;
+
+            #[test]
+            fn equal() {
+                let mut mem = prepare_memory(vec![Word::Numeric(4), Word::Numeric(4)], 0, 0, 0);
+                mem.gt();
+                assert_eq!(
+                    mem.stack,
+                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
+                );
+                assert_eq!(mem.pc, 1);
+            }
+
+            #[test]
+            fn smaller() {
+                let mut mem = prepare_memory(vec![Word::Numeric(5), Word::Numeric(4)], 0, 0, 0);
+                mem.gt();
+                assert_eq!(
+                    mem.stack,
+                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
+                );
+                assert_eq!(mem.pc, 1);
+            }
+
+            #[test]
+            fn bigger() {
+                let mut mem = prepare_memory(vec![Word::Numeric(4), Word::Numeric(5)], 0, 0, 0);
+                mem.gt();
+                assert_eq!(
+                    mem.stack,
+                    array_vec!([Word; STACK_SIZE] => Word::Boolean(true))
+                );
+                assert_eq!(mem.pc, 1);
+            }
+
+            #[test]
+            #[should_panic(expected = "Type mismatch: attempted to compare boolean to numerical.")]
+            fn boolean() {
+                let mut mem = prepare_memory(vec![Word::Numeric(1), Word::Boolean(true)], 0, 0, 0);
+                mem.gt();
+            }
+
+            #[test]
+            #[should_panic(expected = "Not enough values on the stack.")]
+            fn one_value_on_the_stack() {
+                let mut mem = prepare_memory(vec![Word::Numeric(1)], 0, 0, 0);
+                mem.gt();
+            }
+
+            #[test]
+            #[should_panic(expected = "Not enough values on the stack.")]
+            fn empty_stack() {
+                let mut mem = prepare_memory(Vec::<Word>::new(), 0, 0, 0);
+                mem.gt();
+            }
+        }
+
+        mod lt {
+            use super::*;
+
+            #[test]
+            fn equal() {
+                let mut mem = prepare_memory(vec![Word::Numeric(4), Word::Numeric(4)], 0, 0, 0);
+                mem.lt();
+                assert_eq!(
+                    mem.stack,
+                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
+                );
+                assert_eq!(mem.pc, 1);
+            }
+
+            #[test]
+            fn smaller() {
+                let mut mem = prepare_memory(vec![Word::Numeric(5), Word::Numeric(4)], 0, 0, 0);
+                mem.lt();
+                assert_eq!(
+                    mem.stack,
+                    array_vec!([Word; STACK_SIZE] => Word::Boolean(true))
+                );
+                assert_eq!(mem.pc, 1);
+            }
+
+            #[test]
+            fn bigger() {
+                let mut mem = prepare_memory(vec![Word::Numeric(4), Word::Numeric(5)], 0, 0, 0);
+                mem.lt();
+                assert_eq!(
+                    mem.stack,
+                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
+                );
+                assert_eq!(mem.pc, 1);
+            }
+
+            #[test]
+            #[should_panic(expected = "Type mismatch: attempted to compare boolean to numerical.")]
+            fn boolean() {
+                let mut mem = prepare_memory(vec![Word::Numeric(1), Word::Boolean(true)], 0, 0, 0);
+                mem.lt();
+            }
+
+            #[test]
+            #[should_panic(expected = "Not enough values on the stack.")]
+            fn one_value_on_the_stack() {
+                let mut mem = prepare_memory(vec![Word::Numeric(1)], 0, 0, 0);
+                mem.lt();
+            }
+
+            #[test]
+            #[should_panic(expected = "Not enough values on the stack.")]
+            fn empty_stack() {
+                let mut mem = prepare_memory(Vec::<Word>::new(), 0, 0, 0);
+                mem.lt();
+            }
+        }
+
+        mod and {
+            use super::*;
+
+            #[test]
+            fn false_false() {
+                let mut mem =
+                    prepare_memory(vec![Word::Boolean(false), Word::Boolean(false)], 0, 0, 0);
+                mem.and();
+                assert_eq!(
+                    mem.stack,
+                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
+                );
+                assert_eq!(mem.pc, 1);
+            }
+
+            #[test]
+            fn false_true() {
+                let mut mem =
+                    prepare_memory(vec![Word::Boolean(false), Word::Boolean(true)], 0, 0, 0);
+                mem.and();
+                assert_eq!(
+                    mem.stack,
+                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
+                );
+                assert_eq!(mem.pc, 1);
+            }
+
+            #[test]
+            fn true_true() {
+                let mut mem =
+                    prepare_memory(vec![Word::Boolean(true), Word::Boolean(true)], 0, 0, 0);
+                mem.and();
+                assert_eq!(
+                    mem.stack,
+                    array_vec!([Word; STACK_SIZE] => Word::Boolean(true))
+                );
+                assert_eq!(mem.pc, 1);
+            }
+
+            #[test]
+            #[should_panic(expected = "Not enough values on the stack.")]
+            fn one_value_on_the_stack() {
+                let mut mem = prepare_memory(vec![Word::Numeric(1)], 0, 0, 0);
+                mem.and();
+            }
+
+            #[test]
+            #[should_panic(expected = "Not enough values on the stack.")]
+            fn empty_stack() {
+                let mut mem = prepare_memory(Vec::<Word>::new(), 0, 0, 0);
+                mem.and();
+            }
+        }
+
+        mod or {
+            use super::*;
+
+            #[test]
+            fn false_false() {
+                let mut mem =
+                    prepare_memory(vec![Word::Boolean(false), Word::Boolean(false)], 0, 0, 0);
+                mem.or();
+                assert_eq!(
+                    mem.stack,
+                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
+                );
+                assert_eq!(mem.pc, 1);
+            }
+
+            #[test]
+            fn false_true() {
+                let mut mem =
+                    prepare_memory(vec![Word::Boolean(false), Word::Boolean(true)], 0, 0, 0);
+                mem.or();
+                assert_eq!(
+                    mem.stack,
+                    array_vec!([Word; STACK_SIZE] => Word::Boolean(true))
+                );
+                assert_eq!(mem.pc, 1);
+            }
+
+            #[test]
+            fn true_true() {
+                let mut mem =
+                    prepare_memory(vec![Word::Boolean(true), Word::Boolean(true)], 0, 0, 0);
+                mem.or();
+                assert_eq!(
+                    mem.stack,
+                    array_vec!([Word; STACK_SIZE] => Word::Boolean(true))
+                );
+                assert_eq!(mem.pc, 1);
+            }
+
+            #[test]
+            #[should_panic(expected = "Not enough values on the stack.")]
+            fn one_value_on_the_stack() {
+                let mut mem = prepare_memory(vec![Word::Numeric(1)], 0, 0, 0);
+                mem.or();
+            }
+
+            #[test]
+            #[should_panic(expected = "Not enough values on the stack.")]
+            fn empty_stack() {
+                let mut mem = prepare_memory(Vec::<Word>::new(), 0, 0, 0);
+                mem.or();
+            }
+        }
+
+        mod not {
+            use super::*;
+
+            #[test]
+            fn test_false() {
+                let mut mem = prepare_memory(vec![Word::Boolean(false)], 0, 0, 0);
+                mem.not();
+                assert_eq!(
+                    mem.stack,
+                    array_vec!([Word; STACK_SIZE] => Word::Boolean(true))
+                );
+                assert_eq!(mem.pc, 1);
+            }
+
+            #[test]
+            fn test_true() {
+                let mut mem = prepare_memory(vec![Word::Boolean(true)], 0, 0, 0);
+                mem.not();
+                assert_eq!(
+                    mem.stack,
+                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
+                );
+                assert_eq!(mem.pc, 1);
+            }
+
+            #[test]
+            #[should_panic(expected = "Attempted to NOT numerical value.")]
+            fn numerical() {
+                let mut mem = prepare_memory(vec![Word::Numeric(1)], 0, 0, 0);
+                mem.not();
+            }
+
+            #[test]
+            #[should_panic(expected = "Not enough values on the stack.")]
+            fn empty_stack() {
+                let mut mem = prepare_memory(Vec::<Word>::new(), 0, 0, 0);
+                mem.not();
+            }
+        }
     }
 
     mod data_flow {
@@ -781,7 +1203,7 @@ mod tests {
         }
     }
 
-    mod subroutine_calling {
+    mod control_flow {
         use super::*;
 
         #[test]
@@ -833,6 +1255,22 @@ mod tests {
             assert_eq!(mem.lcl, 2);
             assert_eq!(mem.arg, 0);
             assert_eq!(mem.pc, 17);
+        }
+
+        #[test]
+        fn conditional_jump_successful() {
+            let mut mem = prepare_memory(vec![Word::Boolean(true)], 0, 0, 0);
+            mem.ifjmp(10);
+            assert_eq!(mem.stack, ArrayVec::<[Word; STACK_SIZE]>::new());
+            assert_eq!(mem.pc, 10);
+        }
+
+        #[test]
+        fn conditional_jump_unsuccessful() {
+            let mut mem = prepare_memory(vec![Word::Boolean(false)], 0, 0, 0);
+            mem.ifjmp(10);
+            assert_eq!(mem.stack, ArrayVec::<[Word; STACK_SIZE]>::new());
+            assert_eq!(mem.pc, 1);
         }
     }
 }
