@@ -58,17 +58,11 @@ impl Memory {
                 self.stack.push(Word::Numeric(x + y));
                 self.pc += 1;
             }
-            (Some(Word::Boolean(_)), _) => {
-                panic!("Type mismatch: attempted to add boolean values.")
+            (Some(Word::Boolean(_)), _) | (_, Some(Word::Boolean(_))) => {
+                panic!("Type mismatch: attempted to add boolean values.");
             }
-            (_, Some(Word::Boolean(_))) => {
-                panic!("Type mismatch: attempted to add boolean values.")
-            }
-            (_, None) => {
-                panic!("Not enough values on the stack.")
-            }
-            (None, _) => {
-                unreachable!();
+            (_, None) | (None, _) => {
+                panic!("Not enough values on the stack.");
             }
         }
     }
@@ -82,17 +76,11 @@ impl Memory {
                 self.stack.push(Word::Numeric(x - y));
                 self.pc += 1;
             }
-            (Some(Word::Boolean(_)), _) => {
-                panic!("Type mismatch: attempted to substract boolean values.")
+            (Some(Word::Boolean(_)), _) | (_, Some(Word::Boolean(_))) => {
+                panic!("Type mismatch: attempted to substract boolean values.");
             }
-            (_, Some(Word::Boolean(_))) => {
-                panic!("Type mismatch: attempted to substract boolean values.")
-            }
-            (_, None) => {
-                panic!("Not enough values on the stack.")
-            }
-            (None, _) => {
-                unreachable!();
+            (_, None) | (None, _) => {
+                panic!("Not enough values on the stack.");
             }
         }
     }
@@ -105,17 +93,11 @@ impl Memory {
                 self.stack.push(Word::Numeric(x * y));
                 self.pc += 1;
             }
-            (Some(Word::Boolean(_)), _) => {
-                panic!("Type mismatch: attempted to multiply boolean values.")
+            (Some(Word::Boolean(_)), _) | (_, Some(Word::Boolean(_))) => {
+                panic!("Type mismatch: attempted to multiply boolean values.");
             }
-            (_, Some(Word::Boolean(_))) => {
-                panic!("Type mismatch: attempted to multiply boolean values.")
-            }
-            (_, None) => {
-                panic!("Not enough values on the stack.")
-            }
-            (None, _) => {
-                unreachable!();
+            (_, None) | (None, _) => {
+                panic!("Not enough values on the stack.");
             }
         }
     }
@@ -129,17 +111,11 @@ impl Memory {
                 self.stack.push(Word::Numeric(x / y));
                 self.pc += 1;
             }
-            (Some(Word::Boolean(_)), _) => {
-                panic!("Type mismatch: attempted to divide boolean values.")
+            (Some(Word::Boolean(_)), _) | (_, Some(Word::Boolean(_))) => {
+                panic!("Type mismatch: attempted to divide boolean values.");
             }
-            (_, Some(Word::Boolean(_))) => {
-                panic!("Type mismatch: attempted to divide boolean values.")
-            }
-            (_, None) => {
-                panic!("Not enough values on the stack.")
-            }
-            (None, _) => {
-                unreachable!();
+            (_, None) | (None, _) => {
+                panic!("Not enough values on the stack.");
             }
         }
     }
@@ -153,17 +129,11 @@ impl Memory {
                 self.stack.push(Word::Numeric(x % y));
                 self.pc += 1;
             }
-            (Some(Word::Boolean(_)), _) => {
-                panic!("Type mismatch: attempted to take the remainer of the boolean values.")
+            (Some(Word::Boolean(_)), _) | (_, Some(Word::Boolean(_))) => {
+                panic!("Type mismatch: attempted to take the remainer of the boolean values.");
             }
-            (_, Some(Word::Boolean(_))) => {
-                panic!("Type mismatch: attempted to take the remainer of the boolean values.")
-            }
-            (_, None) => {
-                panic!("Not enough values on the stack.")
-            }
-            (None, _) => {
-                unreachable!();
+            (_, None) | (None, _) => {
+                panic!("Not enough values on the stack.");
             }
         }
     }
@@ -179,7 +149,7 @@ impl Memory {
                 panic!("Attempted to negate boolean value.");
             }
             None => {
-                panic!("Not enough values on the stack.")
+                panic!("Not enough values on the stack.");
             }
         }
     }
@@ -188,14 +158,14 @@ impl Memory {
         let value = self.stack.pop();
         match value {
             Some(Word::Numeric(x)) => {
-                self.stack.push(Word::Numeric(x+1));
+                self.stack.push(Word::Numeric(x + 1));
                 self.pc += 1;
             }
             Some(Word::Boolean(_)) => {
                 panic!("Attempted to increment boolean value.");
             }
             None => {
-                panic!("Not enough values on the stack.")
+                panic!("Not enough values on the stack.");
             }
         }
     }
@@ -204,14 +174,14 @@ impl Memory {
         let value = self.stack.pop();
         match value {
             Some(Word::Numeric(x)) => {
-                self.stack.push(Word::Numeric(x-1));
+                self.stack.push(Word::Numeric(x - 1));
                 self.pc += 1;
             }
             Some(Word::Boolean(_)) => {
                 panic!("Attempted to decrement boolean value.");
             }
             None => {
-                panic!("Not enough values on the stack.")
+                panic!("Not enough values on the stack.");
             }
         }
     }
@@ -227,7 +197,7 @@ impl Memory {
                 panic!("Attempted to find modulus of boolean value.");
             }
             None => {
-                panic!("Not enough values on the stack.")
+                panic!("Not enough values on the stack.");
             }
         }
     }
@@ -244,8 +214,7 @@ impl Memory {
     }
 
     pub fn pop_external_no_pc_inc(&mut self) -> Word {
-        let value = self.stack.pop().unwrap();
-        value
+        self.stack.pop().unwrap()
     }
 
     pub fn push_local(&mut self, index: usize) {
@@ -281,13 +250,13 @@ impl Memory {
                 self.pc += 1;
             }
             (Some(Word::Boolean(_)), Some(Word::Boolean(_))) => {
-                panic!("Type mismatch: attempted to check boolean values for equality. Use `XOR` instead.")
+                panic!("Type mismatch: attempted to check boolean values for equality. Use `XOR` instead.");
             }
             (Some(_), Some(_)) => {
-                panic!("Type mismatch: attempted to compare boolean to numerical.")
+                panic!("Type mismatch: attempted to compare boolean to numerical.");
             }
             (_, None) => {
-                panic!("Not enough values on the stack.")
+                panic!("Not enough values on the stack.");
             }
             (None, _) => {
                 unreachable!();
@@ -304,13 +273,13 @@ impl Memory {
                 self.pc += 1;
             }
             (Some(Word::Boolean(_)), Some(Word::Boolean(_))) => {
-                panic!("Type mismatch: attempted to check boolean values for equality. Use `XOR` instead.")
+                panic!("Type mismatch: attempted to check boolean values for equality. Use `XOR` instead.");
             }
             (Some(_), Some(_)) => {
-                panic!("Type mismatch: attempted to compare boolean to numerical.")
+                panic!("Type mismatch: attempted to compare boolean to numerical.");
             }
             (_, None) => {
-                panic!("Not enough values on the stack.")
+                panic!("Not enough values on the stack.");
             }
             (None, _) => {
                 unreachable!();
@@ -327,13 +296,13 @@ impl Memory {
                 self.pc += 1;
             }
             (Some(Word::Boolean(_)), Some(Word::Boolean(_))) => {
-                panic!("Type mismatch: attempted to check boolean values for equality. Use `XOR` instead.")
+                panic!("Type mismatch: attempted to check boolean values for equality. Use `XOR` instead.");
             }
             (Some(_), Some(_)) => {
-                panic!("Type mismatch: attempted to compare boolean to numerical.")
+                panic!("Type mismatch: attempted to compare boolean to numerical.");
             }
             (_, None) => {
-                panic!("Not enough values on the stack.")
+                panic!("Not enough values on the stack.");
             }
             (None, _) => {
                 unreachable!();
@@ -350,13 +319,13 @@ impl Memory {
                 self.pc += 1;
             }
             (Some(Word::Numeric(_)), Some(Word::Numeric(_))) => {
-                panic!("Type mismatch: attempted to AND numerical values.")
+                panic!("Type mismatch: attempted to AND numerical values.");
             }
             (Some(_), Some(_)) => {
-                panic!("Type mismatch: attempted to AND boolean to numerical.")
+                panic!("Type mismatch: attempted to AND boolean to numerical.");
             }
             (_, None) => {
-                panic!("Not enough values on the stack.")
+                panic!("Not enough values on the stack.");
             }
             (None, _) => {
                 unreachable!();
@@ -373,13 +342,13 @@ impl Memory {
                 self.pc += 1;
             }
             (Some(Word::Numeric(_)), Some(Word::Numeric(_))) => {
-                panic!("Type mismatch: attempted to OR numerical values.")
+                panic!("Type mismatch: attempted to OR numerical values.");
             }
             (Some(_), Some(_)) => {
-                panic!("Type mismatch: attempted to OR boolean to numerical.")
+                panic!("Type mismatch: attempted to OR boolean to numerical.");
             }
             (_, None) => {
-                panic!("Not enough values on the stack.")
+                panic!("Not enough values on the stack.");
             }
             (None, _) => {
                 unreachable!();
@@ -398,7 +367,7 @@ impl Memory {
                 panic!("Attempted to NOT numerical value.");
             }
             None => {
-                panic!("Not enough values on the stack.")
+                panic!("Not enough values on the stack.");
             }
         }
     }
@@ -643,10 +612,10 @@ mod tests {
             #[should_panic(
                 expected = "Type mismatch: attempted to take the remainer of the boolean values."
             )]
-                fn boolean() {
-                    let mut mem = prepare_memory(vec![Word::Numeric(1), Word::Boolean(true)], 0, 0, 0);
-                    mem.rem();
-                }
+            fn boolean() {
+                let mut mem = prepare_memory(vec![Word::Numeric(1), Word::Boolean(true)], 0, 0, 0);
+                mem.rem();
+            }
 
             #[test]
             #[should_panic(expected = "Not enough values on the stack.")]
@@ -663,47 +632,27 @@ mod tests {
             }
         }
 
-        mod neg {
+        mod neg {}
 
-        }
+        mod inc {}
 
-        mod inc {
+        mod dec {}
 
-        }
-
-        mod dec {
-
-        }
-
-        mod abs {
-
-        }
+        mod abs {}
     }
 
     mod logic {
-        mod eq {
+        mod eq {}
 
-        }
+        mod gt {}
 
-        mod gt {
+        mod lt {}
 
-        }
+        mod and {}
 
-        mod lt {
+        mod or {}
 
-        }
-
-        mod and {
-
-        }
-
-        mod or {
-
-        }
-
-        mod not {
-
-        }
+        mod not {}
     }
 
     mod data_flow {

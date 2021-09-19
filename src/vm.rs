@@ -122,16 +122,16 @@ impl Default for VMCommand {
 }
 
 const ROM_SIZE: usize = 512;
-type ROM = ArrayVec<[VMCommand; ROM_SIZE]>;
+type Rom = ArrayVec<[VMCommand; ROM_SIZE]>;
 
 pub struct VM<'a> {
-    rom: ROM,
+    rom: Rom,
     memory: Memory,
     board: &'a mut Board,
 }
 
 impl<'a> VM<'a> {
-    pub fn new(rom: ROM, board: &'a mut Board) -> VM<'a> {
+    pub fn new(rom: Rom, board: &'a mut Board) -> VM<'a> {
         VM {
             rom,
             memory: Memory::new(),
@@ -311,7 +311,7 @@ impl<'a> VM<'a> {
                 self.memory.push_external(word);
             }
             Word::Boolean(_) => {
-                panic!("Type mismath: bool can not be interpreted as index.")
+                panic!("Type mismath: bool can not be interpreted as index.");
             }
         }
     }
@@ -333,7 +333,7 @@ impl<'a> VM<'a> {
                 self.memory.push_external(word);
             }
             Word::Boolean(_) => {
-                panic!("Type mismath: bool can not be interpreted as index.")
+                panic!("Type mismath: bool can not be interpreted as index.");
             }
         }
     }
@@ -349,7 +349,7 @@ impl<'a> VM<'a> {
                 self.memory.push_external(word);
             }
             Word::Boolean(_) => {
-                panic!("Type mismath: bool can not be interpreted as index.")
+                panic!("Type mismath: bool can not be interpreted as index.");
             }
         }
     }
@@ -372,7 +372,7 @@ impl<'a> VM<'a> {
                 self.memory.push_external(word);
             }
             Word::Boolean(_) => {
-                panic!("Type mismath: bool can not be interpreted as index.")
+                panic!("Type mismath: bool can not be interpreted as index.");
             }
         }
     }
@@ -388,7 +388,7 @@ impl<'a> VM<'a> {
                 self.memory.push_external(word);
             }
             Word::Boolean(_) => {
-                panic!("Type mismath: bool can not be interpreted as index.")
+                panic!("Type mismath: bool can not be interpreted as index.");
             }
         }
     }
@@ -403,7 +403,7 @@ impl<'a> VM<'a> {
                 card.attrs[attr_index] = attr_value;
             }
             Word::Boolean(_) => {
-                panic!("Type mismath: bool can not be interpreted as index.")
+                panic!("Type mismath: bool can not be interpreted as index.");
             }
         }
     }
