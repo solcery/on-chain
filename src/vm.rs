@@ -269,7 +269,7 @@ impl<'a> VM<'a> {
                 Ok(())
             }
             VMCommand::PushTypeCount => {
-                let len = self.board.card_types.len();
+                let len = self.board.card_type_count();
                 self.memory
                     .push_external(Word::Numeric(TryInto::try_into(len).unwrap()));
                 Ok(())
@@ -342,8 +342,8 @@ impl<'a> VM<'a> {
         let type_index = self.memory.pop_external_no_pc_inc();
         match type_index {
             Word::Numeric(id) => {
-                let card_type = &self.board.card_types[id as usize];
-                let attr_value = card_type.get_attr_by_index(attr_index);
+                let card_type = self.board.card_type_by_type_index(id as usize);
+                let attr_value = card_type.attr_by_index(attr_index);
 
                 let word = attr_value;
                 self.memory.push_external(word);
@@ -360,13 +360,8 @@ impl<'a> VM<'a> {
             Word::Numeric(id) => {
                 let card = &self.board.cards[id as usize];
                 let card_type_id = card.card_type();
-                let card_type = self
-                    .board
-                    .card_types
-                    .iter()
-                    .find(|card_type| card_type.id() == card_type_id)
-                    .unwrap();
-                let attr_value = card_type.get_attr_by_index(attr_index);
+                let card_type = self.board.card_type_by_type_id(card_type_id).unwrap();
+                let attr_value = card_type.attr_by_index(attr_index);
 
                 let word = attr_value;
                 self.memory.push_external(word);
