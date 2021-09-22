@@ -402,4 +402,14 @@ impl<'a> VM<'a> {
             }
         }
     }
+
+    fn prepare_vm(rom: Vec<VMCommand>, memory: Memory, board: &mut Board) -> VM {
+        let mut vm = VM {
+            rom: Rom::new(),
+            memory,
+            board,
+        };
+        vm.rom.fill(rom);
+        vm
+    }
 }
