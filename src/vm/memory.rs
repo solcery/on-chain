@@ -250,7 +250,7 @@ impl Memory {
                 self.pc += 1;
             }
             (Some(Word::Boolean(_)), Some(Word::Boolean(_))) => {
-                panic!("Type mismatch: attempted to check boolean values for equality. Use `XOR` instead.");
+                panic!("Type mismatch: attempted to check boolean values for equality.");
             }
             (Some(_), Some(_)) => {
                 panic!("Type mismatch: attempted to compare boolean to numerical.");
@@ -270,7 +270,7 @@ impl Memory {
                 self.pc += 1;
             }
             (Some(Word::Boolean(_)), Some(Word::Boolean(_))) => {
-                panic!("Type mismatch: attempted to check boolean values for equality. Use `XOR` instead.");
+                panic!("Type mismatch: attempted to check boolean values for equality.");
             }
             (Some(_), Some(_)) => {
                 panic!("Type mismatch: attempted to compare boolean to numerical.");
@@ -290,7 +290,7 @@ impl Memory {
                 self.pc += 1;
             }
             (Some(Word::Boolean(_)), Some(Word::Boolean(_))) => {
-                panic!("Type mismatch: attempted to check boolean values for equality. Use `XOR` instead.");
+                panic!("Type mismatch: attempted to check boolean values for equality.");
             }
             (Some(_), Some(_)) => {
                 panic!("Type mismatch: attempted to compare boolean to numerical.");
@@ -789,7 +789,7 @@ mod tests {
 
             #[test]
             #[should_panic(
-                expected = "Type mismatch: attempted to check boolean values for equality. Use `XOR` instead."
+                expected = "Type mismatch: attempted to check boolean values for equality."
             )]
             fn boolean() {
                 let mut mem =
@@ -850,8 +850,18 @@ mod tests {
 
             #[test]
             #[should_panic(expected = "Type mismatch: attempted to compare boolean to numerical.")]
-            fn boolean() {
+            fn type_mismatch() {
                 let mut mem = prepare_memory(vec![Word::Numeric(1), Word::Boolean(true)], 0, 0, 0);
+                mem.gt();
+            }
+
+            #[test]
+            #[should_panic(
+                expected = "Type mismatch: attempted to check boolean values for equality."
+            )]
+            fn boolean() {
+                let mut mem =
+                    prepare_memory(vec![Word::Boolean(true), Word::Boolean(true)], 0, 0, 0);
                 mem.gt();
             }
 
@@ -908,8 +918,18 @@ mod tests {
 
             #[test]
             #[should_panic(expected = "Type mismatch: attempted to compare boolean to numerical.")]
-            fn boolean() {
+            fn type_mismatch() {
                 let mut mem = prepare_memory(vec![Word::Numeric(1), Word::Boolean(true)], 0, 0, 0);
+                mem.lt();
+            }
+
+            #[test]
+            #[should_panic(
+                expected = "Type mismatch: attempted to check boolean values for equality."
+            )]
+            fn boolean() {
+                let mut mem =
+                    prepare_memory(vec![Word::Boolean(true), Word::Boolean(true)], 0, 0, 0);
                 mem.lt();
             }
 
@@ -968,6 +988,20 @@ mod tests {
             }
 
             #[test]
+            #[should_panic(expected = "Type mismatch: attempted to AND boolean to numerical.")]
+            fn type_mismatch() {
+                let mut mem = prepare_memory(vec![Word::Numeric(1), Word::Boolean(true)], 0, 0, 0);
+                mem.and();
+            }
+
+            #[test]
+            #[should_panic(expected = "Type mismatch: attempted to AND numerical values.")]
+            fn boolean() {
+                let mut mem = prepare_memory(vec![Word::Numeric(1), Word::Numeric(2)], 0, 0, 0);
+                mem.and();
+            }
+
+            #[test]
             #[should_panic(expected = "Not enough values on the stack.")]
             fn one_value_on_the_stack() {
                 let mut mem = prepare_memory(vec![Word::Numeric(1)], 0, 0, 0);
@@ -1019,6 +1053,20 @@ mod tests {
                     array_vec!([Word; STACK_SIZE] => Word::Boolean(true))
                 );
                 assert_eq!(mem.pc, 1);
+            }
+
+            #[test]
+            #[should_panic(expected = "Type mismatch: attempted to OR boolean to numerical.")]
+            fn type_mismatch() {
+                let mut mem = prepare_memory(vec![Word::Numeric(1), Word::Boolean(true)], 0, 0, 0);
+                mem.or();
+            }
+
+            #[test]
+            #[should_panic(expected = "Type mismatch: attempted to OR numerical values.")]
+            fn boolean() {
+                let mut mem = prepare_memory(vec![Word::Numeric(1), Word::Numeric(2)], 0, 0, 0);
+                mem.or();
             }
 
             #[test]
@@ -1257,20 +1305,39 @@ mod tests {
             assert_eq!(mem.pc, 17);
         }
 
-        #[test]
-        fn conditional_jump_successful() {
-            let mut mem = prepare_memory(vec![Word::Boolean(true)], 0, 0, 0);
-            mem.ifjmp(10);
-            assert_eq!(mem.stack, ArrayVec::<[Word; STACK_SIZE]>::new());
-            assert_eq!(mem.pc, 10);
-        }
+        mod ifjmp {
+            use super::*;
+            #[test]
+            fn conditional_jump_successful() {
+                let mut mem = prepare_memory(vec![Word::Boolean(true)], 0, 0, 0);
+                mem.ifjmp(10);
+                assert_eq!(mem.stack, ArrayVec::<[Word; STACK_SIZE]>::new());
+                assert_eq!(mem.pc, 10);
+            }
 
-        #[test]
-        fn conditional_jump_unsuccessful() {
-            let mut mem = prepare_memory(vec![Word::Boolean(false)], 0, 0, 0);
-            mem.ifjmp(10);
-            assert_eq!(mem.stack, ArrayVec::<[Word; STACK_SIZE]>::new());
-            assert_eq!(mem.pc, 1);
+            #[test]
+            fn conditional_jump_unsuccessful() {
+                let mut mem = prepare_memory(vec![Word::Boolean(false)], 0, 0, 0);
+                mem.ifjmp(10);
+                assert_eq!(mem.stack, ArrayVec::<[Word; STACK_SIZE]>::new());
+                assert_eq!(mem.pc, 1);
+            }
+
+            #[test]
+            #[should_panic(
+                expected = "Type mismatch: attempted to use numerical value in boolean condition."
+            )]
+            fn type_mismatch() {
+                let mut mem = prepare_memory(vec![Word::Numeric(1)], 0, 0, 0);
+                mem.ifjmp(10);
+            }
+
+            #[test]
+            #[should_panic(expected = "Not enough values on the stack.")]
+            fn empty_stack() {
+                let mut mem = prepare_memory(Vec::<Word>::new(), 0, 0, 0);
+                mem.ifjmp(10);
+            }
         }
     }
 }
