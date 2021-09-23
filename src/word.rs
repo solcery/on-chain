@@ -25,3 +25,19 @@ impl Default for Word {
         Word::Numeric(0)
     }
 }
+impl From<i32> for Word {
+    fn from(val: i32) -> Self {
+        Word::Numeric(val)
+    }
+}
+impl From<bool> for Word {
+    fn from(val: bool) -> Self {
+        Word::Boolean(val)
+    }
+}
+
+#[macro_export]
+macro_rules! word_vec {
+        ($($elem:expr),* $(,)?) => { vec![$(Word::from($elem)),*]  };
+
+}
