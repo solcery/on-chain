@@ -8,6 +8,10 @@ type Attrs = ArrayVec<[Word; ATTRS_VEC_SIZE]>;
 pub struct Card {
     id: u32,
     card_type: u32,
+    // На данный момент мы считаем все атрибуты статическими в том смысле, что у всех карт attrs[i]
+    // имеет один и тот же игровой смысл.
+    // Если мы оставляем это так, то имеет смысл сделать attrs приватным полем и сделать на него
+    // сеттер таким образом, чтобы он не мог поменять num на bool
     pub attrs: Attrs,
 }
 
@@ -26,6 +30,17 @@ impl Card {
             card_type,
             attrs,
         }
+    }
+
+    #[cfg(test)]
+    pub fn prepare_card(id: u32, card_type: u32, attrs: Vec<Word>) -> Self {
+        let mut card = Card {
+            id,
+            card_type,
+            attrs: Attrs::new(),
+        };
+        card.attrs.fill(attrs);
+        card
     }
 }
 
@@ -58,7 +73,7 @@ impl CardType {
         self.attrs[index]
     }
 
-    pub fn new(id: u32,  attrs: TypeAttrs,init_card_attrs: Attrs) -> Self {
+    pub fn new(id: u32, attrs: TypeAttrs, init_card_attrs: Attrs) -> Self {
         CardType {
             id,
             attrs,
@@ -72,6 +87,18 @@ impl CardType {
             card_type: self.id(),
             attrs: self.init_card_attrs.clone(),
         }
+    }
+
+    #[cfg(test)]
+    pub fn prepare_card_type(id: u32, attrs: Vec<Word>, init_card_attrs: Vec<Word>) -> Self {
+        let mut card_type = CardType {
+            id,
+            attrs: Attrs::new(),
+            init_card_attrs: TypeAttrs::new(),
+        };
+        card_type.attrs.fill(attrs);
+        card_type.init_card_attrs.fill(init_card_attrs);
+        card_type
     }
 }
 

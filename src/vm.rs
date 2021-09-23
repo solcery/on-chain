@@ -413,3 +413,38 @@ impl<'a> VM<'a> {
         vm
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::card::CardType;
+    use crate::word_vec;
+    //use tinyvec::array_vec;
+
+    fn testing_board() -> Board {
+        let type1_attrs = word_vec![10, 5, true, false,];
+        let type1_init_attrs = word_vec![5, 5, false, false,];
+        let type1 = CardType::prepare_card_type(1, type1_attrs, type1_init_attrs);
+
+        let type2_attrs = word_vec![20, 5, true, true,];
+        let type2_init_attrs = word_vec![6, 4, false, false,];
+        let type2 = CardType::prepare_card_type(2, type2_attrs, type2_init_attrs);
+
+        let board_attrs = word_vec![3, 4, 5, false, false, true,];
+
+        let mut card1 = type1.instantiate_card(1);
+        let mut card2 = type2.instantiate_card(2);
+
+        card1.attrs[0] = Word::Numeric(4);
+        card2.attrs[3] = Word::Boolean(true);
+
+        let mut board = Board::prepare_board(vec![type1, type2], vec![card1, card2], board_attrs);
+
+        board.instance_card_by_type_index(0, 3).unwrap();
+        board.instance_card_by_type_index(1, 4).unwrap();
+
+        board
+    }
+
+
+}
