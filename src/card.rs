@@ -33,7 +33,7 @@ impl Card {
     }
 
     #[cfg(test)]
-    pub fn prepare_card(id: u32, card_type: u32, attrs: Vec<Word>) -> Self {
+    pub unsafe fn from_raw_parts(id: u32, card_type: u32, attrs: Vec<Word>) -> Self {
         let mut card = Card {
             id,
             card_type,
@@ -58,10 +58,39 @@ const TYPE_ATTRS_VEC_SIZE: usize = 32;
 type TypeAttrs = ArrayVec<[Word; TYPE_ATTRS_VEC_SIZE]>;
 
 #[derive(Debug)]
+pub struct EntryPoint {
+    address: usize,
+    n_args: usize,
+}
+
+impl EntryPoint {
+    #[cfg(test)]
+    pub unsafe fn from_raw_parts(address: usize, n_args: usize) -> EntryPoint {
+        EntryPoint {
+            address,
+            n_args,
+        }
+    }
+}
+
+impl Default for EntryPoint {
+    fn default() -> Self {
+        EntryPoint {
+            address: 0,
+            n_args: 0,
+        }
+    }
+}
+
+const ENTRY_POINTS_VEC_SIZE: usize = 32;
+type EntryPoints = ArrayVec<[EntryPoint; ENTRY_POINTS_VEC_SIZE]>;
+
+#[derive(Debug)]
 pub struct CardType {
     id: u32,
     attrs: TypeAttrs,
     init_card_attrs: Attrs,
+    action_entry_points: EntryPoints,
 }
 
 impl CardType {
@@ -73,11 +102,12 @@ impl CardType {
         self.attrs[index]
     }
 
-    pub fn new(id: u32, attrs: TypeAttrs, init_card_attrs: Attrs) -> Self {
+    pub fn new(id: u32, attrs: TypeAttrs, init_card_attrs: Attrs, action_entry_points: EntryPoints) -> Self {
         CardType {
             id,
             attrs,
             init_card_attrs,
+            action_entry_points,
         }
     }
 
@@ -85,19 +115,21 @@ impl CardType {
         Card {
             id,
             card_type: self.id(),
-            attrs: self.init_card_attrs.clone(),
+            attrs: self.init_card_attrs,
         }
     }
 
     #[cfg(test)]
-    pub fn prepare_card_type(id: u32, attrs: Vec<Word>, init_card_attrs: Vec<Word>) -> Self {
+    pub unsafe fn from_raw_parts(id: u32, attrs: Vec<Word>, init_card_attrs: Vec<Word>, action_entry_points: Vec<EntryPoint>) -> Self {
         let mut card_type = CardType {
             id,
             attrs: Attrs::new(),
             init_card_attrs: TypeAttrs::new(),
+            action_entry_points: EntryPoints::new(),
         };
         card_type.attrs.fill(attrs);
         card_type.init_card_attrs.fill(init_card_attrs);
+        card_type.action_entry_points.fill(action_entry_points);
         card_type
     }
 }
@@ -108,6 +140,7 @@ impl Default for CardType {
             id: 0,
             attrs: TypeAttrs::new(),
             init_card_attrs: Attrs::new(),
+            action_entry_points: EntryPoints::new(),
         }
     }
 }

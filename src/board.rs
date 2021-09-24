@@ -12,6 +12,13 @@ type AttrVec = ArrayVec<[Word; ATTR_VEC_SIZE]>;
 pub struct Board {
     pub cards: Deck,
     pub attrs: AttrVec,
+    card_index: u32,
+}
+
+impl Default for Board {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Board {
@@ -19,14 +26,22 @@ impl Board {
         Board {
             cards: Deck::new(),
             attrs: AttrVec::new(),
+            card_index: 0
         }
     }
 
+    pub fn generate_card_id(&mut self) -> u32 {
+        let id = self.card_index;
+        self.card_index += 1;
+        id
+    }
+
     #[cfg(test)]
-    pub unsafe fn prepare_board(cards: Vec<Card>, attrs: Vec<Word>) -> Board {
+    pub unsafe fn from_raw_parts(cards: Vec<Card>, attrs: Vec<Word>, card_index: u32) -> Board {
         let mut board = Board {
             cards: Deck::new(),
             attrs: AttrVec::new(),
+            card_index,
         };
         board.cards.fill(cards);
         board.attrs.fill(attrs);
