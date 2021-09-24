@@ -1,9 +1,9 @@
 //! # The Sorcery Virtual Machine
 
 use crate::board::Board;
+use crate::rom::Rom;
 use crate::word::Word;
 use std::convert::TryInto;
-use tinyvec::ArrayVec;
 
 mod memory;
 use memory::Memory;
@@ -121,17 +121,14 @@ impl Default for VMCommand {
     }
 }
 
-const ROM_SIZE: usize = 512;
-type Rom = ArrayVec<[VMCommand; ROM_SIZE]>;
-
 pub struct VM<'a> {
-    rom: Rom,
+    rom: &'a Rom,
     memory: Memory,
     board: &'a mut Board,
 }
 
 impl<'a> VM<'a> {
-    pub fn new(rom: Rom, board: &'a mut Board) -> VM<'a> {
+    pub fn new(rom: &'a Rom, board: &'a mut Board) -> VM<'a> {
         VM {
             rom,
             memory: Memory::new(),
@@ -150,7 +147,7 @@ impl<'a> VM<'a> {
     fn run_one_instruction(&mut self) -> Result<(), ()> {
         //TODO: better handing for Halt instruction.
         //Probably, we need to propogate errors from the instructions to this function.
-        let instruction = self.rom[self.memory.pc()];
+        let instruction = self.rom.fetch_instruction(self.memory.pc());
         match instruction {
             VMCommand::Add => {
                 self.memory.add();
@@ -269,7 +266,7 @@ impl<'a> VM<'a> {
                 Ok(())
             }
             VMCommand::PushTypeCount => {
-                let len = self.board.card_type_count();
+                let len = self.rom.card_type_count();
                 self.memory
                     .push_external(Word::Numeric(TryInto::try_into(len).unwrap()));
                 Ok(())
@@ -342,7 +339,7 @@ impl<'a> VM<'a> {
         let type_index = self.memory.pop_external_no_pc_inc();
         match type_index {
             Word::Numeric(id) => {
-                let card_type = self.board.card_type_by_type_index(id as usize);
+                let card_type = self.rom.card_type_by_type_index(id as usize);
                 let attr_value = card_type.attr_by_index(attr_index);
 
                 let word = attr_value;
@@ -360,7 +357,7 @@ impl<'a> VM<'a> {
             Word::Numeric(id) => {
                 let card = &self.board.cards[id as usize];
                 let card_type_id = card.card_type();
-                let card_type = self.board.card_type_by_type_id(card_type_id).unwrap();
+                let card_type = self.rom.card_type_by_type_id(card_type_id).unwrap();
                 let attr_value = card_type.attr_by_index(attr_index);
 
                 let word = attr_value;
@@ -403,14 +400,9 @@ impl<'a> VM<'a> {
         }
     }
 
-    fn prepare_vm(rom: Vec<VMCommand>, memory: Memory, board: &mut Board) -> VM {
-        let mut vm = VM {
-            rom: Rom::new(),
-            memory,
-            board,
-        };
-        vm.rom.fill(rom);
-        vm
+    #[cfg(test)]
+    fn prepare_vm(rom: &'a Rom, memory: Memory, board: &'a mut Board) -> VM<'a> {
+        VM { rom, memory, board }
     }
 }
 
@@ -438,13 +430,9 @@ mod tests {
         card1.attrs[0] = Word::Numeric(4);
         card2.attrs[3] = Word::Boolean(true);
 
-        let mut board = Board::prepare_board(vec![type1, type2], vec![card1, card2], board_attrs);
+        let card3 = type1.instantiate_card(3);
+        let card4 = type2.instantiate_card(4);
 
-        board.instance_card_by_type_index(0, 3).unwrap();
-        board.instance_card_by_type_index(1, 4).unwrap();
-
-        board
+        unsafe { Board::prepare_board(vec![card1, card2, card3, card4], board_attrs) }
     }
-
-
 }
