@@ -113,6 +113,17 @@ pub enum VMCommand {
     PopCardAttr {
         attr_index: usize,
     },
+
+    /// Pops [CardType](crate::card::CardType) index from the stack and calls it's `action_id` action as a function
+    InstanceCardByTypeIndex,
+    /// Pops [CardType](crate::card::CardType) id from the stack and calls it's `action_id` action as a function
+    InstanceCardByTypeId,
+    CallCardAction {
+        action_id: usize,
+    },
+    RemoveCardByIndex {
+        card_index: usize,
+    },
 }
 
 impl Default for VMCommand {
@@ -295,7 +306,18 @@ impl<'a> VM<'a> {
                 self.pop_card_attr(attr_index);
                 Ok(())
             }
+            VMCommand::InstanceCardByTypeIndex => {
+                self.instantiate_card_by_type_index();
+                Ok(())
+            }
+            VMCommand::InstanceCardByTypeId => {
+                self.instantiate_card_by_type_id();
+                Ok(())
+            }
             VMCommand::Halt => Err(()),
+            _ => {
+                unimplemented!();
+            }
         }
     }
 
@@ -400,8 +422,38 @@ impl<'a> VM<'a> {
         }
     }
 
+    fn instantiate_card_by_type_index(&mut self) {
+        let index = self.memory.pop_external();
+        match index {
+            Word::Numeric(index) => {
+                let id = index.try_into().unwrap();
+                let card = self.rom.instance_card_by_type_index(id, self.board.generate_card_id()).unwrap();
+                self.board.cards.push(card);
+            }
+            Word::Boolean(_) => {
+                panic!("Type mismath: bool can not be interpreted as index.");
+            }
+        }
+        
+    }
+
+    fn instantiate_card_by_type_id(&mut self) {
+        let index = self.memory.pop_external();
+        match index {
+            Word::Numeric(index) => {
+                let id = index.try_into().unwrap();
+                let card = self.rom.instance_card_by_type_id(id, self.board.generate_card_id()).unwrap();
+                self.board.cards.push(card);
+            }
+            Word::Boolean(_) => {
+                panic!("Type mismath: bool can not be interpreted as index.");
+            }
+        }
+        
+    }
+
     #[cfg(test)]
-    fn prepare_vm(rom: &'a Rom, memory: Memory, board: &'a mut Board) -> VM<'a> {
+    unsafe fn from_raw_parts(rom: &'a Rom, memory: Memory, board: &'a mut Board) -> VM<'a> {
         VM { rom, memory, board }
     }
 }
@@ -409,18 +461,31 @@ impl<'a> VM<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::card::CardType;
+    use crate::card::{CardType, EntryPoint};
     use crate::word_vec;
-    //use tinyvec::array_vec;
 
     fn testing_board() -> Board {
         let type1_attrs = word_vec![10, 5, true, false,];
         let type1_init_attrs = word_vec![5, 5, false, false,];
-        let type1 = CardType::prepare_card_type(1, type1_attrs, type1_init_attrs);
+        let type1 = unsafe {
+            CardType::from_raw_parts(
+                1,
+                type1_attrs,
+                type1_init_attrs,
+                vec![EntryPoint::from_raw_parts(1, 0)],
+            )
+        };
 
         let type2_attrs = word_vec![20, 5, true, true,];
         let type2_init_attrs = word_vec![6, 4, false, false,];
-        let type2 = CardType::prepare_card_type(2, type2_attrs, type2_init_attrs);
+        let type2 = unsafe {
+            CardType::from_raw_parts(
+                2,
+                type2_attrs,
+                type2_init_attrs,
+                vec![EntryPoint::from_raw_parts(4, 0)],
+            )
+        };
 
         let board_attrs = word_vec![3, 4, 5, false, false, true,];
 
@@ -433,6 +498,6 @@ mod tests {
         let card3 = type1.instantiate_card(3);
         let card4 = type2.instantiate_card(4);
 
-        unsafe { Board::prepare_board(vec![card1, card2, card3, card4], board_attrs) }
+        unsafe { Board::from_raw_parts(vec![card1, card2, card3, card4], board_attrs, 5) }
     }
 }
