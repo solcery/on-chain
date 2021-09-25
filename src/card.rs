@@ -57,19 +57,24 @@ impl Default for Card {
 const TYPE_ATTRS_VEC_SIZE: usize = 32;
 type TypeAttrs = ArrayVec<[Word; TYPE_ATTRS_VEC_SIZE]>;
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct EntryPoint {
     address: usize,
     n_args: usize,
 }
 
 impl EntryPoint {
+    pub fn address(&self) -> usize {
+        self.address
+    }
+
+    pub fn n_args(&self) -> usize {
+        self.n_args
+    }
+
     #[cfg(test)]
     pub unsafe fn from_raw_parts(address: usize, n_args: usize) -> EntryPoint {
-        EntryPoint {
-            address,
-            n_args,
-        }
+        EntryPoint { address, n_args }
     }
 }
 
@@ -102,7 +107,12 @@ impl CardType {
         self.attrs[index]
     }
 
-    pub fn new(id: u32, attrs: TypeAttrs, init_card_attrs: Attrs, action_entry_points: EntryPoints) -> Self {
+    pub fn new(
+        id: u32,
+        attrs: TypeAttrs,
+        init_card_attrs: Attrs,
+        action_entry_points: EntryPoints,
+    ) -> Self {
         CardType {
             id,
             attrs,
@@ -119,8 +129,17 @@ impl CardType {
         }
     }
 
+    pub fn action_entry_point(&self, index: usize) -> EntryPoint {
+        self.action_entry_points[index]
+    }
+
     #[cfg(test)]
-    pub unsafe fn from_raw_parts(id: u32, attrs: Vec<Word>, init_card_attrs: Vec<Word>, action_entry_points: Vec<EntryPoint>) -> Self {
+    pub unsafe fn from_raw_parts(
+        id: u32,
+        attrs: Vec<Word>,
+        init_card_attrs: Vec<Word>,
+        action_entry_points: Vec<EntryPoint>,
+    ) -> Self {
         let mut card_type = CardType {
             id,
             attrs: Attrs::new(),

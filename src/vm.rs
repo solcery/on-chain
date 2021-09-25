@@ -119,11 +119,9 @@ pub enum VMCommand {
     /// Pops [CardType](crate::card::CardType) id from the stack and calls it's `action_id` action as a function
     InstanceCardByTypeId,
     CallCardAction {
-        action_id: usize,
+        action_index: usize,
     },
-    RemoveCardByIndex {
-        card_index: usize,
-    },
+    RemoveCardByIndex,
 }
 
 impl Default for VMCommand {
@@ -314,10 +312,15 @@ impl<'a> VM<'a> {
                 self.instantiate_card_by_type_id();
                 Ok(())
             }
-            VMCommand::Halt => Err(()),
-            _ => {
-                unimplemented!();
+            VMCommand::CallCardAction { action_index } => {
+                self.call_card_action(action_index);
+                Ok(())
             }
+            VMCommand::RemoveCardByIndex => {
+                self.remove_card_by_index();
+                Ok(())
+            }
+            VMCommand::Halt => Err(()),
         }
     }
 
@@ -427,14 +430,16 @@ impl<'a> VM<'a> {
         match index {
             Word::Numeric(index) => {
                 let id = index.try_into().unwrap();
-                let card = self.rom.instance_card_by_type_index(id, self.board.generate_card_id()).unwrap();
+                let card = self
+                    .rom
+                    .instance_card_by_type_index(id, self.board.generate_card_id())
+                    .unwrap();
                 self.board.cards.push(card);
             }
             Word::Boolean(_) => {
                 panic!("Type mismath: bool can not be interpreted as index.");
             }
         }
-        
     }
 
     fn instantiate_card_by_type_id(&mut self) {
@@ -442,14 +447,41 @@ impl<'a> VM<'a> {
         match index {
             Word::Numeric(index) => {
                 let id = index.try_into().unwrap();
-                let card = self.rom.instance_card_by_type_id(id, self.board.generate_card_id()).unwrap();
+                let card = self
+                    .rom
+                    .instance_card_by_type_id(id, self.board.generate_card_id())
+                    .unwrap();
                 self.board.cards.push(card);
             }
             Word::Boolean(_) => {
                 panic!("Type mismath: bool can not be interpreted as index.");
             }
         }
-        
+    }
+
+    fn call_card_action(&mut self, action_index: usize) {
+        let card_index: usize = self
+            .memory
+            .pop_external_no_pc_inc()
+            .unwrap_numeric()
+            .try_into()
+            .unwrap();
+        let card = &self.board.cards[card_index];
+        let type_id = card.card_type();
+        let card_type = self.rom.card_type_by_type_id(type_id).unwrap();
+        let entry_point = card_type.action_entry_point(action_index);
+        self.memory
+            .call(entry_point.address(), entry_point.n_args());
+    }
+
+    fn remove_card_by_index(&mut self) {
+        let card_index: usize = self
+            .memory
+            .pop_external()
+            .unwrap_numeric()
+            .try_into()
+            .unwrap();
+        self.board.cards.remove(card_index);
     }
 
     #[cfg(test)]
