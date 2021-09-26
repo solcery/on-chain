@@ -118,9 +118,8 @@ pub enum VMCommand {
     InstanceCardByTypeIndex,
     /// Pops [CardType](crate::card::CardType) id from the stack and calls it's `action_id` action as a function
     InstanceCardByTypeId,
-    CallCardAction {
-        action_index: usize,
-    },
+    /// Card index and action index should be placed on the stack
+    CallCardAction,
     RemoveCardByIndex,
 }
 
@@ -137,12 +136,15 @@ pub struct VM<'a> {
 }
 
 impl<'a> VM<'a> {
-    pub fn new(rom: &'a Rom, board: &'a mut Board) -> VM<'a> {
-        VM {
-            rom,
-            memory: Memory::new(),
-            board,
-        }
+    pub fn init_vm(
+        rom: &'a Rom,
+        board: &'a mut Board,
+        args: Vec<Word>,
+        card_index: i32,
+        action_index: i32,
+    ) -> VM<'a> {
+        let memory = Memory::init_memory(args, card_index, action_index);
+        VM { rom, memory, board }
     }
 
     pub fn execute(&mut self, instruction_limit: usize) {
@@ -151,6 +153,11 @@ impl<'a> VM<'a> {
                 break;
             }
         }
+    }
+
+    fn is_halted(&self) -> bool {
+        let instruction = self.rom.fetch_instruction(self.memory.pc());
+        instruction == VMCommand::Halt
     }
 
     fn run_one_instruction(&mut self) -> Result<(), ()> {
@@ -195,7 +202,7 @@ impl<'a> VM<'a> {
                 Ok(())
             }
             VMCommand::Eq => {
-                self.memory.eq();
+                self.memory.equal();
                 Ok(())
             }
             VMCommand::Gt => {
@@ -312,8 +319,8 @@ impl<'a> VM<'a> {
                 self.instantiate_card_by_type_id();
                 Ok(())
             }
-            VMCommand::CallCardAction { action_index } => {
-                self.call_card_action(action_index);
+            VMCommand::CallCardAction => {
+                self.call_card_action();
                 Ok(())
             }
             VMCommand::RemoveCardByIndex => {
@@ -459,7 +466,13 @@ impl<'a> VM<'a> {
         }
     }
 
-    fn call_card_action(&mut self, action_index: usize) {
+    fn call_card_action(&mut self) {
+        let action_index: usize = self
+            .memory
+            .pop_external_no_pc_inc()
+            .unwrap_numeric()
+            .try_into()
+            .unwrap();
         let card_index: usize = self
             .memory
             .pop_external_no_pc_inc()
@@ -488,6 +501,11 @@ impl<'a> VM<'a> {
     unsafe fn from_raw_parts(rom: &'a Rom, memory: Memory, board: &'a mut Board) -> VM<'a> {
         VM { rom, memory, board }
     }
+
+    #[cfg(test)]
+    fn release_memory(self) -> Memory {
+        self.memory
+    }
 }
 
 #[cfg(test)]
@@ -496,28 +514,35 @@ mod tests {
     use crate::card::{CardType, EntryPoint};
     use crate::word_vec;
 
-    fn testing_board() -> Board {
+    fn type1() -> CardType {
         let type1_attrs = word_vec![10, 5, true, false,];
         let type1_init_attrs = word_vec![5, 5, false, false,];
-        let type1 = unsafe {
+        unsafe {
             CardType::from_raw_parts(
                 1,
                 type1_attrs,
                 type1_init_attrs,
-                vec![EntryPoint::from_raw_parts(1, 0)],
+                vec![EntryPoint::from_raw_parts(2, 0)],
             )
-        };
+        }
+    }
 
+    fn type2() -> CardType {
         let type2_attrs = word_vec![20, 5, true, true,];
         let type2_init_attrs = word_vec![6, 4, false, false,];
-        let type2 = unsafe {
+        unsafe {
             CardType::from_raw_parts(
                 2,
                 type2_attrs,
                 type2_init_attrs,
                 vec![EntryPoint::from_raw_parts(4, 0)],
             )
-        };
+        }
+    }
+
+    fn testing_board() -> Board {
+        let type1 = type1();
+        let type2 = type2();
 
         let board_attrs = word_vec![3, 4, 5, false, false, true,];
 
@@ -531,5 +556,28 @@ mod tests {
         let card4 = type2.instantiate_card(4);
 
         unsafe { Board::from_raw_parts(vec![card1, card2, card3, card4], board_attrs, 5) }
+    }
+
+    fn initial_board() -> Board {
+        let mut card1 = type1().instantiate_card(1);
+        let board_attrs = word_vec![0, 0, 0, false, false, false,];
+        unsafe { Board::from_raw_parts(vec![card1], board_attrs, 1) }
+    }
+
+    fn testing_rom() -> Rom {
+        let instructions = vec![
+            VMCommand::CallCardAction,
+            VMCommand::Halt,
+            //{
+            VMCommand::Function { n_locals: 0 }, // Добавляет на доску одну карту типа 2
+            VMCommand::PushConstant(Word::Numeric(2)),
+            VMCommand::InstanceCardByTypeId,
+            VMCommand::Return,
+            //}
+        ];
+
+        let card_types = vec![type1(), type2()];
+
+        unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) }
     }
 }

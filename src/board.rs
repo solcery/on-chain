@@ -8,7 +8,7 @@ type Deck = ArrayVec<[Card; DECK_SIZE]>;
 const ATTR_VEC_SIZE: usize = 128;
 type AttrVec = ArrayVec<[Word; ATTR_VEC_SIZE]>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Board {
     pub cards: Deck,
     pub attrs: AttrVec,
@@ -26,7 +26,7 @@ impl Board {
         Board {
             cards: Deck::new(),
             attrs: AttrVec::new(),
-            card_index: 0
+            card_index: 0,
         }
     }
 

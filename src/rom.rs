@@ -1,5 +1,5 @@
-use crate::card::{Card, CardType};
 use crate::board::Board;
+use crate::card::{Card, CardType};
 use crate::vm::VMCommand;
 use std::convert::TryInto;
 use tinyvec::ArrayVec;
@@ -12,12 +12,12 @@ type TypeDeck = ArrayVec<[CardType; TYPE_DECK_SIZE]>;
 
 pub struct Rom {
     card_types: TypeDeck,
-    rom: InstructionRom,
+    instructions: InstructionRom,
     initial_board_state: Board,
 }
 impl Rom {
     pub fn fetch_instruction(&self, pc: usize) -> VMCommand {
-        self.rom[pc]
+        self.instructions[pc]
     }
 
     pub fn add_type(&mut self, typ: CardType) {
@@ -58,5 +58,20 @@ impl Rom {
 
     pub fn initialize_board(&self) -> Board {
         self.initial_board_state.clone()
+    }
+
+    pub unsafe fn from_raw_parts(
+        instructions: Vec<VMCommand>,
+        card_types: Vec<CardType>,
+        initial_board_state: Board,
+    ) -> Rom {
+        let mut rom = Rom {
+            card_types: TypeDeck::new(),
+            instructions: InstructionRom::new(),
+            initial_board_state,
+        };
+        rom.card_types.fill(card_types);
+        rom.instructions.fill(instructions);
+        rom
     }
 }
