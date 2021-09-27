@@ -52,6 +52,7 @@ pub enum VMCommand {
 
     // Data transfer
     PushConstant(Word),
+    PopConstant,
     PushBoardAttr {
         index: usize,
     },
@@ -227,6 +228,10 @@ impl<'a> VM<'a> {
             }
             VMCommand::PushConstant(word) => {
                 self.memory.push_external(word);
+                Ok(())
+            }
+            VMCommand::PopConstant => {
+                self.memory.pop_external();
                 Ok(())
             }
             VMCommand::PushBoardAttr { index } => {
