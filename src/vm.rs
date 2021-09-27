@@ -513,6 +513,7 @@ mod tests {
     use super::*;
     use crate::card::{CardType, EntryPoint};
     use crate::word_vec;
+    use pretty_assertions::assert_eq;
 
     fn type1() -> CardType {
         let type1_attrs = word_vec![10, 5, true, false,];
