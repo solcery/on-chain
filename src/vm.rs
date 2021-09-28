@@ -52,7 +52,6 @@ pub enum VMCommand {
 
     // Data transfer
     PushConstant(Word),
-    PopConstant,
     PushBoardAttr {
         index: usize,
     },
@@ -228,10 +227,6 @@ impl<'a> VM<'a> {
             }
             VMCommand::PushConstant(word) => {
                 self.memory.push_external(word);
-                Ok(())
-            }
-            VMCommand::PopConstant => {
-                self.memory.pop_external();
                 Ok(())
             }
             VMCommand::PushBoardAttr { index } => {
@@ -610,8 +605,6 @@ mod tests {
     #[test]
     fn push_type() {
         let instructions = vec![
-            VMCommand::PopConstant,
-            VMCommand::PopConstant,
             VMCommand::PushConstant(Word::Numeric(2)),
             VMCommand::PushCardType,
             VMCommand::Halt,
@@ -627,7 +620,7 @@ mod tests {
         assert!(vm.is_halted());
 
         let memory = VM::release_memory(vm);
-        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![1], 0, 0, 4) };
+        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0,0,1], 0, 0, 2) };
 
         assert_eq!(memory, needed_memory);
 
