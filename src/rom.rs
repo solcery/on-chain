@@ -47,9 +47,9 @@ impl Rom {
     }
 
     pub fn instance_card_by_type_index(&self, type_index: u32, card_id: u32) -> Result<Card, ()> {
-        let index = type_index.try_into().unwrap();
-        if self.card_types.len() < index {
-            let typ = &self.card_types[index];
+        let index: usize = type_index.try_into().unwrap();
+        if index < self.card_types.len() {
+            let typ: &CardType = &self.card_types[index];
             Ok(typ.instantiate_card(card_id))
         } else {
             Err(())

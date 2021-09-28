@@ -155,11 +155,6 @@ impl<'a> VM<'a> {
         }
     }
 
-    fn is_halted(&self) -> bool {
-        let instruction = self.rom.fetch_instruction(self.memory.pc());
-        instruction == VMCommand::Halt
-    }
-
     fn run_one_instruction(&mut self) -> Result<(), ()> {
         //TODO: better handing for Halt instruction.
         //Probably, we need to propogate errors from the instructions to this function.
@@ -506,6 +501,12 @@ impl<'a> VM<'a> {
     fn release_memory(self) -> Memory {
         self.memory
     }
+
+    #[cfg(test)]
+    fn is_halted(&self) -> bool {
+        let instruction = self.rom.fetch_instruction(self.memory.pc());
+        instruction == VMCommand::Halt
+    }
 }
 
 #[cfg(test)]
@@ -620,7 +621,7 @@ mod tests {
         assert!(vm.is_halted());
 
         let memory = VM::release_memory(vm);
-        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0,0,1], 0, 0, 2) };
+        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0, 1], 0, 0, 2) };
 
         assert_eq!(memory, needed_memory);
 
@@ -630,8 +631,156 @@ mod tests {
     }
 
     #[test]
-    fn add_one_card() {
-        let rom = testing_rom();
+    fn push_card_count() {
+        let instructions = vec![
+            VMCommand::PushConstant(Word::Numeric(2)),
+            VMCommand::PushCardCountWithCardType,
+            VMCommand::Halt,
+        ];
+        let card_types = vec![type1(), type2()];
+
+        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
+        let mut board = testing_board();
+
+        let mut vm = VM::init_vm(&rom, &mut board, vec![], 0, 0);
+
+        vm.execute(10);
+
+        assert!(vm.is_halted());
+
+        let memory = VM::release_memory(vm);
+        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0, 2], 0, 0, 2) };
+
+        assert_eq!(memory, needed_memory);
+
+        let board_needed = testing_board();
+
+        assert_eq!(board, board_needed);
+    }
+
+    #[test]
+    fn push_type_attr_by_type_index() {
+        let instructions = vec![
+            VMCommand::PushConstant(Word::Numeric(1)),
+            VMCommand::PushCardTypeAttrByTypeIndex { attr_index: 3 },
+            VMCommand::Halt,
+        ];
+        let card_types = vec![type1(), type2()];
+
+        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
+        let mut board = testing_board();
+
+        let mut vm = VM::init_vm(&rom, &mut board, vec![], 0, 0);
+
+        vm.execute(10);
+
+        assert!(vm.is_halted());
+
+        let memory = VM::release_memory(vm);
+        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0, true], 0, 0, 2) };
+
+        assert_eq!(memory, needed_memory);
+
+        let board_needed = testing_board();
+
+        assert_eq!(board, board_needed);
+    }
+
+    #[test]
+    fn push_type_attr_by_card_index() {
+        let instructions = vec![
+            VMCommand::PushConstant(Word::Numeric(1)),
+            VMCommand::PushCardTypeAttrByTypeIndex { attr_index: 3 },
+            VMCommand::Halt,
+        ];
+        let card_types = vec![type1(), type2()];
+
+        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
+        let mut board = testing_board();
+
+        let mut vm = VM::init_vm(&rom, &mut board, vec![], 0, 0);
+
+        vm.execute(10);
+
+        assert!(vm.is_halted());
+
+        let memory = VM::release_memory(vm);
+        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0, true], 0, 0, 2) };
+
+        assert_eq!(memory, needed_memory);
+
+        let board_needed = testing_board();
+
+        assert_eq!(board, board_needed);
+    }
+    #[test]
+    fn push_attr() {
+        let instructions = vec![
+            VMCommand::PushConstant(Word::Numeric(1)),
+            VMCommand::PushCardAttr { attr_index: 3 },
+            VMCommand::Halt,
+        ];
+        let card_types = vec![type1(), type2()];
+
+        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
+        let mut board = testing_board();
+
+        let mut vm = VM::init_vm(&rom, &mut board, vec![], 0, 0);
+
+        vm.execute(10);
+
+        assert!(vm.is_halted());
+
+        let memory = VM::release_memory(vm);
+        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0, true], 0, 0, 2) };
+
+        assert_eq!(memory, needed_memory);
+
+        let board_needed = testing_board();
+
+        assert_eq!(board, board_needed);
+    }
+
+    #[test]
+    fn pop_attr() {
+        let instructions = vec![
+            VMCommand::PushConstant(Word::Numeric(42)),
+            VMCommand::PushConstant(Word::Numeric(1)),
+            VMCommand::PopCardAttr { attr_index: 3 },
+            VMCommand::Halt,
+        ];
+        let card_types = vec![type1(), type2()];
+
+        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
+        let mut board = testing_board();
+
+        let mut vm = VM::init_vm(&rom, &mut board, vec![], 0, 0);
+
+        vm.execute(10);
+
+        assert!(vm.is_halted());
+
+        let memory = VM::release_memory(vm);
+        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0], 0, 0, 3) };
+
+        assert_eq!(memory, needed_memory);
+
+        let mut board_needed = testing_board();
+        board_needed.cards[1].attrs[3] = Word::Numeric(42);
+
+        assert_eq!(board, board_needed);
+    }
+
+    #[test]
+    fn add_one_card_by_index() {
+        let instructions = vec![
+            VMCommand::PushConstant(Word::Numeric(1)),
+            VMCommand::InstanceCardByTypeIndex,
+            VMCommand::Halt,
+        ];
+        let card_types = vec![type1(), type2()];
+
+        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
         let mut board = initial_board();
 
         let mut vm = VM::init_vm(&rom, &mut board, vec![], 0, 0);
@@ -641,13 +790,14 @@ mod tests {
         assert!(vm.is_halted());
 
         let memory = VM::release_memory(vm);
-        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![5], 0, 0, 1) };
+        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0], 0, 0, 2) };
 
         assert_eq!(memory, needed_memory);
 
         let mut board_needed = initial_board();
-        let card = type2().instantiate_card(board_needed.generate_card_id());
-        board_needed.cards.push(card);
+        let _ = board_needed.generate_card_id();
+        let added_card = type2().instantiate_card(1);
+        board_needed.cards.push(added_card);
 
         assert_eq!(board, board_needed);
     }
