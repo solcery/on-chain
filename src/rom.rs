@@ -1,6 +1,7 @@
 use crate::board::Board;
 use crate::card::{Card, CardType};
 use crate::vm::VMCommand;
+use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use tinyvec::ArrayVec;
 
@@ -10,6 +11,7 @@ type InstructionRom = ArrayVec<[VMCommand; ROM_SIZE]>;
 const TYPE_DECK_SIZE: usize = 2 ^ 10;
 type TypeDeck = ArrayVec<[CardType; TYPE_DECK_SIZE]>;
 
+#[derive(Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub struct Rom {
     card_types: TypeDeck,
     instructions: InstructionRom,

@@ -3,12 +3,13 @@
 use crate::board::Board;
 use crate::rom::Rom;
 use crate::word::Word;
+use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 
 mod memory;
 use memory::Memory;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub struct Sealed<T> {
     data: T,
 }
@@ -19,7 +20,7 @@ impl<T> Sealed<T> {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum VMCommand {
     // Arithmetic
     /// Adds two topmost values from the stack

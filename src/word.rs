@@ -1,7 +1,8 @@
+use serde::{Deserialize, Serialize};
 /// Одна ячейка памяти на стеке может содержать либо число, либо логическое значение.
 /// Операции будут проверять, что значение нужного типа, поэтому вызвать 1 + True нельзя, это
 /// вызовет панику.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum Word {
     Numeric(i32),
     Boolean(bool),
@@ -10,9 +11,7 @@ pub enum Word {
 impl Word {
     pub fn unwrap_numeric(self) -> i32 {
         match self {
-            Word::Numeric(i) => {
-                i
-            }
+            Word::Numeric(i) => i,
             Word::Boolean(_) => {
                 panic!("Called unwrap_numeric on Word::Boolean.");
             }

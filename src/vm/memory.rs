@@ -1,11 +1,12 @@
 use crate::word::Word;
+use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use tinyvec::ArrayVec;
 
 const STACK_SIZE: usize = 512;
 type Stack = ArrayVec<[Word; STACK_SIZE]>;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub struct Memory {
     stack: Stack,
     lcl: usize,
