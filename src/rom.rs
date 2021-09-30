@@ -20,10 +20,6 @@ impl Rom {
         self.instructions[pc]
     }
 
-    pub fn add_type(&mut self, typ: CardType) {
-        self.card_types.push(typ);
-    }
-
     pub fn card_type_count(&self) -> usize {
         self.card_types.len()
     }
@@ -60,6 +56,7 @@ impl Rom {
         self.initial_board_state.clone()
     }
 
+    #[cfg(test)]
     pub unsafe fn from_raw_parts(
         instructions: Vec<VMCommand>,
         card_types: Vec<CardType>,

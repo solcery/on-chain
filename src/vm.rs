@@ -8,6 +8,17 @@ use std::convert::TryInto;
 mod memory;
 use memory::Memory;
 
+#[derive(Debug, Eq, PartialEq)]
+pub struct Sealed<T> {
+    data: T,
+}
+
+impl<T> Sealed<T> {
+    fn release_data(self) -> T {
+        self.data
+    }
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum VMCommand {
     // Arithmetic
@@ -153,6 +164,19 @@ impl<'a> VM<'a> {
                 break;
             }
         }
+    }
+
+    pub fn resume_execution(
+        rom: &'a Rom,
+        board: &'a mut Board,
+        sealed_memory: Sealed<Memory>,
+    ) -> VM<'a> {
+        let memory = Sealed::<Memory>::release_data(sealed_memory);
+        VM { rom, memory, board }
+    }
+
+    pub fn stop_execution(self) -> Sealed<Memory> {
+        Sealed::<Memory> { data: self.memory }
     }
 
     fn run_one_instruction(&mut self) -> Result<(), ()> {
@@ -493,11 +517,6 @@ impl<'a> VM<'a> {
     }
 
     #[cfg(test)]
-    unsafe fn from_raw_parts(rom: &'a Rom, memory: Memory, board: &'a mut Board) -> VM<'a> {
-        VM { rom, memory, board }
-    }
-
-    #[cfg(test)]
     fn release_memory(self) -> Memory {
         self.memory
     }
@@ -564,24 +583,6 @@ mod tests {
         let card1 = type1().instantiate_card(1);
         let board_attrs = word_vec![0, 0, 0, false, false, false,];
         unsafe { Board::from_raw_parts(vec![card1], board_attrs, 1) }
-    }
-
-    fn testing_rom() -> Rom {
-        let instructions = vec![
-            VMCommand::CallCardAction,
-            VMCommand::Halt,
-            //{
-            VMCommand::Function { n_locals: 0 }, // Добавляет на доску одну карту типа 2
-            VMCommand::PushConstant(Word::Numeric(2)),
-            VMCommand::InstanceCardByTypeId,
-            VMCommand::PushConstant(Word::Numeric(5)),
-            VMCommand::Return,
-            //}
-        ];
-
-        let card_types = vec![type1(), type2()];
-
-        unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) }
     }
 
     #[test]
@@ -849,7 +850,7 @@ mod tests {
 
         let card_types = vec![type1(), type2()];
 
-        let rom =unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
+        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
         let mut board = initial_board();
 
         let mut vm = VM::init_vm(&rom, &mut board, vec![], 0, 0);
@@ -859,7 +860,7 @@ mod tests {
         assert!(vm.is_halted());
 
         let memory = VM::release_memory(vm);
-        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![5], 0, 0, 1)  };
+        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![5], 0, 0, 1) };
 
         assert_eq!(memory, needed_memory);
 
@@ -880,7 +881,7 @@ mod tests {
 
         let card_types = vec![type1(), type2()];
 
-        let rom =unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
+        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
         let mut board = testing_board();
 
         let mut vm = VM::init_vm(&rom, &mut board, vec![], 0, 0);
@@ -890,7 +891,7 @@ mod tests {
         assert!(vm.is_halted());
 
         let memory = VM::release_memory(vm);
-        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0,0], 0, 0, 2)  };
+        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0], 0, 0, 2) };
 
         assert_eq!(memory, needed_memory);
 
