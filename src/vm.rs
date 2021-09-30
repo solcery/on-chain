@@ -690,7 +690,7 @@ mod tests {
     fn push_type_attr_by_card_index() {
         let instructions = vec![
             VMCommand::PushConstant(Word::Numeric(1)),
-            VMCommand::PushCardTypeAttrByTypeIndex { attr_index: 3 },
+            VMCommand::PushCardTypeAttrByCardIndex { attr_index: 3 },
             VMCommand::Halt,
         ];
         let card_types = vec![type1(), type2()];
@@ -798,6 +798,104 @@ mod tests {
         let _ = board_needed.generate_card_id();
         let added_card = type2().instantiate_card(1);
         board_needed.cards.push(added_card);
+
+        assert_eq!(board, board_needed);
+    }
+
+    #[test]
+    fn add_one_card_by_id() {
+        let instructions = vec![
+            VMCommand::PushConstant(Word::Numeric(2)),
+            VMCommand::InstanceCardByTypeId,
+            VMCommand::Halt,
+        ];
+        let card_types = vec![type1(), type2()];
+
+        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
+        let mut board = initial_board();
+
+        let mut vm = VM::init_vm(&rom, &mut board, vec![], 0, 0);
+
+        vm.execute(10);
+
+        assert!(vm.is_halted());
+
+        let memory = VM::release_memory(vm);
+        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0], 0, 0, 2) };
+
+        assert_eq!(memory, needed_memory);
+
+        let mut board_needed = initial_board();
+        let _ = board_needed.generate_card_id();
+        let added_card = type2().instantiate_card(1);
+        board_needed.cards.push(added_card);
+
+        assert_eq!(board, board_needed);
+    }
+
+    #[test]
+    fn add_one_card() {
+        let instructions = vec![
+            VMCommand::CallCardAction,
+            VMCommand::Halt,
+            //{
+            VMCommand::Function { n_locals: 0 }, // Добавляет на доску одну карту типа 2
+            VMCommand::PushConstant(Word::Numeric(2)),
+            VMCommand::InstanceCardByTypeId,
+            VMCommand::PushConstant(Word::Numeric(5)),
+            VMCommand::Return,
+            //}
+        ];
+
+        let card_types = vec![type1(), type2()];
+
+        let rom =unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
+        let mut board = initial_board();
+
+        let mut vm = VM::init_vm(&rom, &mut board, vec![], 0, 0);
+
+        vm.execute(10);
+
+        assert!(vm.is_halted());
+
+        let memory = VM::release_memory(vm);
+        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![5], 0, 0, 1)  };
+
+        assert_eq!(memory, needed_memory);
+
+        let mut board_needed = initial_board();
+        let card = type2().instantiate_card(board_needed.generate_card_id());
+        board_needed.cards.push(card);
+
+        assert_eq!(board, board_needed);
+    }
+
+    #[test]
+    fn remove_one_card() {
+        let instructions = vec![
+            VMCommand::PushConstant(Word::Numeric(0)),
+            VMCommand::RemoveCardByIndex,
+            VMCommand::Halt,
+        ];
+
+        let card_types = vec![type1(), type2()];
+
+        let rom =unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
+        let mut board = testing_board();
+
+        let mut vm = VM::init_vm(&rom, &mut board, vec![], 0, 0);
+
+        vm.execute(10);
+
+        assert!(vm.is_halted());
+
+        let memory = VM::release_memory(vm);
+        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0,0], 0, 0, 2)  };
+
+        assert_eq!(memory, needed_memory);
+
+        let mut board_needed = testing_board();
+        board_needed.cards.remove(0);
 
         assert_eq!(board, board_needed);
     }
