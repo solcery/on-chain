@@ -1,11 +1,10 @@
 use crate::word::Word;
-use serde::{Deserialize, Serialize};
 use tinyvec::ArrayVec;
 
 const ATTRS_VEC_SIZE: usize = 32;
 type Attrs = ArrayVec<[Word; ATTRS_VEC_SIZE]>;
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Card {
     id: u32,
     card_type: u32,
@@ -58,7 +57,7 @@ impl Default for Card {
 const TYPE_ATTRS_VEC_SIZE: usize = 32;
 type TypeAttrs = ArrayVec<[Word; TYPE_ATTRS_VEC_SIZE]>;
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone, Serialize, Deserialize)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct EntryPoint {
     address: usize,
     n_args: usize,
@@ -91,7 +90,7 @@ impl Default for EntryPoint {
 const ENTRY_POINTS_VEC_SIZE: usize = 32;
 type EntryPoints = ArrayVec<[EntryPoint; ENTRY_POINTS_VEC_SIZE]>;
 
-#[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct CardType {
     id: u32,
     attrs: TypeAttrs,
