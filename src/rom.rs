@@ -1,23 +1,22 @@
 use crate::board::Board;
 use crate::card::{Card, CardType};
 use crate::vm::VMCommand;
-use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
-use tinyvec::ArrayVec;
+use tinyvec::SliceVec;
 
 const ROM_SIZE: usize = 2 ^ 16;
-type InstructionRom = ArrayVec<[VMCommand; ROM_SIZE]>;
+type InstructionRom<'a> = SliceVec<'a, VMCommand>;
 
 const TYPE_DECK_SIZE: usize = 2 ^ 10;
-type TypeDeck = ArrayVec<[CardType; TYPE_DECK_SIZE]>;
+type TypeDeck<'a> = SliceVec<'a, CardType>;
 
-#[derive(Debug, Eq, PartialEq, Deserialize, Serialize)]
-pub struct Rom {
-    card_types: TypeDeck,
-    instructions: InstructionRom,
+#[derive(Debug, Eq, PartialEq)]
+pub struct Rom<'a> {
+    card_types: TypeDeck<'a>,
+    instructions: InstructionRom<'a>,
     initial_board_state: Board,
 }
-impl Rom {
+impl<'a> Rom<'a> {
     pub fn fetch_instruction(&self, pc: usize) -> VMCommand {
         self.instructions[pc]
     }
@@ -60,17 +59,14 @@ impl Rom {
 
     #[cfg(test)]
     pub unsafe fn from_raw_parts(
-        instructions: Vec<VMCommand>,
-        card_types: Vec<CardType>,
+        instructions: &'a mut [VMCommand],
+        card_types: &'a mut [CardType],
         initial_board_state: Board,
-    ) -> Rom {
-        let mut rom = Rom {
-            card_types: TypeDeck::new(),
-            instructions: InstructionRom::new(),
+    ) -> Rom<'a> {
+        Rom {
+            card_types: TypeDeck::from(card_types),
+            instructions: InstructionRom::from(instructions),
             initial_board_state,
-        };
-        rom.card_types.fill(card_types);
-        rom.instructions.fill(instructions);
-        rom
+        }
     }
 }

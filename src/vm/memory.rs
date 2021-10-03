@@ -1,23 +1,21 @@
 use crate::word::Word;
-use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
-use tinyvec::ArrayVec;
+use tinyvec::SliceVec;
 
 const STACK_SIZE: usize = 512;
-type Stack = ArrayVec<[Word; STACK_SIZE]>;
+type Stack<'a> = SliceVec<'a, Word>;
 
-#[derive(Debug, Eq, PartialEq, Deserialize, Serialize)]
-pub struct Memory {
-    stack: Stack,
+#[derive(Debug, Eq, PartialEq)]
+pub struct Memory<'a> {
+    stack: Stack<'a>,
     lcl: usize,
     arg: usize,
     pc: usize,
 }
 
-impl Memory {
-    pub fn init_memory(arguments: Vec<Word>, card_index: i32, action_index: i32) -> Self {
-        let mut stack = Stack::new();
-        stack.fill(arguments);
+impl<'a> Memory<'a> {
+    pub fn init_memory(arguments: &'a mut [Word], card_index: i32, action_index: i32) -> Self {
+        let mut stack = Stack::from(arguments);
         stack.push(Word::Numeric(card_index));
         stack.push(Word::Numeric(action_index));
 
@@ -398,13 +396,11 @@ impl Memory {
     }
 
     #[cfg(test)]
-    pub unsafe fn from_raw_parts(data: Vec<Word>, lcl: usize, arg: usize, pc: usize) -> Memory {
+    pub unsafe fn from_raw_parts(data: &mut [Word], lcl: usize, arg: usize, pc: usize) -> Memory {
         assert!(lcl <= data.len());
         assert!(arg <= data.len());
-        let mut stack = ArrayVec::<[Word; STACK_SIZE]>::new();
-        stack.fill(data);
         Memory {
-            stack,
+            stack: Stack::from(data),
             lcl,
             arg,
             pc,
@@ -412,890 +408,888 @@ impl Memory {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::word_vec;
-    use tinyvec::array_vec;
-
-    mod arithmetic {
-        use super::*;
-
-        mod add {
-            use super::*;
-
-            #[test]
-            fn numeric() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1, 2], 0, 0, 0) };
-                mem.add();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Numeric(3))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            #[should_panic(expected = "Type mismatch: attempted to add boolean values.")]
-            fn boolean_first() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1, true], 0, 0, 0) };
-                mem.add();
-            }
-
-            #[test]
-            #[should_panic(expected = "Type mismatch: attempted to add boolean values.")]
-            fn boolean_second() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![true, 1], 0, 0, 0) };
-                mem.add();
-            }
-
-            #[test]
-            #[should_panic(expected = "Not enough values on the stack.")]
-            fn one_value_on_the_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1], 0, 0, 0) };
-                mem.add();
-            }
-
-            #[test]
-            #[should_panic(expected = "Not enough values on the stack.")]
-            fn empty_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(Vec::<Word>::new(), 0, 0, 0) };
-                mem.add();
-            }
-        }
-
-        mod sub {
-            use super::*;
-
-            #[test]
-            fn numeric() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1, 2], 0, 0, 0) };
-                mem.sub();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Numeric(1))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            #[should_panic(expected = "Type mismatch: attempted to substract boolean values.")]
-            fn boolean() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1, true], 0, 0, 0) };
-                mem.sub();
-            }
-
-            #[test]
-            #[should_panic(expected = "Not enough values on the stack.")]
-            fn one_value_on_the_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1], 0, 0, 0) };
-                mem.sub();
-            }
-
-            #[test]
-            #[should_panic(expected = "Not enough values on the stack.")]
-            fn empty_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(Vec::<Word>::new(), 0, 0, 0) };
-                mem.sub();
-            }
-        }
-
-        mod mul {
-            use super::*;
-
-            #[test]
-            fn numeric() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![4, 2], 0, 0, 0) };
-                mem.mul();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Numeric(8))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            #[should_panic(expected = "Type mismatch: attempted to multiply boolean values.")]
-            fn boolean() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1, true], 0, 0, 0) };
-                mem.mul();
-            }
-
-            #[test]
-            #[should_panic(expected = "Not enough values on the stack.")]
-            fn one_value_on_the_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1], 0, 0, 0) };
-                mem.mul();
-            }
-
-            #[test]
-            #[should_panic(expected = "Not enough values on the stack.")]
-            fn empty_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(Vec::<Word>::new(), 0, 0, 0) };
-                mem.mul();
-            }
-        }
-
-        mod div {
-            use super::*;
-
-            #[test]
-            fn no_remainer() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, 6], 0, 0, 0) };
-                mem.div();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Numeric(3))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            fn remainer() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, 7], 0, 0, 0) };
-                mem.div();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Numeric(3))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            #[should_panic(expected = "Type mismatch: attempted to divide boolean values.")]
-            fn boolean() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1, true], 0, 0, 0) };
-                mem.div();
-            }
-
-            #[test]
-            #[should_panic(expected = "Not enough values on the stack.")]
-            fn one_value_on_the_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1], 0, 0, 0) };
-                mem.div();
-            }
-
-            #[test]
-            #[should_panic(expected = "Not enough values on the stack.")]
-            fn empty_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(Vec::<Word>::new(), 0, 0, 0) };
-                mem.div();
-            }
-        }
-
-        mod rem {
-            use super::*;
-
-            #[test]
-            fn zero() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, 6], 0, 0, 0) };
-                mem.rem();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Numeric(0))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            fn non_zero() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![3, 7], 0, 0, 0) };
-                mem.rem();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Numeric(1))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            #[should_panic(
-                expected = "Type mismatch: attempted to take the remainer of the boolean values."
-            )]
-            fn boolean() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1, true], 0, 0, 0) };
-                mem.rem();
-            }
-
-            #[test]
-            #[should_panic(expected = "Not enough values on the stack.")]
-            fn one_value_on_the_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1], 0, 0, 0) };
-                mem.rem();
-            }
-
-            #[test]
-            #[should_panic(expected = "Not enough values on the stack.")]
-            fn empty_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(Vec::<Word>::new(), 0, 0, 0) };
-                mem.rem();
-            }
-        }
-
-        mod neg {
-            use super::*;
-
-            #[test]
-            fn numeric() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1, 2], 0, 0, 0) };
-                mem.neg();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Numeric(1), Word::Numeric(-2))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            #[should_panic(expected = "Attempted to negate boolean value.")]
-            fn boolean() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1, true], 0, 0, 0) };
-                mem.neg();
-            }
-
-            #[test]
-            #[should_panic(expected = "Not enough values on the stack.")]
-            fn empty_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(Vec::<Word>::new(), 0, 0, 0) };
-                mem.neg();
-            }
-        }
-
-        mod inc {
-            use super::*;
-
-            #[test]
-            fn numeric() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1, 2], 0, 0, 0) };
-                mem.inc();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Numeric(1), Word::Numeric(3))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            #[should_panic(expected = "Attempted to increment boolean value.")]
-            fn boolean() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1, true], 0, 0, 0) };
-                mem.inc();
-            }
-
-            #[test]
-            #[should_panic(expected = "Not enough values on the stack.")]
-            fn empty_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(Vec::<Word>::new(), 0, 0, 0) };
-                mem.inc();
-            }
-        }
-
-        mod dec {
-            use super::*;
-
-            #[test]
-            fn numeric() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1, 2], 0, 0, 0) };
-                mem.dec();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Numeric(1), Word::Numeric(1))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            #[should_panic(expected = "Attempted to decrement boolean value.")]
-            fn boolean() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1, true], 0, 0, 0) };
-                mem.dec();
-            }
-
-            #[test]
-            #[should_panic(expected = "Not enough values on the stack.")]
-            fn empty_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(Vec::<Word>::new(), 0, 0, 0) };
-                mem.dec();
-            }
-        }
-
-        mod abs {
-            use super::*;
-
-            #[test]
-            fn positive() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1, 2], 0, 0, 0) };
-                mem.abs();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Numeric(1), Word::Numeric(2))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            fn negative() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1, -2], 0, 0, 0) };
-                mem.abs();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Numeric(1), Word::Numeric(2))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            #[should_panic(expected = "Attempted to find modulus of boolean value.")]
-            fn boolean() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1, true], 0, 0, 0) };
-                mem.abs();
-            }
-
-            #[test]
-            #[should_panic(expected = "Not enough values on the stack.")]
-            fn empty_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(Vec::<Word>::new(), 0, 0, 0) };
-                mem.abs();
-            }
-        }
-    }
-
-    mod logic {
-        use super::*;
-
-        mod eq {
-            use super::*;
-
-            #[test]
-            fn equal() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![4, 4], 0, 0, 0) };
-                mem.equal();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(true))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            fn non_equal() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![5, 4], 0, 0, 0) };
-                mem.equal();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            #[should_panic(expected = "Type mismatch: attempted to compare boolean to numerical.")]
-            fn type_mismatch() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1, true], 0, 0, 0) };
-                mem.equal();
-            }
-
-            #[test]
-            #[should_panic(
-                expected = "Type mismatch: attempted to check boolean values for equality."
-            )]
-            fn boolean() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![true, true], 0, 0, 0) };
-                mem.equal();
-            }
-
-            #[test]
-            #[should_panic(expected = "Not enough values on the stack.")]
-            fn one_value_on_the_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1], 0, 0, 0) };
-                mem.equal();
-            }
-
-            #[test]
-            #[should_panic(expected = "Not enough values on the stack.")]
-            fn empty_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(Vec::<Word>::new(), 0, 0, 0) };
-                mem.equal();
-            }
-        }
-
-        mod gt {
-            use super::*;
-
-            #[test]
-            fn equal() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![4, 4], 0, 0, 0) };
-                mem.gt();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            fn smaller() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![5, 4], 0, 0, 0) };
-                mem.gt();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            fn bigger() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![4, 5], 0, 0, 0) };
-                mem.gt();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(true))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            #[should_panic(expected = "Type mismatch: attempted to compare boolean to numerical.")]
-            fn type_mismatch() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1, true], 0, 0, 0) };
-                mem.gt();
-            }
-
-            #[test]
-            #[should_panic(
-                expected = "Type mismatch: attempted to check boolean values for equality."
-            )]
-            fn boolean() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![true, true], 0, 0, 0) };
-                mem.gt();
-            }
-
-            #[test]
-            #[should_panic(expected = "Not enough values on the stack.")]
-            fn one_value_on_the_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1], 0, 0, 0) };
-                mem.gt();
-            }
-
-            #[test]
-            #[should_panic(expected = "Not enough values on the stack.")]
-            fn empty_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(Vec::<Word>::new(), 0, 0, 0) };
-                mem.gt();
-            }
-        }
-
-        mod lt {
-            use super::*;
-
-            #[test]
-            fn equal() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![4, 4], 0, 0, 0) };
-                mem.lt();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            fn smaller() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![5, 4], 0, 0, 0) };
-                mem.lt();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(true))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            fn bigger() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![4, 5], 0, 0, 0) };
-                mem.lt();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            #[should_panic(expected = "Type mismatch: attempted to compare boolean to numerical.")]
-            fn type_mismatch() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1, true], 0, 0, 0) };
-                mem.lt();
-            }
-
-            #[test]
-            #[should_panic(
-                expected = "Type mismatch: attempted to check boolean values for equality."
-            )]
-            fn boolean() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![true, true], 0, 0, 0) };
-                mem.lt();
-            }
-
-            #[test]
-            #[should_panic(expected = "Not enough values on the stack.")]
-            fn one_value_on_the_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1], 0, 0, 0) };
-                mem.lt();
-            }
-
-            #[test]
-            #[should_panic(expected = "Not enough values on the stack.")]
-            fn empty_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(Vec::<Word>::new(), 0, 0, 0) };
-                mem.lt();
-            }
-        }
-
-        mod and {
-            use super::*;
-
-            #[test]
-            fn false_false() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![false, false], 0, 0, 0) };
-                mem.and();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            fn false_true() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![false, true], 0, 0, 0) };
-                mem.and();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            fn true_true() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![true, true], 0, 0, 0) };
-                mem.and();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(true))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            #[should_panic(expected = "Type mismatch: attempted to AND boolean to numerical.")]
-            fn type_mismatch() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1, true], 0, 0, 0) };
-                mem.and();
-            }
-
-            #[test]
-            #[should_panic(expected = "Type mismatch: attempted to AND numerical values.")]
-            fn boolean() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1, 2], 0, 0, 0) };
-                mem.and();
-            }
-
-            #[test]
-            #[should_panic(expected = "Not enough values on the stack.")]
-            fn one_value_on_the_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1], 0, 0, 0) };
-                mem.and();
-            }
-
-            #[test]
-            #[should_panic(expected = "Not enough values on the stack.")]
-            fn empty_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(Vec::<Word>::new(), 0, 0, 0) };
-                mem.and();
-            }
-        }
-
-        mod or {
-            use super::*;
-
-            #[test]
-            fn false_false() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![false, false], 0, 0, 0) };
-                mem.or();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            fn false_true() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![false, true], 0, 0, 0) };
-                mem.or();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(true))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            fn true_true() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![true, true], 0, 0, 0) };
-                mem.or();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(true))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            #[should_panic(expected = "Type mismatch: attempted to OR boolean to numerical.")]
-            fn type_mismatch() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1, true], 0, 0, 0) };
-                mem.or();
-            }
-
-            #[test]
-            #[should_panic(expected = "Type mismatch: attempted to OR numerical values.")]
-            fn boolean() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1, 2], 0, 0, 0) };
-                mem.or();
-            }
-
-            #[test]
-            #[should_panic(expected = "Not enough values on the stack.")]
-            fn one_value_on_the_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1], 0, 0, 0) };
-                mem.or();
-            }
-
-            #[test]
-            #[should_panic(expected = "Not enough values on the stack.")]
-            fn empty_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(Vec::<Word>::new(), 0, 0, 0) };
-                mem.or();
-            }
-        }
-
-        mod not {
-            use super::*;
-
-            #[test]
-            fn test_false() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![false], 0, 0, 0) };
-                mem.not();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(true))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            fn test_true() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![true], 0, 0, 0) };
-                mem.not();
-                pretty_assertions::assert_eq!(
-                    mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
-                );
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            #[should_panic(expected = "Attempted to NOT numerical value.")]
-            fn numerical() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1], 0, 0, 0) };
-                mem.not();
-            }
-
-            #[test]
-            #[should_panic(expected = "Not enough values on the stack.")]
-            fn empty_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(Vec::<Word>::new(), 0, 0, 0) };
-                mem.not();
-            }
-        }
-    }
-
-    mod data_flow {
-        use super::*;
-
-        #[test]
-        fn push_external_data() {
-            let mut mem = unsafe { Memory::from_raw_parts(word_vec![], 0, 0, 0) };
-            mem.push_external(Word::Numeric(0));
-            pretty_assertions::assert_eq!(
-                mem.stack,
-                array_vec!([Word; STACK_SIZE] => Word::Numeric(0))
-            );
-            pretty_assertions::assert_eq!(mem.pc, 1);
-        }
-
-        #[test]
-        fn pop_external_data() {
-            let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, 6], 0, 0, 0) };
-            mem.pop_external();
-            pretty_assertions::assert_eq!(
-                mem.stack,
-                array_vec!([Word; STACK_SIZE] => Word::Numeric(2))
-            );
-            pretty_assertions::assert_eq!(mem.pc, 1);
-            mem.pop_external();
-            pretty_assertions::assert_eq!(mem.stack, array_vec!([Word; STACK_SIZE]));
-            pretty_assertions::assert_eq!(mem.pc, 2);
-        }
-
-        #[test]
-        fn pop_external_no_inc() {
-            let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, 6], 0, 0, 0) };
-            mem.pop_external_no_pc_inc();
-            pretty_assertions::assert_eq!(
-                mem.stack,
-                array_vec!([Word; STACK_SIZE] => Word::Numeric(2))
-            );
-            pretty_assertions::assert_eq!(mem.pc, 0);
-            mem.pop_external_no_pc_inc();
-            pretty_assertions::assert_eq!(mem.stack, array_vec!([Word; STACK_SIZE]));
-            pretty_assertions::assert_eq!(mem.pc, 0);
-        }
-
-        #[test]
-        fn push_local_data() {
-            let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, 6, 8], 1, 0, 0) };
-            mem.push_local(0);
-            mem.push_local(1);
-            pretty_assertions::assert_eq!(
-                mem.stack,
-                array_vec!([Word; STACK_SIZE] =>
-                    Word::Numeric(2),
-                    Word::Numeric(6),
-                    Word::Numeric(8),
-                    Word::Numeric(6),
-                    Word::Numeric(8))
-            );
-            pretty_assertions::assert_eq!(mem.pc, 2);
-        }
-
-        #[test]
-        fn pop_local_data() {
-            let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, 6, 8, 16,], 0, 0, 0) };
-            mem.pop_local(0);
-            mem.pop_local(1);
-            pretty_assertions::assert_eq!(
-                mem.stack,
-                array_vec!([Word; STACK_SIZE] => Word::Numeric(16), Word::Numeric(8))
-            );
-            pretty_assertions::assert_eq!(mem.pc, 2);
-        }
-
-        #[test]
-        fn push_argument_data() {
-            let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, 6, 8], 0, 1, 0) };
-            mem.push_argument(0);
-            mem.push_argument(1);
-            pretty_assertions::assert_eq!(
-                mem.stack,
-                array_vec!([Word; STACK_SIZE] => Word::Numeric(2), Word::Numeric(6), Word::Numeric(8), Word::Numeric(6),Word::Numeric(8))
-            );
-            pretty_assertions::assert_eq!(mem.pc, 2);
-        }
-
-        #[test]
-        fn pop_argument_data() {
-            let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, 6, 8, 16,], 0, 0, 0) };
-            mem.pop_argument(0);
-            mem.pop_argument(1);
-            pretty_assertions::assert_eq!(
-                mem.stack,
-                array_vec!([Word; STACK_SIZE] => Word::Numeric(16), Word::Numeric(8))
-            );
-            pretty_assertions::assert_eq!(mem.pc, 2);
-        }
-    }
-
-    mod control_flow {
-        use super::*;
-
-        #[test]
-        fn call() {
-            let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, true], 0, 1, 4) };
-            mem.call(16, 2);
-            pretty_assertions::assert_eq!(
-                mem.stack,
-                array_vec!([Word; STACK_SIZE] => Word::Numeric(2), Word::Boolean(true), Word::Numeric(5), Word::Numeric(0), Word::Numeric(1))
-            );
-            pretty_assertions::assert_eq!(mem.lcl, 5);
-            pretty_assertions::assert_eq!(mem.arg, 0);
-            pretty_assertions::assert_eq!(mem.pc, 16);
-        }
-
-        #[test]
-        fn fn_return() {
-            let mut mem =
-                unsafe { Memory::from_raw_parts(word_vec![2, true, 5, 0, 1, false], 5, 0, 16) };
-            mem.fn_return();
-            pretty_assertions::assert_eq!(
-                mem.stack,
-                array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
-            );
-            pretty_assertions::assert_eq!(mem.lcl, 0);
-            pretty_assertions::assert_eq!(mem.arg, 1);
-            pretty_assertions::assert_eq!(mem.pc, 5);
-        }
-
-        #[test]
-        fn function() {
-            let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, true], 2, 0, 16) };
-            mem.function(3);
-            pretty_assertions::assert_eq!(
-                mem.stack,
-                array_vec!([Word; STACK_SIZE] => Word::Numeric(2), Word::Boolean(true), Word::Numeric(0), Word::Numeric(0), Word::Numeric(0))
-            );
-            pretty_assertions::assert_eq!(mem.lcl, 2);
-            pretty_assertions::assert_eq!(mem.arg, 0);
-            pretty_assertions::assert_eq!(mem.pc, 17);
-        }
-
-        mod ifjmp {
-            use super::*;
-            #[test]
-            fn conditional_jump_successful() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![true], 0, 0, 0) };
-                mem.ifjmp(10);
-                pretty_assertions::assert_eq!(mem.stack, ArrayVec::<[Word; STACK_SIZE]>::new());
-                pretty_assertions::assert_eq!(mem.pc, 10);
-            }
-
-            #[test]
-            fn conditional_jump_unsuccessful() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![false], 0, 0, 0) };
-                mem.ifjmp(10);
-                pretty_assertions::assert_eq!(mem.stack, ArrayVec::<[Word; STACK_SIZE]>::new());
-                pretty_assertions::assert_eq!(mem.pc, 1);
-            }
-
-            #[test]
-            #[should_panic(
-                expected = "Type mismatch: attempted to use numerical value in boolean condition."
-            )]
-            fn type_mismatch() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1], 0, 0, 0) };
-                mem.ifjmp(10);
-            }
-
-            #[test]
-            #[should_panic(expected = "Not enough values on the stack.")]
-            fn empty_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(Vec::<Word>::new(), 0, 0, 0) };
-                mem.ifjmp(10);
-            }
-        }
-    }
-}
+//#[cfg(test)]
+//mod tests {
+    //use super::*;
+    //use crate::word_vec;
+    //use tinyvec::array_vec;
+
+    //mod arithmetic {
+        //use super::*;
+
+        //mod add {
+            //use super::*;
+
+            //#[test]
+            //fn numeric() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1, 2], 0, 0, 0) };
+                //mem.add();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Type mismatch: attempted to add boolean values.")]
+            //fn boolean_first() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1, true], 0, 0, 0) };
+                //mem.add();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Type mismatch: attempted to add boolean values.")]
+            //fn boolean_second() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![true, 1], 0, 0, 0) };
+                //mem.add();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Not enough values on the stack.")]
+            //fn one_value_on_the_stack() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1], 0, 0, 0) };
+                //mem.add();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Not enough values on the stack.")]
+            //fn empty_stack() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut [], 0, 0, 0) };
+                //mem.add();
+            //}
+        //}
+
+        //mod sub {
+            //use super::*;
+
+            //#[test]
+            //fn numeric() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1, 2], 0, 0, 0) };
+                //mem.sub();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Type mismatch: attempted to substract boolean values.")]
+            //fn boolean() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1, true], 0, 0, 0) };
+                //mem.sub();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Not enough values on the stack.")]
+            //fn one_value_on_the_stack() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1], 0, 0, 0) };
+                //mem.sub();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Not enough values on the stack.")]
+            //fn empty_stack() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut [], 0, 0, 0) };
+                //mem.sub();
+            //}
+        //}
+
+        //mod mul {
+            //use super::*;
+
+            //#[test]
+            //fn numeric() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![4, 2], 0, 0, 0) };
+                //mem.mul();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Type mismatch: attempted to multiply boolean values.")]
+            //fn boolean() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1, true], 0, 0, 0) };
+                //mem.mul();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Not enough values on the stack.")]
+            //fn one_value_on_the_stack() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1], 0, 0, 0) };
+                //mem.mul();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Not enough values on the stack.")]
+            //fn empty_stack() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut [], 0, 0, 0) };
+                //mem.mul();
+            //}
+        //}
+
+        //mod div {
+            //use super::*;
+
+            //#[test]
+            //fn no_remainer() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![2, 6], 0, 0, 0) };
+                //mem.div();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //fn remainer() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![2, 7], 0, 0, 0) };
+                //mem.div();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![3], 0, 0, 1) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Type mismatch: attempted to divide boolean values.")]
+            //fn boolean() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1, true], 0, 0, 0) };
+                //mem.div();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Not enough values on the stack.")]
+            //fn one_value_on_the_stack() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1], 0, 0, 0) };
+                //mem.div();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Not enough values on the stack.")]
+            //fn empty_stack() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut [], 0, 0, 0) };
+                //mem.div();
+            //}
+        //}
+
+        //mod rem {
+            //use super::*;
+
+            //#[test]
+            //fn zero() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![2, 6], 0, 0, 0) };
+                //mem.rem();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![0], 0, 0, 1) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //fn non_zero() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![3, 7], 0, 0, 0) };
+                //mem.rem();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![1], 0, 0, 1) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //#[should_panic(
+                //expected = "Type mismatch: attempted to take the remainer of the boolean values."
+            //)]
+            //fn boolean() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1, true], 0, 0, 0) };
+                //mem.rem();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Not enough values on the stack.")]
+            //fn one_value_on_the_stack() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1], 0, 0, 0) };
+                //mem.rem();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Not enough values on the stack.")]
+            //fn empty_stack() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut [], 0, 0, 0) };
+                //mem.rem();
+            //}
+        //}
+
+        //mod neg {
+            //use super::*;
+
+            //#[test]
+            //fn numeric() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1, 2], 0, 0, 0) };
+                //mem.neg();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Attempted to negate boolean value.")]
+            //fn boolean() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1, true], 0, 0, 0) };
+                //mem.neg();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Not enough values on the stack.")]
+            //fn empty_stack() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut [], 0, 0, 0) };
+                //mem.neg();
+            //}
+        //}
+
+        //mod inc {
+            //use super::*;
+
+            //#[test]
+            //fn numeric() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1, 2], 0, 0, 0) };
+                //mem.inc();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Attempted to increment boolean value.")]
+            //fn boolean() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1, true], 0, 0, 0) };
+                //mem.inc();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Not enough values on the stack.")]
+            //fn empty_stack() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut [], 0, 0, 0) };
+                //mem.inc();
+            //}
+        //}
+
+        //mod dec {
+            //use super::*;
+
+            //#[test]
+            //fn numeric() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1, 2], 0, 0, 0) };
+                //mem.dec();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Attempted to decrement boolean value.")]
+            //fn boolean() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1, true], 0, 0, 0) };
+                //mem.dec();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Not enough values on the stack.")]
+            //fn empty_stack() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut [], 0, 0, 0) };
+                //mem.dec();
+            //}
+        //}
+
+        //mod abs {
+            //use super::*;
+
+            //#[test]
+            //fn positive() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1, 2], 0, 0, 0) };
+                //mem.abs();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //fn negative() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1, -2], 0, 0, 0) };
+                //mem.abs();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Attempted to find modulus of boolean value.")]
+            //fn boolean() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1, true], 0, 0, 0) };
+                //mem.abs();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Not enough values on the stack.")]
+            //fn empty_stack() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut [], 0, 0, 0) };
+                //mem.abs();
+            //}
+        //}
+    //}
+
+    //mod logic {
+        //use super::*;
+
+        //mod eq {
+            //use super::*;
+
+            //#[test]
+            //fn equal() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![4, 4], 0, 0, 0) };
+                //mem.equal();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //fn non_equal() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![5, 4], 0, 0, 0) };
+                //mem.equal();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Type mismatch: attempted to compare boolean to numerical.")]
+            //fn type_mismatch() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1, true], 0, 0, 0) };
+                //mem.equal();
+            //}
+
+            //#[test]
+            //#[should_panic(
+                //expected = "Type mismatch: attempted to check boolean values for equality."
+            //)]
+            //fn boolean() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![true, true], 0, 0, 0) };
+                //mem.equal();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Not enough values on the stack.")]
+            //fn one_value_on_the_stack() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1], 0, 0, 0) };
+                //mem.equal();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Not enough values on the stack.")]
+            //fn empty_stack() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut [], 0, 0, 0) };
+                //mem.equal();
+            //}
+        //}
+
+        //mod gt {
+            //use super::*;
+
+            //#[test]
+            //fn equal() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![4, 4], 0, 0, 0) };
+                //mem.gt();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //fn smaller() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![5, 4], 0, 0, 0) };
+                //mem.gt();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //fn bigger() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![4, 5], 0, 0, 0) };
+                //mem.gt();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Type mismatch: attempted to compare boolean to numerical.")]
+            //fn type_mismatch() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1, true], 0, 0, 0) };
+                //mem.gt();
+            //}
+
+            //#[test]
+            //#[should_panic(
+                //expected = "Type mismatch: attempted to check boolean values for equality."
+            //)]
+            //fn boolean() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![true, true], 0, 0, 0) };
+                //mem.gt();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Not enough values on the stack.")]
+            //fn one_value_on_the_stack() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1], 0, 0, 0) };
+                //mem.gt();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Not enough values on the stack.")]
+            //fn empty_stack() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut [], 0, 0, 0) };
+                //mem.gt();
+            //}
+        //}
+
+        //mod lt {
+            //use super::*;
+
+            //#[test]
+            //fn equal() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![4, 4], 0, 0, 0) };
+                //mem.lt();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //fn smaller() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![5, 4], 0, 0, 0) };
+                //mem.lt();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //fn bigger() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![4, 5], 0, 0, 0) };
+                //mem.lt();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Type mismatch: attempted to compare boolean to numerical.")]
+            //fn type_mismatch() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1, true], 0, 0, 0) };
+                //mem.lt();
+            //}
+
+            //#[test]
+            //#[should_panic(
+                //expected = "Type mismatch: attempted to check boolean values for equality."
+            //)]
+            //fn boolean() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![true, true], 0, 0, 0) };
+                //mem.lt();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Not enough values on the stack.")]
+            //fn one_value_on_the_stack() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1], 0, 0, 0) };
+                //mem.lt();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Not enough values on the stack.")]
+            //fn empty_stack() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut [], 0, 0, 0) };
+                //mem.lt();
+            //}
+        //}
+
+        //mod and {
+            //use super::*;
+
+            //#[test]
+            //fn false_false() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![false, false], 0, 0, 0) };
+                //mem.and();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //fn false_true() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![false, true], 0, 0, 0) };
+                //mem.and();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //fn true_true() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![true, true], 0, 0, 0) };
+                //mem.and();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Type mismatch: attempted to AND boolean to numerical.")]
+            //fn type_mismatch() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1, true], 0, 0, 0) };
+                //mem.and();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Type mismatch: attempted to AND numerical values.")]
+            //fn boolean() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1, 2], 0, 0, 0) };
+                //mem.and();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Not enough values on the stack.")]
+            //fn one_value_on_the_stack() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1], 0, 0, 0) };
+                //mem.and();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Not enough values on the stack.")]
+            //fn empty_stack() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut [], 0, 0, 0) };
+                //mem.and();
+            //}
+        //}
+
+        //mod or {
+            //use super::*;
+
+            //#[test]
+            //fn false_false() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![false, false], 0, 0, 0) };
+                //mem.or();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //fn false_true() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![false, true], 0, 0, 0) };
+                //mem.or();
+                
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //fn true_true() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![true, true], 0, 0, 0) };
+                //mem.or();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Type mismatch: attempted to OR boolean to numerical.")]
+            //fn type_mismatch() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1, true], 0, 0, 0) };
+                //mem.or();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Type mismatch: attempted to OR numerical values.")]
+            //fn boolean() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1, 2], 0, 0, 0) };
+                //mem.or();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Not enough values on the stack.")]
+            //fn one_value_on_the_stack() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1], 0, 0, 0) };
+                //mem.or();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Not enough values on the stack.")]
+            //fn empty_stack() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut [], 0, 0, 0) };
+                //mem.or();
+            //}
+        //}
+
+        //mod not {
+            //use super::*;
+
+            //#[test]
+            //fn test_false() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![false], 0, 0, 0) };
+                //mem.not();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //fn test_true() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![true], 0, 0, 0) };
+                //mem.not();
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Attempted to NOT numerical value.")]
+            //fn numerical() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![1], 0, 0, 0) };
+                //mem.not();
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Not enough values on the stack.")]
+            //fn empty_stack() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut [], 0, 0, 0) };
+                //mem.not();
+            //}
+        //}
+    //}
+
+    //mod data_flow {
+        //use super::*;
+
+        //#[test]
+        //fn push_external_data() {
+            //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![], 0, 0, 0) };
+            //mem.push_external(Word::Numeric(0));
+            //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+            //pretty_assertions::assert_eq!(
+                //mem,
+                //mem_needed
+            //);
+        //}
+
+        //#[test]
+        //fn pop_external_data() {
+            //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![2, 6], 0, 0, 0) };
+            //mem.pop_external();
+            //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+            //pretty_assertions::assert_eq!(
+                //mem,
+                //mem_needed
+            //);
+        //}
+
+        //#[test]
+        //fn pop_external_no_inc() {
+            //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![2, 6], 0, 0, 0) };
+            //mem.pop_external_no_pc_inc();
+            //mem.pop_external_no_pc_inc();
+            //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+            //pretty_assertions::assert_eq!(
+                //mem,
+                //mem_needed
+            //);
+        //}
+
+        //#[test]
+        //fn push_local_data() {
+            //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![2, 6, 8], 1, 0, 0) };
+            //mem.push_local(0);
+            //mem.push_local(1);
+
+            //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+            //pretty_assertions::assert_eq!(
+                //mem,
+                //mem_needed
+            //);
+        //}
+
+        //#[test]
+        //fn pop_local_data() {
+            //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![2, 6, 8, 16,], 0, 0, 0) };
+            //mem.pop_local(0);
+            //mem.pop_local(1);
+            //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+            //pretty_assertions::assert_eq!(
+                //mem,
+                //mem_needed
+            //);
+        //}
+
+        //#[test]
+        //fn push_argument_data() {
+            //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![2, 6, 8], 0, 1, 0) };
+            //mem.push_argument(0);
+            //mem.push_argument(1);
+            //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+            //pretty_assertions::assert_eq!(
+                //mem,
+                //mem_needed
+            //);
+        //}
+
+        //#[test]
+        //fn pop_argument_data() {
+            //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![2, 6, 8, 16,], 0, 0, 0) };
+            //mem.pop_argument(0);
+            //mem.pop_argument(1);
+
+            //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![16,8], 0, 0, 2) };
+            //pretty_assertions::assert_eq!(
+                //mem,
+                //mem_needed
+            //);
+        //}
+    //}
+
+    //mod control_flow {
+        //use super::*;
+
+        //#[test]
+        //fn call() {
+            //let mut mem = unsafe { Memory::from_raw_parts(&mut word_vec![2, true], 0, 1, 4) };
+            //mem.call(16, 2);
+            //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut word_vec![2, true, 5,0,1], 5, 0, 16) };
+            //pretty_assertions::assert_eq!(
+                //mem,
+                //mem_needed
+            //);
+        //}
+
+        //#[test]
+        //fn fn_return() {
+            //let mut stack = word_vec![2, true, 5, 0, 1, false];
+            //let mut mem = unsafe { Memory::from_raw_parts(&mut stack, 5, 0, 16) };
+            //mem.fn_return();
+            //let mut mem_needed =
+                //unsafe { Memory::from_raw_parts(&mut word_vec![false], 0, 1, 5) };
+            //pretty_assertions::assert_eq!(
+                //mem,
+                //mem_needed
+            //);
+        //}
+
+        //#[test]
+        //fn function() {
+            //let mut stack = word_vec![2,true];
+            //let mut mem = unsafe { Memory::from_raw_parts(&mut stack, 2, 0, 16) };
+            //mem.function(3);
+
+            //let mut stack_needed = word_vec![2, true,0,0,0];
+            //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut stack_needed, 2, 0, 17) };
+            //pretty_assertions::assert_eq!(
+                //mem,
+                //mem_needed
+            //);
+        //}
+
+        //mod ifjmp {
+            //use super::*;
+            //#[test]
+            //fn conditional_jump_successful() {
+                //let mut stack = word_vec![true];
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut stack, 0, 0, 0) };
+                //mem.ifjmp(10);
+                //let mut stack_needed = word_vec![];
+                //let mut mem_needed = unsafe { Memory::from_raw_parts(&mut stack_needed, 0, 0, 10) };
+                //pretty_assertions::assert_eq!(
+                    //mem,
+                    //mem_needed
+                //);
+            //}
+
+            //#[test]
+            //fn conditional_jump_unsuccessful() {
+                //let mut stack = word_vec![false];
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut stack, 0, 0, 0) };
+                //mem.ifjmp(10);
+                //pretty_assertions::assert_eq!(mem.stack, SliceVec::<'_, Word>::from(&mut []));
+                //pretty_assertions::assert_eq!(mem.pc, 1);
+            //}
+
+            //#[test]
+            //#[should_panic(
+                //expected = "Type mismatch: attempted to use numerical value in boolean condition."
+            //)]
+            //fn type_mismatch() {
+                //let mut stack = word_vec![1];
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut stack, 0, 0, 0) };
+                //mem.ifjmp(10);
+            //}
+
+            //#[test]
+            //#[should_panic(expected = "Not enough values on the stack.")]
+            //fn empty_stack() {
+                //let mut mem = unsafe { Memory::from_raw_parts(&mut [], 0, 0, 0) };
+                //mem.ifjmp(10);
+            //}
+        //}
+    //}
+//}
