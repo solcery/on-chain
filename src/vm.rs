@@ -143,13 +143,13 @@ impl Default for VMCommand {
 pub struct VM<'a> {
     rom: &'a Rom<'a>,
     memory: Memory<'a>,
-    board: &'a mut Board,
+    board: &'a mut Board<'a>,
 }
 
 impl<'a> VM<'a> {
     pub fn init_vm(
         rom: &'a Rom,
-        board: &'a mut Board,
+        board: &'a mut Board<'a>,
         args: &'a mut [Word],
         card_index: i32,
         action_index: i32,
@@ -168,9 +168,9 @@ impl<'a> VM<'a> {
 
     pub fn resume_execution(
         rom: &'a Rom,
-        board: &'a mut Board,
+        board: &'a mut Board<'a>,
         sealed_memory: Sealed<Memory<'a>>,
-    ) -> VM<'a> {
+    ) -> Self {
         let memory = Sealed::<Memory<'a>>::release_data(sealed_memory);
         VM { rom, memory, board }
     }

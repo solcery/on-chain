@@ -1,22 +1,23 @@
 use crate::board::Board;
 use crate::card::{Card, CardType};
 use crate::vm::VMCommand;
+use crate::word::Word;
 use std::convert::TryInto;
 use tinyvec::SliceVec;
 
-const ROM_SIZE: usize = 2 ^ 16;
+const ROM_SIZE: usize = 2_usize.pow(16);
 type InstructionRom<'a> = SliceVec<'a, VMCommand>;
 
-const TYPE_DECK_SIZE: usize = 2 ^ 10;
+const TYPE_DECK_SIZE: usize = 2_usize.pow(10);
 type TypeDeck<'a> = SliceVec<'a, CardType>;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Rom<'a> {
     card_types: TypeDeck<'a>,
     instructions: InstructionRom<'a>,
-    initial_board_state: Board,
+    initial_board_state: Board<'a>,
 }
-impl<'a> Rom<'a> {
+impl<'a, 'b> Rom<'a> {
     pub fn fetch_instruction(&self, pc: usize) -> VMCommand {
         self.instructions[pc]
     }
@@ -53,16 +54,21 @@ impl<'a> Rom<'a> {
         }
     }
 
-    pub fn initialize_board(&self) -> Board {
-        self.initial_board_state.clone()
+    pub fn initialize_board(
+        &self,
+        deck_slice: &'b mut [Card],
+        attr_slice: &'b mut [Word],
+    ) -> Board<'b> {
+        self.initial_board_state
+            .clone_to_slices(deck_slice, attr_slice)
     }
 
     #[cfg(test)]
     pub unsafe fn from_raw_parts(
         instructions: &'a mut [VMCommand],
         card_types: &'a mut [CardType],
-        initial_board_state: Board,
-    ) -> Rom<'a> {
+        initial_board_state: Board<'a>,
+    ) -> Self {
         Rom {
             card_types: TypeDeck::from(card_types),
             instructions: InstructionRom::from(instructions),

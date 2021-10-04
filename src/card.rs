@@ -57,40 +57,10 @@ impl Default for Card {
 const TYPE_ATTRS_VEC_SIZE: usize = 32;
 type TypeAttrs = ArrayVec<[Word; TYPE_ATTRS_VEC_SIZE]>;
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
-pub struct EntryPoint {
-    address: usize,
-    n_args: usize,
-}
-
-impl EntryPoint {
-    pub fn address(&self) -> usize {
-        self.address
-    }
-
-    pub fn n_args(&self) -> usize {
-        self.n_args
-    }
-
-    #[cfg(test)]
-    pub unsafe fn from_raw_parts(address: usize, n_args: usize) -> EntryPoint {
-        EntryPoint { address, n_args }
-    }
-}
-
-impl Default for EntryPoint {
-    fn default() -> Self {
-        EntryPoint {
-            address: 0,
-            n_args: 0,
-        }
-    }
-}
-
 const ENTRY_POINTS_VEC_SIZE: usize = 32;
 type EntryPoints = ArrayVec<[EntryPoint; ENTRY_POINTS_VEC_SIZE]>;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, Clone, PartialEq)]
 pub struct CardType {
     id: u32,
     attrs: TypeAttrs,
@@ -160,6 +130,36 @@ impl Default for CardType {
             attrs: TypeAttrs::new(),
             init_card_attrs: Attrs::new(),
             action_entry_points: EntryPoints::new(),
+        }
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+pub struct EntryPoint {
+    address: usize,
+    n_args: usize,
+}
+
+impl EntryPoint {
+    pub fn address(&self) -> usize {
+        self.address
+    }
+
+    pub fn n_args(&self) -> usize {
+        self.n_args
+    }
+
+    #[cfg(test)]
+    pub unsafe fn from_raw_parts(address: usize, n_args: usize) -> EntryPoint {
+        EntryPoint { address, n_args }
+    }
+}
+
+impl Default for EntryPoint {
+    fn default() -> Self {
+        EntryPoint {
+            address: 0,
+            n_args: 0,
         }
     }
 }
