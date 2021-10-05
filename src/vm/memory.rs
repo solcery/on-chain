@@ -5,6 +5,9 @@ use tinyvec::SliceVec;
 const STACK_SIZE: usize = 512;
 type Stack<'a> = SliceVec<'a, Word>;
 
+mod slice_u8_vec;
+use slice_u8_vec::InternalStack;
+
 #[derive(Debug, Eq, PartialEq)]
 pub struct Memory<'a> {
     stack: Stack<'a>,
