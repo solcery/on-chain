@@ -10,6 +10,40 @@ pub struct InternalStack<'a>(SliceVec<'a, InternalWord>);
 
 type InternalWord = [u8; 5];
 
+impl From<InternalWord> for Word {
+    fn from(word: [u8; 5]) -> Self {
+        let descriminant = word[0];
+        match descriminant {
+            0 => {
+                let bool_data = word[1];
+                match bool_data {
+                    0 => Word::Boolean(false),
+                    1 => Word::Boolean(true),
+                    _ => panic!("Memory corrupted!"),
+                }
+            }
+            1 => {
+                Word::Numeric(i32::from_le_bytes(word[1..].try_into().unwrap()))
+            }
+            _ => panic!("Memory corrupted!"),
+        }
+    }
+}
+
+impl From<Word> for InternalWord {
+    fn from(word: Word) -> Self {
+        match word {
+            Word::Boolean(false) => [0,0,0,0,0],
+            Word::Boolean(true) => [0,1,0,0,0],
+            Word::Numeric(val) => {
+                let mut arr = [1,0,0,0,0];
+                arr[1..].clone_from_slice(&val.to_le_bytes());
+                arr
+            },
+        }
+    }
+}
+
 impl<'a> InternalStack<'a> {
     pub fn from_u8_slice(slice: &'a mut [u8], new_len: usize) -> Self {
         let len = slice.len();
@@ -30,37 +64,25 @@ impl<'a> InternalStack<'a> {
     }
 
     pub fn pop(&mut self) -> Option<Word> {
-        let internal_word = self.0.pop();
-        internal_word.map(|word| {
-            let descriminant = word[0];
-            match descriminant {
-                0 => {
-                    let bool_data = word[1];
-                    match bool_data {
-                        0 => Word::Boolean(false),
-                        1 => Word::Boolean(true),
-                        _ => panic!("Memory corrupted!"),
-                    }
-                }
-                1 => {
-                    Word::Numeric(i32::from_le_bytes(word[1..].try_into().unwrap()))
-                }
-                _ => panic!("Memory corrupted!"),
-            }
+        self.0.pop().map(|word| {
+            Word::from(word)
         })
     }
 
     pub fn push(&mut self, word: Word) {
-        let internal_word = match word {
-            Word::Boolean(false) => [0,0,0,0,0],
-            Word::Boolean(true) => [0,1,0,0,0],
-            Word::Numeric(val) => {
-                let mut arr = [1,0,0,0,0];
-                arr[1..].clone_from_slice(&val.to_le_bytes());
-                arr
-            },
-        };
-        self.0.push(internal_word);
+        self.0.push(InternalWord::from(word));
+    }
+
+    pub fn word(&self, index: usize) -> Word {
+        Word::from(self.0[index])
+    }
+
+    pub fn set_word(&mut self, index: usize, word: Word) {
+        self.0[index] = InternalWord::from(word);
+    }
+
+    pub fn truncate(&mut self, len: usize) {
+        self.0.truncate(len);
     }
 }
 

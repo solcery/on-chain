@@ -150,11 +150,11 @@ impl<'a> VM<'a> {
     pub fn init_vm(
         rom: &'a Rom,
         board: &'a mut Board<'a>,
-        args: &'a mut [Word],
+        memory: &'a mut [u8],
         card_index: i32,
         action_index: i32,
     ) -> VM<'a> {
-        let memory = Memory::init_memory(args, card_index, action_index);
+        let memory = Memory::init_memory(memory, card_index, action_index);
         VM { rom, memory, board }
     }
 
