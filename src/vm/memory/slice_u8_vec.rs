@@ -1,17 +1,13 @@
 use crate::word::Word;
-use std::{mem, slice};
-use std::ops::Index;
-use tinyvec::SliceVec;
 use std::convert::TryInto;
-
-
-#[derive(Eq, PartialEq, Debug)]
-pub struct InternalStack<'a>(SliceVec<'a, InternalWord>);
+use std::fmt;
+use std::mem;
+use tinyvec::SliceVec;
 
 type InternalWord = [u8; 5];
 
 impl From<InternalWord> for Word {
-    fn from(word: [u8; 5]) -> Self {
+    fn from(word: InternalWord) -> Self {
         let descriminant = word[0];
         match descriminant {
             0 => {
@@ -22,9 +18,7 @@ impl From<InternalWord> for Word {
                     _ => panic!("Memory corrupted!"),
                 }
             }
-            1 => {
-                Word::Numeric(i32::from_le_bytes(word[1..].try_into().unwrap()))
-            }
+            1 => Word::Numeric(i32::from_le_bytes(word[1..].try_into().unwrap())),
             _ => panic!("Memory corrupted!"),
         }
     }
@@ -33,14 +27,25 @@ impl From<InternalWord> for Word {
 impl From<Word> for InternalWord {
     fn from(word: Word) -> Self {
         match word {
-            Word::Boolean(false) => [0,0,0,0,0],
-            Word::Boolean(true) => [0,1,0,0,0],
+            Word::Boolean(false) => [0, 0, 0, 0, 0],
+            Word::Boolean(true) => [0, 1, 0, 0, 0],
             Word::Numeric(val) => {
-                let mut arr = [1,0,0,0,0];
+                let mut arr = [1, 0, 0, 0, 0];
                 arr[1..].clone_from_slice(&val.to_le_bytes());
                 arr
-            },
+            }
         }
+    }
+}
+
+#[derive(Eq, PartialEq)]
+pub struct InternalStack<'a>(SliceVec<'a, InternalWord>);
+
+impl<'a> fmt::Debug for InternalStack<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list()
+            .entries(self.0.iter().map(|word| Word::from(*word)))
+            .finish()
     }
 }
 
@@ -55,7 +60,7 @@ impl<'a> InternalStack<'a> {
         let (new_slice, _) = slice.as_chunks_mut();
 
         InternalStack(SliceVec::<'a, InternalWord>::from_slice_len(
-                new_slice, new_len,
+            new_slice, new_len,
         ))
     }
 
@@ -64,9 +69,7 @@ impl<'a> InternalStack<'a> {
     }
 
     pub fn pop(&mut self) -> Option<Word> {
-        self.0.pop().map(|word| {
-            Word::from(word)
-        })
+        self.0.pop().map(|word| Word::from(word))
     }
 
     pub fn push(&mut self, word: Word) {
@@ -90,9 +93,7 @@ impl<'a> InternalStack<'a> {
 mod internal_stack_tests {
     use super::*;
     use crate::word_vec;
-    use tinyvec::array_vec;
     use test_case::test_case;
-    use std::iter;
 
     #[test]
     fn bool_false() {
@@ -140,12 +141,8 @@ mod internal_stack_tests {
     #[test_case(Word::Numeric(i32::MAX))]
     #[test_case(Word::Boolean(true))]
     #[test_case(Word::Boolean(false))]
-    fn push_pop_equivalence(word: Word) {
-        let mut raw_data: Vec<u8> = iter::repeat(0).take(mem::size_of::<InternalWord>()).collect();
-        let mut stack = InternalStack::from_u8_slice(&mut raw_data, 0);
-        stack.push(word);
-        assert_eq!(stack.pop().unwrap(), word);
-        
+    fn to_from_equivalence(word: Word) {
+        let new_word = InternalWord::from(word);
+        assert_eq!(Word::from(new_word), word);
     }
-
 }
