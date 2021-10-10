@@ -90,7 +90,7 @@ impl<'a> InternalStack<'a> {
 }
 
 #[cfg(test)]
-mod internal_stack_tests {
+mod tests {
     use super::*;
     use crate::word_vec;
     use test_case::test_case;

@@ -127,7 +127,7 @@ impl<'a> Memory<'a> {
         }
     }
 
-    /// Divides the last value from the stack by the previous one, returnts the remainer
+    /// Divides the last value from the stack by the previous one, returns the remainer
     pub fn rem(&mut self) {
         let first_word = self.stack.pop();
         let second_word = self.stack.pop();
