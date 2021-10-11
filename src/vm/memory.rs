@@ -4,7 +4,7 @@ use std::convert::TryFrom;
 use tinyvec::ArrayVec;
 
 const STACK_SIZE: usize = 512;
-type Stack = ArrayVec<[Word; STACK_SIZE]>;
+type Stack = Vec<Word>;
 
 #[derive(Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub struct Memory {
@@ -15,9 +15,7 @@ pub struct Memory {
 }
 
 impl Memory {
-    pub fn init_memory(arguments: Vec<Word>, card_index: i32, action_index: i32) -> Self {
-        let mut stack = Stack::new();
-        stack.fill(arguments);
+    pub fn init_memory(mut stack: Vec<Word>, card_index: i32, action_index: i32) -> Self {
         stack.push(Word::Numeric(card_index));
         stack.push(Word::Numeric(action_index));
 
@@ -398,11 +396,9 @@ impl Memory {
     }
 
     #[cfg(test)]
-    pub unsafe fn from_raw_parts(data: Vec<Word>, lcl: usize, arg: usize, pc: usize) -> Memory {
-        assert!(lcl <= data.len());
-        assert!(arg <= data.len());
-        let mut stack = ArrayVec::<[Word; STACK_SIZE]>::new();
-        stack.fill(data);
+    pub unsafe fn from_raw_parts(stack: Vec<Word>, lcl: usize, arg: usize, pc: usize) -> Memory {
+        assert!(lcl <= stack.len());
+        assert!(arg <= stack.len());
         Memory {
             stack,
             lcl,
@@ -430,7 +426,7 @@ mod tests {
                 mem.add();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Numeric(3))
+                    vec!(Word::Numeric(3))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -473,7 +469,7 @@ mod tests {
                 mem.sub();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Numeric(1))
+                    vec!(Word::Numeric(1))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -509,7 +505,7 @@ mod tests {
                 mem.mul();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Numeric(8))
+                    vec!(Word::Numeric(8))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -545,7 +541,7 @@ mod tests {
                 mem.div();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Numeric(3))
+                    vec!(Word::Numeric(3))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -556,7 +552,7 @@ mod tests {
                 mem.div();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Numeric(3))
+                    vec!(Word::Numeric(3))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -592,7 +588,7 @@ mod tests {
                 mem.rem();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Numeric(0))
+                    vec!(Word::Numeric(0))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -603,7 +599,7 @@ mod tests {
                 mem.rem();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Numeric(1))
+                    vec!(Word::Numeric(1))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -641,7 +637,7 @@ mod tests {
                 mem.neg();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Numeric(1), Word::Numeric(-2))
+                    vec!(Word::Numeric(1), Word::Numeric(-2))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -670,7 +666,7 @@ mod tests {
                 mem.inc();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Numeric(1), Word::Numeric(3))
+                    vec!(Word::Numeric(1), Word::Numeric(3))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -699,7 +695,7 @@ mod tests {
                 mem.dec();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Numeric(1), Word::Numeric(1))
+                    vec!(Word::Numeric(1), Word::Numeric(1))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -728,7 +724,7 @@ mod tests {
                 mem.abs();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Numeric(1), Word::Numeric(2))
+                    vec!(Word::Numeric(1), Word::Numeric(2))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -739,7 +735,7 @@ mod tests {
                 mem.abs();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Numeric(1), Word::Numeric(2))
+                    vec!(Word::Numeric(1), Word::Numeric(2))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -772,7 +768,7 @@ mod tests {
                 mem.equal();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(true))
+                    vec!(Word::Boolean(true))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -783,7 +779,7 @@ mod tests {
                 mem.equal();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
+                    vec!(Word::Boolean(false))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -828,7 +824,7 @@ mod tests {
                 mem.gt();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
+                    vec!(Word::Boolean(false))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -839,7 +835,7 @@ mod tests {
                 mem.gt();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
+                    vec!(Word::Boolean(false))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -850,7 +846,7 @@ mod tests {
                 mem.gt();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(true))
+                    vec!(Word::Boolean(true))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -895,7 +891,7 @@ mod tests {
                 mem.lt();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
+                    vec!(Word::Boolean(false))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -906,7 +902,7 @@ mod tests {
                 mem.lt();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(true))
+                    vec!(Word::Boolean(true))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -917,7 +913,7 @@ mod tests {
                 mem.lt();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
+                    vec!(Word::Boolean(false))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -962,7 +958,7 @@ mod tests {
                 mem.and();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
+                    vec!(Word::Boolean(false))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -973,7 +969,7 @@ mod tests {
                 mem.and();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
+                    vec!(Word::Boolean(false))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -984,7 +980,7 @@ mod tests {
                 mem.and();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(true))
+                    vec!(Word::Boolean(true))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -1027,7 +1023,7 @@ mod tests {
                 mem.or();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
+                    vec!(Word::Boolean(false))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -1038,7 +1034,7 @@ mod tests {
                 mem.or();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(true))
+                    vec!(Word::Boolean(true))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -1049,7 +1045,7 @@ mod tests {
                 mem.or();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(true))
+                    vec!(Word::Boolean(true))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -1092,7 +1088,7 @@ mod tests {
                 mem.not();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(true))
+                    vec!(Word::Boolean(true))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -1103,7 +1099,7 @@ mod tests {
                 mem.not();
                 pretty_assertions::assert_eq!(
                     mem.stack,
-                    array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
+                    vec!(Word::Boolean(false))
                 );
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
@@ -1133,7 +1129,7 @@ mod tests {
             mem.push_external(Word::Numeric(0));
             pretty_assertions::assert_eq!(
                 mem.stack,
-                array_vec!([Word; STACK_SIZE] => Word::Numeric(0))
+                vec!(Word::Numeric(0))
             );
             pretty_assertions::assert_eq!(mem.pc, 1);
         }
@@ -1144,11 +1140,11 @@ mod tests {
             mem.pop_external();
             pretty_assertions::assert_eq!(
                 mem.stack,
-                array_vec!([Word; STACK_SIZE] => Word::Numeric(2))
+                vec!(Word::Numeric(2))
             );
             pretty_assertions::assert_eq!(mem.pc, 1);
             mem.pop_external();
-            pretty_assertions::assert_eq!(mem.stack, array_vec!([Word; STACK_SIZE]));
+            pretty_assertions::assert_eq!(mem.stack, vec![]);
             pretty_assertions::assert_eq!(mem.pc, 2);
         }
 
@@ -1158,11 +1154,11 @@ mod tests {
             mem.pop_external_no_pc_inc();
             pretty_assertions::assert_eq!(
                 mem.stack,
-                array_vec!([Word; STACK_SIZE] => Word::Numeric(2))
+                vec!(Word::Numeric(2))
             );
             pretty_assertions::assert_eq!(mem.pc, 0);
             mem.pop_external_no_pc_inc();
-            pretty_assertions::assert_eq!(mem.stack, array_vec!([Word; STACK_SIZE]));
+            pretty_assertions::assert_eq!(mem.stack, vec![]);
             pretty_assertions::assert_eq!(mem.pc, 0);
         }
 
@@ -1173,7 +1169,7 @@ mod tests {
             mem.push_local(1);
             pretty_assertions::assert_eq!(
                 mem.stack,
-                array_vec!([Word; STACK_SIZE] =>
+                vec!(
                     Word::Numeric(2),
                     Word::Numeric(6),
                     Word::Numeric(8),
@@ -1190,7 +1186,7 @@ mod tests {
             mem.pop_local(1);
             pretty_assertions::assert_eq!(
                 mem.stack,
-                array_vec!([Word; STACK_SIZE] => Word::Numeric(16), Word::Numeric(8))
+                vec!(Word::Numeric(16), Word::Numeric(8))
             );
             pretty_assertions::assert_eq!(mem.pc, 2);
         }
@@ -1202,7 +1198,7 @@ mod tests {
             mem.push_argument(1);
             pretty_assertions::assert_eq!(
                 mem.stack,
-                array_vec!([Word; STACK_SIZE] => Word::Numeric(2), Word::Numeric(6), Word::Numeric(8), Word::Numeric(6),Word::Numeric(8))
+                vec!(Word::Numeric(2), Word::Numeric(6), Word::Numeric(8), Word::Numeric(6),Word::Numeric(8))
             );
             pretty_assertions::assert_eq!(mem.pc, 2);
         }
@@ -1214,7 +1210,7 @@ mod tests {
             mem.pop_argument(1);
             pretty_assertions::assert_eq!(
                 mem.stack,
-                array_vec!([Word; STACK_SIZE] => Word::Numeric(16), Word::Numeric(8))
+                vec!(Word::Numeric(16), Word::Numeric(8))
             );
             pretty_assertions::assert_eq!(mem.pc, 2);
         }
@@ -1229,7 +1225,7 @@ mod tests {
             mem.call(16, 2);
             pretty_assertions::assert_eq!(
                 mem.stack,
-                array_vec!([Word; STACK_SIZE] => Word::Numeric(2), Word::Boolean(true), Word::Numeric(5), Word::Numeric(0), Word::Numeric(1))
+                vec!(Word::Numeric(2), Word::Boolean(true), Word::Numeric(5), Word::Numeric(0), Word::Numeric(1))
             );
             pretty_assertions::assert_eq!(mem.lcl, 5);
             pretty_assertions::assert_eq!(mem.arg, 0);
@@ -1243,7 +1239,7 @@ mod tests {
             mem.fn_return();
             pretty_assertions::assert_eq!(
                 mem.stack,
-                array_vec!([Word; STACK_SIZE] => Word::Boolean(false))
+                vec!(Word::Boolean(false))
             );
             pretty_assertions::assert_eq!(mem.lcl, 0);
             pretty_assertions::assert_eq!(mem.arg, 1);
@@ -1256,7 +1252,7 @@ mod tests {
             mem.function(3);
             pretty_assertions::assert_eq!(
                 mem.stack,
-                array_vec!([Word; STACK_SIZE] => Word::Numeric(2), Word::Boolean(true), Word::Numeric(0), Word::Numeric(0), Word::Numeric(0))
+                vec!(Word::Numeric(2), Word::Boolean(true), Word::Numeric(0), Word::Numeric(0), Word::Numeric(0))
             );
             pretty_assertions::assert_eq!(mem.lcl, 2);
             pretty_assertions::assert_eq!(mem.arg, 0);
@@ -1269,7 +1265,7 @@ mod tests {
             fn conditional_jump_successful() {
                 let mut mem = unsafe { Memory::from_raw_parts(word_vec![true], 0, 0, 0) };
                 mem.ifjmp(10);
-                pretty_assertions::assert_eq!(mem.stack, ArrayVec::<[Word; STACK_SIZE]>::new());
+                pretty_assertions::assert_eq!(mem.stack, Vec::<Word>::new());
                 pretty_assertions::assert_eq!(mem.pc, 10);
             }
 
@@ -1277,7 +1273,7 @@ mod tests {
             fn conditional_jump_unsuccessful() {
                 let mut mem = unsafe { Memory::from_raw_parts(word_vec![false], 0, 0, 0) };
                 mem.ifjmp(10);
-                pretty_assertions::assert_eq!(mem.stack, ArrayVec::<[Word; STACK_SIZE]>::new());
+                pretty_assertions::assert_eq!(mem.stack, Vec::<Word>::new());
                 pretty_assertions::assert_eq!(mem.pc, 1);
             }
 
