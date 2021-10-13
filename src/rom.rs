@@ -5,19 +5,19 @@ use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use tinyvec::ArrayVec;
 
-const ROM_SIZE: usize = 2 ^ 16;
-type InstructionRom = ArrayVec<[VMCommand; ROM_SIZE]>;
+const ROM_SIZE: usize = 2_usize.pow(16);
+type InstructionRom = [VMCommand; ROM_SIZE];
 
-const TYPE_DECK_SIZE: usize = 2 ^ 10;
+const TYPE_DECK_SIZE: usize = 2_usize.pow(10);
 type TypeDeck = ArrayVec<[CardType; TYPE_DECK_SIZE]>;
 
-#[derive(Debug, Eq, PartialEq, Deserialize, Serialize)]
-pub struct Rom {
+//#[derive(Debug, Eq, PartialEq, Deserialize, Serialize)]
+pub struct Rom<'a> {
     card_types: TypeDeck,
-    instructions: InstructionRom,
+    instructions: &'a [VMCommand],
     initial_board_state: Board,
 }
-impl Rom {
+impl<'a> Rom<'a> {
     pub fn fetch_instruction(&self, pc: usize) -> VMCommand {
         self.instructions[pc]
     }
@@ -60,17 +60,16 @@ impl Rom {
 
     #[cfg(test)]
     pub unsafe fn from_raw_parts(
-        instructions: Vec<VMCommand>,
+        instructions: &'a [VMCommand],
         card_types: Vec<CardType>,
         initial_board_state: Board,
-    ) -> Rom {
+    ) -> Self {
         let mut rom = Rom {
             card_types: TypeDeck::new(),
-            instructions: InstructionRom::new(),
+            instructions,
             initial_board_state,
         };
         rom.card_types.fill(card_types);
-        rom.instructions.fill(instructions);
         rom
     }
 }
