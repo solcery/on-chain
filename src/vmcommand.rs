@@ -1,5 +1,4 @@
 use crate::word::Word;
-use borsh::BorshSerialize;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::convert::TryInto;
@@ -200,15 +199,11 @@ impl TryFrom<CommandByteCode> for VMCommand {
                 Err(_) => Err("PopLocal argument corrupted."),
             },
             24 => match word[1..].try_into() {
-                Ok(val) => Ok(VMCommand::Goto (
-                    u32::from_le_bytes(val),
-                )),
+                Ok(val) => Ok(VMCommand::Goto(u32::from_le_bytes(val))),
                 Err(_) => Err("Goto argument corrupted."),
             },
             25 => match word[1..].try_into() {
-                Ok(val) => Ok(VMCommand::IfGoto (
-                    u32::from_le_bytes(val),
-                )),
+                Ok(val) => Ok(VMCommand::IfGoto(u32::from_le_bytes(val))),
                 Err(_) => Err("IfGoto argument corrupted."),
             },
             26 => match word[1..].try_into() {
@@ -220,17 +215,16 @@ impl TryFrom<CommandByteCode> for VMCommand {
             27 => {
                 // Actually, addresses are 24 bit wide, so the maximum number of instructions is
                 // 2^16 (approx. 81MB total, so it is bigger than the maximum account size)
-                let mut address_bytes = [0;4];
+                let mut address_bytes = [0; 4];
                 address_bytes[1..].clone_from_slice(&word[1..3]);
-                let n_args_bytes = [0,0,0,word[4]];
-
+                let n_args_bytes = [0, 0, 0, word[4]];
 
                 Ok(VMCommand::Call {
                     address: u32::from_le_bytes(address_bytes),
 
                     n_args: u32::from_le_bytes(n_args_bytes),
                 })
-            },
+            }
             28 => Ok(VMCommand::Return),
             29 => Ok(VMCommand::PushCardCount),
             30 => Ok(VMCommand::PushTypeCount),
@@ -274,169 +268,169 @@ impl TryFrom<VMCommand> for CommandByteCode {
     fn try_from(instruction: VMCommand) -> Result<Self, Self::Error> {
         unimplemented!();
         //match instruction {
-            //VMCommand::Add => {
-                //self.memory.add();
-                //Ok(())
-            //}
-            //VMCommand::Sub => {
-                //self.memory.sub();
-                //Ok(())
-            //}
-            //VMCommand::Mul => {
-                //self.memory.mul();
-                //Ok(())
-            //}
-            //VMCommand::Div => {
-                //self.memory.div();
-                //Ok(())
-            //}
-            //VMCommand::Rem => {
-                //self.memory.rem();
-                //Ok(())
-            //}
-            //VMCommand::Neg => {
-                //self.memory.neg();
-                //Ok(())
-            //}
-            //VMCommand::Inc => {
-                //self.memory.inc();
-                //Ok(())
-            //}
-            //VMCommand::Dec => {
-                //self.memory.dec();
-                //Ok(())
-            //}
-            //VMCommand::Abs => {
-                //self.memory.abs();
-                //Ok(())
-            //}
-            //VMCommand::Eq => {
-                //self.memory.equal();
-                //Ok(())
-            //}
-            //VMCommand::Gt => {
-                //self.memory.gt();
-                //Ok(())
-            //}
-            //VMCommand::Lt => {
-                //self.memory.lt();
-                //Ok(())
-            //}
-            //VMCommand::Or => {
-                //self.memory.or();
-                //Ok(())
-            //}
-            //VMCommand::And => {
-                //self.memory.and();
-                //Ok(())
-            //}
-            //VMCommand::Not => {
-                //self.memory.not();
-                //Ok(())
-            //}
-            //VMCommand::PushConstant(word) => {
-                //self.memory.push_external(word);
-                //Ok(())
-            //}
-            //VMCommand::PushBoardAttr { index } => {
-                //let attr = self.board.attrs[index as usize];
-                //self.memory.push_external(attr);
-                //Ok(())
-            //}
-            //VMCommand::PopBoardAttr { index } => {
-                //let value = self.memory.pop_external();
-                //self.board.attrs[index as usize] = value;
-                //Ok(())
-            //}
-            //VMCommand::PushLocal { index } => {
-                //self.memory.push_local(index as usize);
-                //Ok(())
-            //}
-            //VMCommand::PopLocal { index } => {
-                //self.memory.pop_local(index as usize);
-                //Ok(())
-            //}
-            //VMCommand::PushArgument { index } => {
-                //self.memory.push_argument(index as usize);
-                //Ok(())
-            //}
-            //VMCommand::PopArgument { index } => {
-                //self.memory.pop_argument(index as usize);
-                //Ok(())
-            //}
-            //VMCommand::Goto(instruction) => {
-                //self.memory.jmp(instruction as usize);
-                //Ok(())
-            //}
-            //VMCommand::IfGoto(instruction) => {
-                //self.memory.ifjmp(instruction as usize);
-                //Ok(())
-            //}
-            //VMCommand::Call { address, n_args } => {
-                //self.memory.call(address as usize, n_args as usize);
-                //Ok(())
-            //}
-            //VMCommand::Function { n_locals } => {
-                //self.memory.function(n_locals as usize);
-                //Ok(())
-            //}
-            //VMCommand::Return => {
-                //self.memory.fn_return();
-                //Ok(())
-            //}
-            //VMCommand::PushCardCount => {
-                //let len = self.board.cards.len();
-                //self.memory
-                    //.push_external(Word::Numeric(TryInto::try_into(len).unwrap()));
-                //Ok(())
-            //}
-            //VMCommand::PushTypeCount => {
-                //let len = self.rom.card_type_count();
-                //self.memory
-                    //.push_external(Word::Numeric(TryInto::try_into(len).unwrap()));
-                //Ok(())
-            //}
-            //VMCommand::PushCardCountWithCardType => {
-                //self.push_card_count_with_type();
-                //Ok(())
-            //}
-            //VMCommand::PushCardType => {
-                //self.push_card_type();
-                //Ok(())
-            //}
-            //VMCommand::PushCardTypeAttrByTypeIndex { attr_index } => {
-                //self.push_card_type_attr_by_type_index(attr_index);
-                //Ok(())
-            //}
-            //VMCommand::PushCardTypeAttrByCardIndex { attr_index } => {
-                //self.push_card_type_attr_by_card_index(attr_index);
-                //Ok(())
-            //}
-            //VMCommand::PushCardAttr { attr_index } => {
-                //self.push_card_attr(attr_index);
-                //Ok(())
-            //}
-            //VMCommand::PopCardAttr { attr_index } => {
-                //self.pop_card_attr(attr_index);
-                //Ok(())
-            //}
-            //VMCommand::InstanceCardByTypeIndex => {
-                //self.instantiate_card_by_type_index();
-                //Ok(())
-            //}
-            //VMCommand::InstanceCardByTypeId => {
-                //self.instantiate_card_by_type_id();
-                //Ok(())
-            //}
-            //VMCommand::CallCardAction => {
-                //self.call_card_action();
-                //Ok(())
-            //}
-            //VMCommand::RemoveCardByIndex => {
-                //self.remove_card_by_index();
-                //Ok(())
-            //}
-            //VMCommand::Halt => Err(()),
+        //VMCommand::Add => {
+        //self.memory.add();
+        //Ok(())
+        //}
+        //VMCommand::Sub => {
+        //self.memory.sub();
+        //Ok(())
+        //}
+        //VMCommand::Mul => {
+        //self.memory.mul();
+        //Ok(())
+        //}
+        //VMCommand::Div => {
+        //self.memory.div();
+        //Ok(())
+        //}
+        //VMCommand::Rem => {
+        //self.memory.rem();
+        //Ok(())
+        //}
+        //VMCommand::Neg => {
+        //self.memory.neg();
+        //Ok(())
+        //}
+        //VMCommand::Inc => {
+        //self.memory.inc();
+        //Ok(())
+        //}
+        //VMCommand::Dec => {
+        //self.memory.dec();
+        //Ok(())
+        //}
+        //VMCommand::Abs => {
+        //self.memory.abs();
+        //Ok(())
+        //}
+        //VMCommand::Eq => {
+        //self.memory.equal();
+        //Ok(())
+        //}
+        //VMCommand::Gt => {
+        //self.memory.gt();
+        //Ok(())
+        //}
+        //VMCommand::Lt => {
+        //self.memory.lt();
+        //Ok(())
+        //}
+        //VMCommand::Or => {
+        //self.memory.or();
+        //Ok(())
+        //}
+        //VMCommand::And => {
+        //self.memory.and();
+        //Ok(())
+        //}
+        //VMCommand::Not => {
+        //self.memory.not();
+        //Ok(())
+        //}
+        //VMCommand::PushConstant(word) => {
+        //self.memory.push_external(word);
+        //Ok(())
+        //}
+        //VMCommand::PushBoardAttr { index } => {
+        //let attr = self.board.attrs[index as usize];
+        //self.memory.push_external(attr);
+        //Ok(())
+        //}
+        //VMCommand::PopBoardAttr { index } => {
+        //let value = self.memory.pop_external();
+        //self.board.attrs[index as usize] = value;
+        //Ok(())
+        //}
+        //VMCommand::PushLocal { index } => {
+        //self.memory.push_local(index as usize);
+        //Ok(())
+        //}
+        //VMCommand::PopLocal { index } => {
+        //self.memory.pop_local(index as usize);
+        //Ok(())
+        //}
+        //VMCommand::PushArgument { index } => {
+        //self.memory.push_argument(index as usize);
+        //Ok(())
+        //}
+        //VMCommand::PopArgument { index } => {
+        //self.memory.pop_argument(index as usize);
+        //Ok(())
+        //}
+        //VMCommand::Goto(instruction) => {
+        //self.memory.jmp(instruction as usize);
+        //Ok(())
+        //}
+        //VMCommand::IfGoto(instruction) => {
+        //self.memory.ifjmp(instruction as usize);
+        //Ok(())
+        //}
+        //VMCommand::Call { address, n_args } => {
+        //self.memory.call(address as usize, n_args as usize);
+        //Ok(())
+        //}
+        //VMCommand::Function { n_locals } => {
+        //self.memory.function(n_locals as usize);
+        //Ok(())
+        //}
+        //VMCommand::Return => {
+        //self.memory.fn_return();
+        //Ok(())
+        //}
+        //VMCommand::PushCardCount => {
+        //let len = self.board.cards.len();
+        //self.memory
+        //.push_external(Word::Numeric(TryInto::try_into(len).unwrap()));
+        //Ok(())
+        //}
+        //VMCommand::PushTypeCount => {
+        //let len = self.rom.card_type_count();
+        //self.memory
+        //.push_external(Word::Numeric(TryInto::try_into(len).unwrap()));
+        //Ok(())
+        //}
+        //VMCommand::PushCardCountWithCardType => {
+        //self.push_card_count_with_type();
+        //Ok(())
+        //}
+        //VMCommand::PushCardType => {
+        //self.push_card_type();
+        //Ok(())
+        //}
+        //VMCommand::PushCardTypeAttrByTypeIndex { attr_index } => {
+        //self.push_card_type_attr_by_type_index(attr_index);
+        //Ok(())
+        //}
+        //VMCommand::PushCardTypeAttrByCardIndex { attr_index } => {
+        //self.push_card_type_attr_by_card_index(attr_index);
+        //Ok(())
+        //}
+        //VMCommand::PushCardAttr { attr_index } => {
+        //self.push_card_attr(attr_index);
+        //Ok(())
+        //}
+        //VMCommand::PopCardAttr { attr_index } => {
+        //self.pop_card_attr(attr_index);
+        //Ok(())
+        //}
+        //VMCommand::InstanceCardByTypeIndex => {
+        //self.instantiate_card_by_type_index();
+        //Ok(())
+        //}
+        //VMCommand::InstanceCardByTypeId => {
+        //self.instantiate_card_by_type_id();
+        //Ok(())
+        //}
+        //VMCommand::CallCardAction => {
+        //self.call_card_action();
+        //Ok(())
+        //}
+        //VMCommand::RemoveCardByIndex => {
+        //self.remove_card_by_index();
+        //Ok(())
+        //}
+        //VMCommand::Halt => Err(()),
         //}
     }
 }

@@ -2,8 +2,8 @@
 
 use crate::board::Board;
 use crate::rom::Rom;
-use crate::word::Word;
 use crate::vmcommand::VMCommand;
+use crate::word::Word;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 
@@ -20,7 +20,6 @@ impl<T> Sealed<T> {
         self.data
     }
 }
-
 
 pub struct VM<'a> {
     rom: &'a Rom<'a>,
