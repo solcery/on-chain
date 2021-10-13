@@ -3,6 +3,7 @@
 use crate::board::Board;
 use crate::rom::Rom;
 use crate::word::Word;
+use crate::vmcommand::VMCommand;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 
@@ -20,126 +21,6 @@ impl<T> Sealed<T> {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
-pub enum VMCommand {
-    // Arithmetic
-    /// Adds two topmost values from the stack
-    /// # Panics
-    /// Panics if there are no enough elements on the stack or if one of the arguments is
-    /// [Word::Boolean]
-    Add,
-    Sub,
-    Div,
-    /// Multiplies two topmost values from the stack
-    /// # Panics
-    /// Panics if there are no enough elements on the stack or if one of the arguments is
-    /// [Word::Boolean]
-    Mul,
-    Rem,
-    /// Negates the topmost value on the stack
-    /// # Panics
-    /// Panics if there are no enough elements on the stack or if  the argumentsis
-    /// [Word::Boolean]
-    Neg,
-    /// Increments the topmost value on the stack
-    /// Panics if there are no enough elements on the stack or if  the argumentsis
-    /// [Word::Boolean]
-    Inc,
-    /// Decrements the topmost value on the stack
-    /// Panics if there are no enough elements on the stack or if  the argumentsis
-    /// [Word::Boolean]
-    Dec,
-    /// Computes the absolute value of the topmost value on the stack
-    /// Panics if there are no enough elements on the stack or if  the argumentsis
-    /// [Word::Boolean]
-    Abs,
-
-    // Logic
-    Eq,
-    Gt,
-    Lt,
-    And,
-    Or,
-    Not,
-
-    // Data transfer
-    PushConstant(Word),
-    PushBoardAttr {
-        index: usize,
-    },
-    PopBoardAttr {
-        index: usize,
-    },
-    PushLocal {
-        index: usize,
-    },
-    PopLocal {
-        index: usize,
-    },
-    PushArgument {
-        index: usize,
-    },
-    PopArgument {
-        index: usize,
-    },
-
-    // Flow control
-    Goto(usize),
-    IfGoto(usize),
-    Halt,
-    Function {
-        n_locals: usize,
-    },
-    Call {
-        address: usize,
-        n_args: usize,
-    },
-    Return,
-
-    // Interactions with cards
-    /// Pushes total number of cards to the stack
-    PushCardCount,
-    /// Pushes total number of card types to the stack
-    PushTypeCount,
-    /// Pushes [CardType](crate::card::CardType) on the `i`-th card, where `i` is the topmost value on the stack
-    PushCardType,
-    /// Pushes total number of cards with [CardType](crate::card::CardType) popped from the stack
-    PushCardCountWithCardType,
-    /// Pushes `attr_index`-th attribute of the [CardType](crate::card::CardType), those index
-    /// among [CardTypes](crate::card::CardType) is on the top of the stack
-    PushCardTypeAttrByTypeIndex {
-        attr_index: usize,
-    },
-    /// Pushes `attr_index`-th attribute of the [CardType](crate::card::CardType) of the card,
-    /// those index is on the top of the stack
-    PushCardTypeAttrByCardIndex {
-        attr_index: usize,
-    },
-    /// Pushes `attr_index`-th attribute of the [Card](crate::card::Card),
-    /// those index is on the top of the stack
-    PushCardAttr {
-        attr_index: usize,
-    },
-    /// Pops `attr_index`-th attribute of the [Card](crate::card::Card),
-    /// those index is on the top of the stack
-    PopCardAttr {
-        attr_index: usize,
-    },
-
-    /// Pops [CardType](crate::card::CardType) index from the stack and calls it's `action_id` action as a function
-    InstanceCardByTypeIndex,
-    /// Pops [CardType](crate::card::CardType) id from the stack and calls it's `action_id` action as a function
-    InstanceCardByTypeId,
-    /// Card index and action index should be placed on the stack
-    CallCardAction,
-    RemoveCardByIndex,
-}
-
-impl Default for VMCommand {
-    fn default() -> Self {
-        VMCommand::Halt
-    }
-}
 
 pub struct VM<'a> {
     rom: &'a Rom,
@@ -250,45 +131,45 @@ impl<'a> VM<'a> {
                 Ok(())
             }
             VMCommand::PushBoardAttr { index } => {
-                let attr = self.board.attrs[index];
+                let attr = self.board.attrs[index as usize];
                 self.memory.push_external(attr);
                 Ok(())
             }
             VMCommand::PopBoardAttr { index } => {
                 let value = self.memory.pop_external();
-                self.board.attrs[index] = value;
+                self.board.attrs[index as usize] = value;
                 Ok(())
             }
             VMCommand::PushLocal { index } => {
-                self.memory.push_local(index);
+                self.memory.push_local(index as usize);
                 Ok(())
             }
             VMCommand::PopLocal { index } => {
-                self.memory.pop_local(index);
+                self.memory.pop_local(index as usize);
                 Ok(())
             }
             VMCommand::PushArgument { index } => {
-                self.memory.push_argument(index);
+                self.memory.push_argument(index as usize);
                 Ok(())
             }
             VMCommand::PopArgument { index } => {
-                self.memory.pop_argument(index);
+                self.memory.pop_argument(index as usize);
                 Ok(())
             }
             VMCommand::Goto(instruction) => {
-                self.memory.jmp(instruction);
+                self.memory.jmp(instruction as usize);
                 Ok(())
             }
             VMCommand::IfGoto(instruction) => {
-                self.memory.ifjmp(instruction);
+                self.memory.ifjmp(instruction as usize);
                 Ok(())
             }
             VMCommand::Call { address, n_args } => {
-                self.memory.call(address, n_args);
+                self.memory.call(address as usize, n_args as usize);
                 Ok(())
             }
             VMCommand::Function { n_locals } => {
-                self.memory.function(n_locals);
+                self.memory.function(n_locals as usize);
                 Ok(())
             }
             VMCommand::Return => {
@@ -387,12 +268,12 @@ impl<'a> VM<'a> {
         }
     }
 
-    fn push_card_type_attr_by_type_index(&mut self, attr_index: usize) {
+    fn push_card_type_attr_by_type_index(&mut self, attr_index: u32) {
         let type_index = self.memory.pop_external_no_pc_inc();
         match type_index {
             Word::Numeric(id) => {
                 let card_type = self.rom.card_type_by_type_index(id as usize);
-                let attr_value = card_type.attr_by_index(attr_index);
+                let attr_value = card_type.attr_by_index(attr_index as usize);
 
                 let word = attr_value;
                 self.memory.push_external(word);
@@ -403,14 +284,14 @@ impl<'a> VM<'a> {
         }
     }
 
-    fn push_card_type_attr_by_card_index(&mut self, attr_index: usize) {
+    fn push_card_type_attr_by_card_index(&mut self, attr_index: u32) {
         let card_index = self.memory.pop_external_no_pc_inc();
         match card_index {
             Word::Numeric(id) => {
                 let card = &self.board.cards[id as usize];
                 let card_type_id = card.card_type();
                 let card_type = self.rom.card_type_by_type_id(card_type_id).unwrap();
-                let attr_value = card_type.attr_by_index(attr_index);
+                let attr_value = card_type.attr_by_index(attr_index as usize);
 
                 let word = attr_value;
                 self.memory.push_external(word);
@@ -421,12 +302,12 @@ impl<'a> VM<'a> {
         }
     }
 
-    fn push_card_attr(&mut self, attr_index: usize) {
+    fn push_card_attr(&mut self, attr_index: u32) {
         let card_index = self.memory.pop_external_no_pc_inc();
         match card_index {
             Word::Numeric(id) => {
                 let card = &self.board.cards[id as usize];
-                let attr_value = card.attrs[attr_index];
+                let attr_value = card.attrs[attr_index as usize];
 
                 let word = attr_value;
                 self.memory.push_external(word);
@@ -437,14 +318,14 @@ impl<'a> VM<'a> {
         }
     }
 
-    fn pop_card_attr(&mut self, attr_index: usize) {
+    fn pop_card_attr(&mut self, attr_index: u32) {
         let card_index = self.memory.pop_external_no_pc_inc();
         match card_index {
             Word::Numeric(id) => {
                 let card = &mut self.board.cards[id as usize];
                 let attr_value = self.memory.pop_external();
 
-                card.attrs[attr_index] = attr_value;
+                card.attrs[attr_index as usize] = attr_value;
             }
             Word::Boolean(_) => {
                 panic!("Type mismath: bool can not be interpreted as index.");

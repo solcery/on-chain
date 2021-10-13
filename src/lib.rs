@@ -3,3 +3,4 @@ pub mod card;
 pub mod vm;
 pub mod word;
 pub mod rom;
+pub mod vmcommand;

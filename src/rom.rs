@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::card::{Card, CardType};
-use crate::vm::VMCommand;
+use crate::vmcommand::VMCommand;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use tinyvec::ArrayVec;
