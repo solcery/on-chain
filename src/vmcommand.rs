@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::convert::TryInto;
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize, BorshSerialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum VMCommand {
     // The halting command
     Halt,
@@ -187,16 +187,16 @@ impl TryFrom<CommandByteCode> for VMCommand {
                 Err(_) => Err("PopLocal argument corrupted."),
             },
             22 => match word[1..].try_into() {
-                Ok(val) => Ok(VMCommand::PushLocal {
+                Ok(val) => Ok(VMCommand::PushArgument {
                     index: u32::from_le_bytes(val),
                 }),
-                Err(_) => Err("PushLocal argument corrupted."),
+                Err(_) => Err("PushArgument argument corrupted."),
             },
             23 => match word[1..].try_into() {
-                Ok(val) => Ok(VMCommand::PopLocal {
+                Ok(val) => Ok(VMCommand::PopArgument {
                     index: u32::from_le_bytes(val),
                 }),
-                Err(_) => Err("PopLocal argument corrupted."),
+                Err(_) => Err("PopArgument argument corrupted."),
             },
             24 => match word[1..].try_into() {
                 Ok(val) => Ok(VMCommand::Goto(u32::from_le_bytes(val))),
@@ -266,171 +266,222 @@ impl TryFrom<CommandByteCode> for VMCommand {
 impl TryFrom<VMCommand> for CommandByteCode {
     type Error = &'static str;
     fn try_from(instruction: VMCommand) -> Result<Self, Self::Error> {
-        unimplemented!();
-        //match instruction {
-        //VMCommand::Add => {
-        //self.memory.add();
-        //Ok(())
-        //}
-        //VMCommand::Sub => {
-        //self.memory.sub();
-        //Ok(())
-        //}
-        //VMCommand::Mul => {
-        //self.memory.mul();
-        //Ok(())
-        //}
-        //VMCommand::Div => {
-        //self.memory.div();
-        //Ok(())
-        //}
-        //VMCommand::Rem => {
-        //self.memory.rem();
-        //Ok(())
-        //}
-        //VMCommand::Neg => {
-        //self.memory.neg();
-        //Ok(())
-        //}
-        //VMCommand::Inc => {
-        //self.memory.inc();
-        //Ok(())
-        //}
-        //VMCommand::Dec => {
-        //self.memory.dec();
-        //Ok(())
-        //}
-        //VMCommand::Abs => {
-        //self.memory.abs();
-        //Ok(())
-        //}
-        //VMCommand::Eq => {
-        //self.memory.equal();
-        //Ok(())
-        //}
-        //VMCommand::Gt => {
-        //self.memory.gt();
-        //Ok(())
-        //}
-        //VMCommand::Lt => {
-        //self.memory.lt();
-        //Ok(())
-        //}
-        //VMCommand::Or => {
-        //self.memory.or();
-        //Ok(())
-        //}
-        //VMCommand::And => {
-        //self.memory.and();
-        //Ok(())
-        //}
-        //VMCommand::Not => {
-        //self.memory.not();
-        //Ok(())
-        //}
-        //VMCommand::PushConstant(word) => {
-        //self.memory.push_external(word);
-        //Ok(())
-        //}
-        //VMCommand::PushBoardAttr { index } => {
-        //let attr = self.board.attrs[index as usize];
-        //self.memory.push_external(attr);
-        //Ok(())
-        //}
-        //VMCommand::PopBoardAttr { index } => {
-        //let value = self.memory.pop_external();
-        //self.board.attrs[index as usize] = value;
-        //Ok(())
-        //}
-        //VMCommand::PushLocal { index } => {
-        //self.memory.push_local(index as usize);
-        //Ok(())
-        //}
-        //VMCommand::PopLocal { index } => {
-        //self.memory.pop_local(index as usize);
-        //Ok(())
-        //}
-        //VMCommand::PushArgument { index } => {
-        //self.memory.push_argument(index as usize);
-        //Ok(())
-        //}
-        //VMCommand::PopArgument { index } => {
-        //self.memory.pop_argument(index as usize);
-        //Ok(())
-        //}
-        //VMCommand::Goto(instruction) => {
-        //self.memory.jmp(instruction as usize);
-        //Ok(())
-        //}
-        //VMCommand::IfGoto(instruction) => {
-        //self.memory.ifjmp(instruction as usize);
-        //Ok(())
-        //}
-        //VMCommand::Call { address, n_args } => {
-        //self.memory.call(address as usize, n_args as usize);
-        //Ok(())
-        //}
-        //VMCommand::Function { n_locals } => {
-        //self.memory.function(n_locals as usize);
-        //Ok(())
-        //}
-        //VMCommand::Return => {
-        //self.memory.fn_return();
-        //Ok(())
-        //}
-        //VMCommand::PushCardCount => {
-        //let len = self.board.cards.len();
-        //self.memory
-        //.push_external(Word::Numeric(TryInto::try_into(len).unwrap()));
-        //Ok(())
-        //}
-        //VMCommand::PushTypeCount => {
-        //let len = self.rom.card_type_count();
-        //self.memory
-        //.push_external(Word::Numeric(TryInto::try_into(len).unwrap()));
-        //Ok(())
-        //}
-        //VMCommand::PushCardCountWithCardType => {
-        //self.push_card_count_with_type();
-        //Ok(())
-        //}
-        //VMCommand::PushCardType => {
-        //self.push_card_type();
-        //Ok(())
-        //}
-        //VMCommand::PushCardTypeAttrByTypeIndex { attr_index } => {
-        //self.push_card_type_attr_by_type_index(attr_index);
-        //Ok(())
-        //}
-        //VMCommand::PushCardTypeAttrByCardIndex { attr_index } => {
-        //self.push_card_type_attr_by_card_index(attr_index);
-        //Ok(())
-        //}
-        //VMCommand::PushCardAttr { attr_index } => {
-        //self.push_card_attr(attr_index);
-        //Ok(())
-        //}
-        //VMCommand::PopCardAttr { attr_index } => {
-        //self.pop_card_attr(attr_index);
-        //Ok(())
-        //}
-        //VMCommand::InstanceCardByTypeIndex => {
-        //self.instantiate_card_by_type_index();
-        //Ok(())
-        //}
-        //VMCommand::InstanceCardByTypeId => {
-        //self.instantiate_card_by_type_id();
-        //Ok(())
-        //}
-        //VMCommand::CallCardAction => {
-        //self.call_card_action();
-        //Ok(())
-        //}
-        //VMCommand::RemoveCardByIndex => {
-        //self.remove_card_by_index();
-        //Ok(())
-        //}
-        //VMCommand::Halt => Err(()),
-        //}
+        match instruction {
+            VMCommand::Halt => {
+                Ok([0,0,0,0,0])
+            }
+            VMCommand::Add => {
+                Ok([1,0,0,0,0])
+            }
+            VMCommand::Sub => {
+                Ok([2,0,0,0,0])
+            }
+            VMCommand::Div => {
+                Ok([3,0,0,0,0])
+                
+            }
+            VMCommand::Mul => {
+                Ok([4,0,0,0,0])
+                
+            }
+            VMCommand::Rem => {
+                Ok([5,0,0,0,0])
+                
+            }
+            VMCommand::Neg => {
+                Ok([6,0,0,0,0])
+                
+            }
+            VMCommand::Inc => {
+                Ok([7,0,0,0,0])
+                
+            }
+            VMCommand::Dec => {
+                Ok([8,0,0,0,0])
+                
+            }
+            VMCommand::Abs => {
+                Ok([9,0,0,0,0])
+                
+            }
+            VMCommand::Eq => {
+                Ok([10,0,0,0,0])
+                
+            }
+            VMCommand::Gt => {
+                Ok([11,0,0,0,0])
+                
+            }
+            VMCommand::Lt => {
+                Ok([12,0,0,0,0])
+            }
+            VMCommand::And => {
+                Ok([13,0,0,0,0])
+            }
+            VMCommand::Or => {
+                Ok([14,0,0,0,0])
+            }
+            VMCommand::Not => {
+                Ok([15,0,0,0,0])
+            }
+            VMCommand::PushConstant(word) => {
+                match word {
+                    Word::Numeric(val) => {
+                        let val_bytes = val.to_le_bytes();
+                        let mut byte_code = [16,0,0,0,0];
+                        byte_code[1..].copy_from_slice(&val_bytes);
+                        Ok(byte_code)
+                    }
+                    Word::Boolean(false) => Ok([17,0,0,0,0]),
+                    Word::Boolean(true) => Ok([17,1,0,0,0]),
+                }
+            }
+            VMCommand::PushBoardAttr { index } => {
+                let index_bytes = index.to_le_bytes();
+                let mut byte_code = [18,0,0,0,0];
+                byte_code[1..].copy_from_slice(&index_bytes);
+                Ok(byte_code)
+            }
+            VMCommand::PopBoardAttr { index } => {
+                let index_bytes = index.to_le_bytes();
+                let mut byte_code = [19,0,0,0,0];
+                byte_code[1..].copy_from_slice(&index_bytes);
+                Ok(byte_code)
+            }
+            VMCommand::PushLocal { index } => {
+                let index_bytes = index.to_le_bytes();
+                let mut byte_code = [20,0,0,0,0];
+                byte_code[1..].copy_from_slice(&index_bytes);
+                Ok(byte_code)
+                
+            }
+            VMCommand::PopLocal { index } => {
+                let index_bytes = index.to_le_bytes();
+                let mut byte_code = [21,0,0,0,0];
+                byte_code[1..].copy_from_slice(&index_bytes);
+                Ok(byte_code)
+                
+            }
+            VMCommand::PushArgument { index } => {
+                let index_bytes = index.to_le_bytes();
+                let mut byte_code = [22,0,0,0,0];
+                byte_code[1..].copy_from_slice(&index_bytes);
+                Ok(byte_code)
+                
+            }
+            VMCommand::PopArgument { index } => {
+                let index_bytes = index.to_le_bytes();
+                let mut byte_code = [23,0,0,0,0];
+                byte_code[1..].copy_from_slice(&index_bytes);
+                Ok(byte_code)
+                
+            }
+            VMCommand::Goto(address) => {
+                let address_bytes = address.to_le_bytes();
+                let mut byte_code = [24,0,0,0,0];
+                byte_code[1..].copy_from_slice(&address_bytes);
+                Ok(byte_code)
+                
+            }
+            VMCommand::IfGoto(address) => {
+                let address_bytes = address.to_le_bytes();
+                let mut byte_code = [25,0,0,0,0];
+                byte_code[1..].copy_from_slice(&address_bytes);
+                Ok(byte_code)
+            }
+            //VMCommand::Call { address, n_args } => {
+                
+            //}
+            //VMCommand::Function { n_locals } => {
+                
+            //}
+            //VMCommand::Return => {
+                
+            //}
+            //VMCommand::PushCardCount => {
+                
+            //}
+            //VMCommand::PushTypeCount => {
+                
+            //}
+            //VMCommand::PushCardCountWithCardType => {
+                
+            //}
+            //VMCommand::PushCardType => {
+                
+            //}
+            //VMCommand::PushCardTypeAttrByTypeIndex { attr_index } => {
+                
+            //}
+            //VMCommand::PushCardTypeAttrByCardIndex { attr_index } => {
+                
+            //}
+            //VMCommand::PushCardAttr { attr_index } => {
+                
+            //}
+            //VMCommand::PopCardAttr { attr_index } => {
+                
+            //}
+            //VMCommand::InstanceCardByTypeIndex => {
+                
+            //}
+            //VMCommand::InstanceCardByTypeId => {
+                
+            //}
+            //VMCommand::CallCardAction => {
+                
+            //}
+            //VMCommand::RemoveCardByIndex => {
+                
+            //}
+            _ => {unimplemented!()}
+        }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+    use test_case::test_case;
+
+    #[test_case(VMCommand::Add)]
+    #[test_case(VMCommand::Sub)]
+    #[test_case(VMCommand::Halt)]
+    #[test_case(VMCommand::Mul)]
+    #[test_case(VMCommand::Div)]
+    #[test_case(VMCommand::Rem)]
+    #[test_case(VMCommand::Neg)]
+    #[test_case(VMCommand::Inc)]
+    #[test_case(VMCommand::Dec)]
+    #[test_case(VMCommand::Abs)]
+    #[test_case(VMCommand::Eq)]
+    #[test_case(VMCommand::Gt)]
+    #[test_case(VMCommand::Lt)]
+    #[test_case(VMCommand::Or)]
+    #[test_case(VMCommand::And)]
+    #[test_case(VMCommand::Not)]
+    #[test_case(VMCommand::PushConstant(Word::Boolean(true)))]
+    #[test_case(VMCommand::PushConstant(Word::Boolean(false)))]
+    #[test_case(VMCommand::PushConstant(Word::Numeric(0)))]
+    #[test_case(VMCommand::PushConstant(Word::Numeric(i32::MAX)))]
+    #[test_case(VMCommand::PushConstant(Word::Numeric(i32::MIN)))]
+    #[test_case(VMCommand::PushBoardAttr{index: u32::MAX})]
+    #[test_case(VMCommand::PushBoardAttr{index: 0})]
+    #[test_case(VMCommand::PopBoardAttr{index: u32::MAX})]
+    #[test_case(VMCommand::PopBoardAttr{index: 0})]
+    #[test_case(VMCommand::PushLocal{index: u32::MAX})]
+    #[test_case(VMCommand::PushLocal{index: 0})]
+    #[test_case(VMCommand::PopLocal{index: u32::MAX})]
+    #[test_case(VMCommand::PopLocal{index: 0})]
+    #[test_case(VMCommand::PushArgument{index: u32::MAX})]
+    #[test_case(VMCommand::PushArgument{index: 0})]
+    #[test_case(VMCommand::PopArgument{index: u32::MAX})]
+    #[test_case(VMCommand::PopArgument{index: 0})]
+    fn bytecode_to_instruction_equivalence(instruction: VMCommand) {
+        let bytecode = CommandByteCode::try_from(instruction).unwrap();
+        let decoded_instruction = VMCommand::try_from(bytecode).unwrap();
+        pretty_assertions::assert_eq!(instruction, decoded_instruction);
+    }
+
 }
