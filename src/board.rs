@@ -3,10 +3,10 @@ use crate::word::Word;
 use serde::{Deserialize, Serialize};
 use tinyvec::ArrayVec;
 
-const DECK_SIZE: usize = 512;
+const DECK_SIZE: usize = 128;
 type Deck = Vec<Card>;
 
-const ATTR_VEC_SIZE: usize = 128;
+const ATTR_VEC_SIZE: usize = 64;
 type AttrVec = Vec<Word>;
 
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]

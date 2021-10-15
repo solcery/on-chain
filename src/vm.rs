@@ -22,7 +22,7 @@ impl<T> Sealed<T> {
 }
 
 pub struct VM<'a> {
-    rom: &'a Rom<'a>,
+    rom: &'a Rom,
     memory: Memory,
     board: &'a mut Board,
 }
@@ -467,7 +467,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn init_empty_memory_vm() {
         let instructions = vec![
             VMCommand::PushConstant(Word::Numeric(2)),
@@ -476,7 +475,7 @@ mod tests {
         ];
         let card_types = vec![type1(), type2()];
 
-        let rom = unsafe { Rom::from_raw_parts(&instructions, card_types, initial_board()) };
+        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
         let mut board = testing_board();
 
         let vm = VM::init_vm(&rom, &mut board, vec![], 0, 0);
@@ -487,7 +486,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn push_type() {
         let instructions = vec![
             VMCommand::PushConstant(Word::Numeric(2)),
@@ -496,7 +494,7 @@ mod tests {
         ];
         let card_types = vec![type1(), type2()];
 
-        let rom = unsafe { Rom::from_raw_parts(&instructions, card_types, initial_board()) };
+        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
         let mut board = testing_board();
 
         let mut vm = VM::init_vm(&rom, &mut board, vec![], 0, 0);
@@ -515,7 +513,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn push_card_count() {
         let instructions = vec![
             VMCommand::PushConstant(Word::Numeric(2)),
@@ -524,7 +521,7 @@ mod tests {
         ];
         let card_types = vec![type1(), type2()];
 
-        let rom = unsafe { Rom::from_raw_parts(&instructions, card_types, initial_board()) };
+        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
         let mut board = testing_board();
 
         let mut vm = VM::init_vm(&rom, &mut board, vec![], 0, 0);
@@ -544,7 +541,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn push_type_attr_by_type_index() {
         let instructions = vec![
             VMCommand::PushConstant(Word::Numeric(1)),
@@ -553,7 +549,7 @@ mod tests {
         ];
         let card_types = vec![type1(), type2()];
 
-        let rom = unsafe { Rom::from_raw_parts(&instructions, card_types, initial_board()) };
+        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
         let mut board = testing_board();
 
         let mut vm = VM::init_vm(&rom, &mut board, vec![], 0, 0);
@@ -573,7 +569,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn push_type_attr_by_card_index() {
         let instructions = vec![
             VMCommand::PushConstant(Word::Numeric(1)),
@@ -582,7 +577,7 @@ mod tests {
         ];
         let card_types = vec![type1(), type2()];
 
-        let rom = unsafe { Rom::from_raw_parts(&instructions, card_types, initial_board()) };
+        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
         let mut board = testing_board();
 
         let mut vm = VM::init_vm(&rom, &mut board, vec![], 0, 0);
@@ -602,7 +597,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn push_attr() {
         let instructions = vec![
             VMCommand::PushConstant(Word::Numeric(1)),
@@ -611,7 +605,7 @@ mod tests {
         ];
         let card_types = vec![type1(), type2()];
 
-        let rom = unsafe { Rom::from_raw_parts(&instructions, card_types, initial_board()) };
+        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
         let mut board = testing_board();
 
         let mut vm = VM::init_vm(&rom, &mut board, vec![], 0, 0);
@@ -631,7 +625,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn pop_attr() {
         let instructions = vec![
             VMCommand::PushConstant(Word::Numeric(42)),
@@ -641,7 +634,7 @@ mod tests {
         ];
         let card_types = vec![type1(), type2()];
 
-        let rom = unsafe { Rom::from_raw_parts(&instructions, card_types, initial_board()) };
+        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
         let mut board = testing_board();
 
         let mut vm = VM::init_vm(&rom, &mut board, vec![], 0, 0);
@@ -662,7 +655,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn add_one_card_by_index() {
         let instructions = vec![
             VMCommand::PushConstant(Word::Numeric(1)),
@@ -671,7 +663,7 @@ mod tests {
         ];
         let card_types = vec![type1(), type2()];
 
-        let rom = unsafe { Rom::from_raw_parts(&instructions, card_types, initial_board()) };
+        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
         let mut board = initial_board();
 
         let mut vm = VM::init_vm(&rom, &mut board, vec![], 0, 0);
@@ -694,7 +686,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn add_one_card_by_id() {
         let instructions = vec![
             VMCommand::PushConstant(Word::Numeric(2)),
@@ -703,7 +694,7 @@ mod tests {
         ];
         let card_types = vec![type1(), type2()];
 
-        let rom = unsafe { Rom::from_raw_parts(&instructions, card_types, initial_board()) };
+        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
         let mut board = initial_board();
 
         let mut vm = VM::init_vm(&rom, &mut board, vec![], 0, 0);
@@ -726,7 +717,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn add_one_card() {
         let instructions = vec![
             VMCommand::CallCardAction,
@@ -742,7 +732,7 @@ mod tests {
 
         let card_types = vec![type1(), type2()];
 
-        let rom = unsafe { Rom::from_raw_parts(&instructions, card_types, initial_board()) };
+        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
         let mut board = initial_board();
 
         let mut vm = VM::init_vm(&rom, &mut board, vec![], 0, 0);
@@ -764,7 +754,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn remove_one_card() {
         let instructions = vec![
             VMCommand::PushConstant(Word::Numeric(0)),
@@ -774,7 +763,7 @@ mod tests {
 
         let card_types = vec![type1(), type2()];
 
-        let rom = unsafe { Rom::from_raw_parts(&instructions, card_types, initial_board()) };
+        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
         let mut board = testing_board();
 
         let mut vm = VM::init_vm(&rom, &mut board, vec![], 0, 0);

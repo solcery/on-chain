@@ -2,7 +2,7 @@ use crate::word::Word;
 use serde::{Deserialize, Serialize};
 use tinyvec::ArrayVec;
 
-const ATTRS_VEC_SIZE: usize = 32;
+const ATTRS_VEC_SIZE: usize = 16;
 type Attrs = ArrayVec<[Word; ATTRS_VEC_SIZE]>;
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -55,26 +55,23 @@ impl Default for Card {
     }
 }
 
-const TYPE_ATTRS_VEC_SIZE: usize = 32;
-type TypeAttrs = ArrayVec<[Word; TYPE_ATTRS_VEC_SIZE]>;
-
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub struct EntryPoint {
-    address: usize,
-    n_args: usize,
+    address: u32,
+    n_args: u32,
 }
 
 impl EntryPoint {
     pub fn address(&self) -> usize {
-        self.address
+        self.address as usize
     }
 
     pub fn n_args(&self) -> usize {
-        self.n_args
+        self.n_args as usize
     }
 
     #[cfg(test)]
-    pub unsafe fn from_raw_parts(address: usize, n_args: usize) -> EntryPoint {
+    pub unsafe fn from_raw_parts(address: u32, n_args: u32) -> EntryPoint {
         EntryPoint { address, n_args }
     }
 }
@@ -88,7 +85,10 @@ impl Default for EntryPoint {
     }
 }
 
-const ENTRY_POINTS_VEC_SIZE: usize = 32;
+const TYPE_ATTRS_VEC_SIZE: usize = 16;
+type TypeAttrs = ArrayVec<[Word; TYPE_ATTRS_VEC_SIZE]>;
+
+const ENTRY_POINTS_VEC_SIZE: usize = 16;
 type EntryPoints = ArrayVec<[EntryPoint; ENTRY_POINTS_VEC_SIZE]>;
 
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]

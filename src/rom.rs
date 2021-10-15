@@ -5,19 +5,19 @@ use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use tinyvec::ArrayVec;
 
-const ROM_SIZE: usize = 2_usize.pow(16);
-type InstructionRom = [VMCommand; ROM_SIZE];
+const ROM_SIZE: usize = 2_usize.pow(5);
+type InstructionRom = ArrayVec<[VMCommand; ROM_SIZE]>;
 
-const TYPE_DECK_SIZE: usize = 2_usize.pow(10);
+const TYPE_DECK_SIZE: usize = 2_usize.pow(5);
 type TypeDeck = ArrayVec<[CardType; TYPE_DECK_SIZE]>;
 
-//#[derive(Debug, Eq, PartialEq, Deserialize, Serialize)]
-pub struct Rom<'a> {
+#[derive(Debug, Eq, PartialEq, Deserialize, Serialize)]
+pub struct Rom {
     card_types: TypeDeck,
-    instructions: &'a [VMCommand],
+    instructions: InstructionRom,
     initial_board_state: Board,
 }
-impl<'a> Rom<'a> {
+impl Rom {
     pub fn fetch_instruction(&self, pc: usize) -> VMCommand {
         self.instructions[pc]
     }
@@ -60,16 +60,39 @@ impl<'a> Rom<'a> {
 
     #[cfg(test)]
     pub unsafe fn from_raw_parts(
-        instructions: &'a [VMCommand],
+        instructions: Vec<VMCommand>,
         card_types: Vec<CardType>,
         initial_board_state: Board,
     ) -> Self {
         let mut rom = Rom {
             card_types: TypeDeck::new(),
-            instructions,
+            instructions: InstructionRom::new(),
             initial_board_state,
         };
         rom.card_types.fill(card_types);
+        rom.instructions.fill(instructions);
         rom
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use flexbuffers::FlexbufferSerializer;
+
+    #[test]
+    fn serialize() {
+        let instructions = vec![VMCommand::Halt];
+        let rom = unsafe { Rom::from_raw_parts(instructions, vec![], Board::new()) };
+        let mut ser = FlexbufferSerializer::new();
+        rom.serialize(&mut ser).unwrap();
+
+        let data = ser.view();
+
+        let r = flexbuffers::Reader::get_root(data).unwrap();
+
+        let rom2 = Rom::deserialize(r).unwrap();
+
+        assert_eq!(rom, rom2);
     }
 }

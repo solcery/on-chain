@@ -386,9 +386,6 @@ impl TryFrom<VMCommand> for CommandByteCode {
             VMCommand::InstanceCardByTypeId => Ok([38, 0, 0, 0, 0]),
             VMCommand::CallCardAction => Ok([39, 0, 0, 0, 0]),
             VMCommand::RemoveCardByIndex => Ok([40, 0, 0, 0, 0]),
-            _ => {
-                unimplemented!()
-            }
         }
     }
 }
@@ -396,7 +393,6 @@ impl TryFrom<VMCommand> for CommandByteCode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pretty_assertions::assert_eq;
     use test_case::test_case;
 
     #[test_case(VMCommand::Halt)]
