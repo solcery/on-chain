@@ -25,7 +25,7 @@ impl VMInstruction {
 
         // TODO: More descriptive error variants
         if rest.len() >= 8 {
-            if tag == 0 {
+            if *tag == 0 {
                 let (card_index_bytes, rest) = rest.split_at(4);
                 let (entrypoint_index_bytes, rest) = rest.split_at(4);
                 let reader =
