@@ -6,6 +6,10 @@ use solana_program::program_error::ProgramError;
 pub enum VMError {
     #[error("No enough data in instruction_data")]
     InstructionDataTooShort,
+    #[error(
+        "VM has reached the maximum number of instructions, but hasn't finished action evaluation"
+    )]
+    ComputationNotFinished,
 }
 
 impl From<VMError> for ProgramError {

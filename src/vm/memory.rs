@@ -1,7 +1,6 @@
 use crate::word::Word;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
-use tinyvec::ArrayVec;
 
 const STACK_SIZE: usize = 512;
 type Stack = Vec<Word>;
@@ -14,10 +13,12 @@ pub struct Memory {
     pc: usize,
 }
 
-impl Memory {
-    pub fn init_memory(mut stack: Vec<Word>, card_index: i32, action_index: i32) -> Self {
-        stack.push(Word::Numeric(card_index));
-        stack.push(Word::Numeric(action_index));
+impl<'a> Memory {
+    pub fn init_memory(args: &'a [Word], card_index: u32, action_index: u32) -> Self {
+        let mut stack = args.to_vec();
+
+        stack.push(Word::Numeric(card_index as i32));
+        stack.push(Word::Numeric(action_index as i32));
 
         Memory {
             stack,

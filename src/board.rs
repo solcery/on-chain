@@ -1,7 +1,6 @@
 use crate::card::Card;
 use crate::word::Word;
 use serde::{Deserialize, Serialize};
-use tinyvec::ArrayVec;
 
 const DECK_SIZE: usize = 128;
 type Deck = Vec<Card>;
