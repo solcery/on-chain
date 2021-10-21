@@ -36,7 +36,6 @@ impl Board {
         id
     }
 
-    #[cfg(test)]
     pub unsafe fn from_raw_parts(cards: Vec<Card>, attrs: Vec<Word>, card_index: u32) -> Board {
         Board {
             cards,

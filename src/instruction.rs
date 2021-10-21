@@ -22,7 +22,7 @@ pub enum VMInstruction {
     /// 1. `[]` ROM account
     /// 2. `[writable]` Board account
     ProcessAction {
-        card_index: u32,
+        cardtype_index: u32,
         action_index: u32,
         args: Vec<Word>,
     },
@@ -37,7 +37,7 @@ impl VMInstruction {
         // TODO: More descriptive error variants
         if rest.len() >= 8 {
             if *tag == 0 {
-                let (card_index_bytes, rest) = rest.split_at(4);
+                let (cardtype_index_bytes, rest) = rest.split_at(4);
                 let (action_index_bytes, rest) = rest.split_at(4);
                 let reader =
                     Reader::get_root(rest).map_err(|_| ProgramError::InvalidInstructionData)?;
@@ -45,10 +45,10 @@ impl VMInstruction {
                 let args = Vec::<Word>::deserialize(reader)
                     .map_err(|_| ProgramError::InvalidInstructionData)?;
                 let action_index = u32::from_le_bytes(action_index_bytes.try_into().unwrap());
-                let card_index = u32::from_le_bytes(card_index_bytes.try_into().unwrap());
+                let cardtype_index = u32::from_le_bytes(cardtype_index_bytes.try_into().unwrap());
 
                 Ok(Self::ProcessAction {
-                    card_index,
+                    cardtype_index,
                     action_index,
                     args,
                 })
@@ -62,7 +62,7 @@ impl VMInstruction {
     pub fn process_instruction(&self, accounts: &[AccountInfo]) -> ProgramResult {
         match self {
             Self::ProcessAction {
-                card_index,
+                cardtype_index,
                 action_index,
                 args,
             } => {
@@ -87,7 +87,7 @@ impl VMInstruction {
                 let mut board = Board::deserialize(board_reader)
                     .map_err(|_| ProgramError::InvalidAccountData)?;
 
-                let mut vm = VM::init_vm(&rom, &mut board, args, *card_index, *action_index);
+                let mut vm = VM::init_vm(&rom, &mut board, args, *cardtype_index, *action_index);
 
                 vm.execute(MAX_NUM_OF_VM_INSTRUCTION);
 

@@ -373,15 +373,13 @@ impl<'a> VM<'a> {
             .unwrap_numeric()
             .try_into()
             .unwrap();
-        let card_index: usize = self
+        let type_index: usize = self
             .memory
             .pop_external_no_pc_inc()
             .unwrap_numeric()
             .try_into()
             .unwrap();
-        let card = &self.board.cards[card_index];
-        let type_id = card.card_type();
-        let card_type = self.rom.card_type_by_type_id(type_id).unwrap();
+        let card_type = self.rom.card_type_by_type_index(type_index);
         let entry_point = card_type.action_entry_point(action_index);
         self.memory
             .call(entry_point.address(), entry_point.n_args());

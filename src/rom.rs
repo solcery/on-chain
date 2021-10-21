@@ -58,7 +58,6 @@ impl Rom {
         self.initial_board_state.clone()
     }
 
-    #[cfg(test)]
     pub unsafe fn from_raw_parts(
         instructions: Vec<VMCommand>,
         card_types: Vec<CardType>,

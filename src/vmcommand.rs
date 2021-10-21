@@ -114,7 +114,7 @@ pub enum VMCommand {
     InstanceCardByTypeIndex,
     /// Pops [CardType](crate::card::CardType) id from the stack and calls it's `action_id` action as a function
     InstanceCardByTypeId,
-    /// Card index and action index should be placed on the stack
+    /// CardType index and action index should be placed on the stack
     CallCardAction,
     RemoveCardByIndex,
 }

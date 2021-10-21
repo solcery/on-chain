@@ -413,7 +413,6 @@ impl<'a> Memory {
 mod tests {
     use super::*;
     use crate::word_vec;
-    use tinyvec::array_vec;
 
     mod arithmetic {
         use super::*;

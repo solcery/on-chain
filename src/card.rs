@@ -70,7 +70,6 @@ impl EntryPoint {
         self.n_args as usize
     }
 
-    #[cfg(test)]
     pub unsafe fn from_raw_parts(address: u32, n_args: u32) -> EntryPoint {
         EntryPoint { address, n_args }
     }
@@ -134,7 +133,6 @@ impl CardType {
         self.action_entry_points[index]
     }
 
-    #[cfg(test)]
     pub unsafe fn from_raw_parts(
         id: u32,
         attrs: Vec<Word>,
