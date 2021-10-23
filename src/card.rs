@@ -2,7 +2,7 @@ use crate::word::Word;
 use serde::{Deserialize, Serialize};
 use tinyvec::ArrayVec;
 
-const ATTRS_VEC_SIZE: usize = 16;
+const ATTRS_VEC_SIZE: usize = 2_usize.pow(4);
 type Attrs = ArrayVec<[Word; ATTRS_VEC_SIZE]>;
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -84,10 +84,10 @@ impl Default for EntryPoint {
     }
 }
 
-const TYPE_ATTRS_VEC_SIZE: usize = 16;
+const TYPE_ATTRS_VEC_SIZE: usize = 2_usize.pow(4);
 type TypeAttrs = ArrayVec<[Word; TYPE_ATTRS_VEC_SIZE]>;
 
-const ENTRY_POINTS_VEC_SIZE: usize = 16;
+const ENTRY_POINTS_VEC_SIZE: usize = 2_usize.pow(4);
 type EntryPoints = ArrayVec<[EntryPoint; ENTRY_POINTS_VEC_SIZE]>;
 
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]

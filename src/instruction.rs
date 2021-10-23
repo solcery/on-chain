@@ -3,8 +3,7 @@ use crate::error::VMError;
 use crate::rom::Rom;
 use crate::vm::VM;
 use crate::word::Word;
-use flexbuffers::{FlexbufferSerializer, Reader};
-use serde::{Deserialize, Serialize};
+use bincode;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -39,11 +38,8 @@ impl VMInstruction {
             if *tag == 0 {
                 let (cardtype_index_bytes, rest) = rest.split_at(4);
                 let (action_index_bytes, rest) = rest.split_at(4);
-                let reader =
-                    Reader::get_root(rest).map_err(|_| ProgramError::InvalidInstructionData)?;
-
-                let args = Vec::<Word>::deserialize(reader)
-                    .map_err(|_| ProgramError::InvalidInstructionData)?;
+                let args: Vec<Word> =
+                    bincode::deserialize(rest).map_err(|_| ProgramError::InvalidInstructionData)?;
                 let action_index = u32::from_le_bytes(action_index_bytes.try_into().unwrap());
                 let cardtype_index = u32::from_le_bytes(cardtype_index_bytes.try_into().unwrap());
 
@@ -74,17 +70,13 @@ impl VMInstruction {
                 }
 
                 let rom_account = next_account_info(account_info_iter)?;
-                let rom_bytes: &[u8] = &(*rom_account.data).borrow();
-                let rom_reader =
-                    Reader::get_root(rom_bytes).map_err(|_| ProgramError::InvalidAccountData)?;
-                let rom =
-                    Rom::deserialize(rom_reader).map_err(|_| ProgramError::InvalidAccountData)?;
+                let rom: Rom = rom_account
+                    .deserialize_data()
+                    .map_err(|_| ProgramError::InvalidAccountData)?;
 
                 let board_account = next_account_info(account_info_iter)?;
-                let board_bytes: &[u8] = &(*board_account.data).borrow();
-                let board_reader =
-                    Reader::get_root(board_bytes).map_err(|_| ProgramError::InvalidAccountData)?;
-                let mut board = Board::deserialize(board_reader)
+                let mut board: Board = board_account
+                    .deserialize_data()
                     .map_err(|_| ProgramError::InvalidAccountData)?;
 
                 let mut vm = VM::init_vm(&rom, &mut board, args, *cardtype_index, *action_index);
@@ -93,12 +85,8 @@ impl VMInstruction {
 
                 if vm.is_halted() {
                     drop(vm);
-                    let mut board_serializer = FlexbufferSerializer::new();
-                    rom.serialize(&mut board_serializer).unwrap();
-                    let mut board_bytes = (*board_account.data).borrow_mut();
-                    // DANGER: This will likely panic in runtime, as this function panics, if
-                    // slices have different length.
-                    board_bytes.clone_from_slice(board_serializer.view());
+                    serialize_data(board_account, &board)
+                        .map_err(|_| ProgramError::AccountDataTooSmall)?;
                     Ok(())
                 } else {
                     Err(ProgramError::from(VMError::ComputationNotFinished))
@@ -106,4 +94,18 @@ impl VMInstruction {
             }
         }
     }
+}
+
+// duct tape helper function
+// Delete then solana-labs/solana #20919 is merged into solana-sdk
+// L84 should be replaced to:
+// board_account.serialize_data(&board).map_err(|_| ProgramError::AccountDataTooSmall)?;
+fn serialize_data<T: serde::Serialize>(
+    account: &AccountInfo,
+    state: &T,
+) -> Result<(), bincode::Error> {
+    if bincode::serialized_size(state)? > account.data_len() as u64 {
+        return Err(Box::new(bincode::ErrorKind::SizeLimit));
+    }
+    bincode::serialize_into(&mut account.data.borrow_mut()[..], state)
 }

@@ -5,10 +5,10 @@ use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use tinyvec::ArrayVec;
 
-const ROM_SIZE: usize = 2_usize.pow(5);
+const ROM_SIZE: usize = 2_usize.pow(4);
 type InstructionRom = ArrayVec<[VMCommand; ROM_SIZE]>;
 
-const TYPE_DECK_SIZE: usize = 2_usize.pow(5);
+const TYPE_DECK_SIZE: usize = 2_usize.pow(4);
 type TypeDeck = ArrayVec<[CardType; TYPE_DECK_SIZE]>;
 
 #[derive(Debug, Eq, PartialEq, Deserialize, Serialize)]
@@ -71,27 +71,5 @@ impl Rom {
         rom.card_types.fill(card_types);
         rom.instructions.fill(instructions);
         rom
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use flexbuffers::FlexbufferSerializer;
-
-    #[test]
-    fn serialize() {
-        let instructions = vec![VMCommand::Halt];
-        let rom = unsafe { Rom::from_raw_parts(instructions, vec![], Board::new()) };
-        let mut ser = FlexbufferSerializer::new();
-        rom.serialize(&mut ser).unwrap();
-
-        let data = ser.view();
-
-        let r = flexbuffers::Reader::get_root(data).unwrap();
-
-        let rom2 = Rom::deserialize(r).unwrap();
-
-        assert_eq!(rom, rom2);
     }
 }

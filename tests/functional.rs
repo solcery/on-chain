@@ -1,15 +1,13 @@
-use flexbuffers::FlexbufferSerializer;
-use serde::{Deserialize, Serialize};
 use solana_program::{instruction::Instruction, pubkey::Pubkey};
 use solana_program_test::*;
 use solana_sdk::{
     account::Account, instruction::AccountMeta, signature::Signer, transaction::Transaction,
 };
-use std::str::FromStr;
+use std::mem;
 
 use solcery::{
     board::Board,
-    card::{Card, CardType, EntryPoint},
+    card::{CardType, EntryPoint},
     entrypoint::process_instruction,
     rom::Rom,
     vmcommand::VMCommand,
@@ -23,10 +21,14 @@ async fn initialize_dummy() {
     let program_id = Pubkey::new_unique();
     let rom_id = Pubkey::new_unique();
     let board_id = Pubkey::new_unique();
-    let player_id = Pubkey::new_unique();
 
-    let rom_account = Account::new_data(1_000, &generate_testing_rom(), &rom_id).unwrap();
-    let board_account = Account::new_data(1_000, &generate_testing_board(), &board_id).unwrap();
+    let rom = generate_testing_rom();
+    let rom_account =
+        Account::new_data_with_space(1_000, &rom, mem::size_of::<Rom>(), &rom_id).unwrap();
+
+    let board = generate_testing_board();
+    let board_account =
+        Account::new_data_with_space(1_000, &board, mem::size_of::<Board>(), &board_id).unwrap();
 
     let mut program = ProgramTest::new("solcery", program_id, processor!(process_instruction));
     program.add_account(rom_id, rom_account);
@@ -41,10 +43,8 @@ async fn initialize_dummy() {
     instruction_bytes.extend_from_slice(&action_index_bytes);
 
     // args vector serialization
-    let mut ser = FlexbufferSerializer::new();
-    Vec::<Word>::new().serialize(&mut ser).unwrap();
-
-    instruction_bytes.extend_from_slice(ser.view());
+    let arg_bytes = bincode::serialize(&Vec::<Word>::new()).unwrap();
+    instruction_bytes.extend_from_slice(&arg_bytes);
 
     let mut transaction = Transaction::new_with_payer(
         &[Instruction::new_with_bytes(
