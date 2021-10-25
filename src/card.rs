@@ -33,7 +33,6 @@ impl Card {
         }
     }
 
-    #[cfg(test)]
     pub unsafe fn from_raw_parts(id: u32, card_type: u32, attrs: Vec<Word>) -> Self {
         let mut card = Card {
             id,
