@@ -2,12 +2,9 @@ use crate::word::Word;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
-const STACK_SIZE: usize = 512;
-type Stack = Vec<Word>;
-
 #[derive(Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub struct Memory {
-    stack: Stack,
+    stack: Vec<Word>,
     lcl: usize,
     arg: usize,
     pc: usize,

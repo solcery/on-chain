@@ -2681,7 +2681,6 @@ dependencies = [
  "solana-sdk",
  "test-case",
  "thiserror",
- "tinyvec",
 ]
 
 [[package]]
@@ -2864,7 +2863,6 @@ version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f83b2a3d4d9091d0abd7eba4dc2710b1718583bd4d8992e2190720ea38f391f7"
 dependencies = [
- "serde",
  "tinyvec_macros",
 ]
 

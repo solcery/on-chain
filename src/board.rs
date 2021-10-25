@@ -1,18 +1,11 @@
 use crate::card::Card;
 use crate::word::Word;
 use serde::{Deserialize, Serialize};
-use tinyvec::ArrayVec;
-
-const DECK_SIZE: usize = 2_usize.pow(7);
-type Deck = ArrayVec<[Card; DECK_SIZE]>;
-
-const ATTR_VEC_SIZE: usize = 2_usize.pow(5);
-type AttrVec = ArrayVec<[Word; ATTR_VEC_SIZE]>;
 
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct Board {
-    pub cards: Deck,
-    pub attrs: AttrVec,
+    pub cards: Vec<Card>,
+    pub attrs: Vec<Word>,
     card_index: u32,
 }
 
@@ -25,8 +18,8 @@ impl Default for Board {
 impl Board {
     pub fn new() -> Self {
         Board {
-            cards: Deck::new(),
-            attrs: AttrVec::new(),
+            cards: Vec::<Card>::new(),
+            attrs: Vec::<Word>::new(),
             card_index: 0,
         }
     }
@@ -38,13 +31,10 @@ impl Board {
     }
 
     pub unsafe fn from_raw_parts(cards: Vec<Card>, attrs: Vec<Word>, card_index: u32) -> Board {
-        let mut board = Board {
-            cards: Deck::new(),
-            attrs: AttrVec::new(),
+        Board {
+            cards,
+            attrs,
             card_index,
-        };
-        board.cards.fill(cards);
-        board.attrs.fill(attrs);
-        board
+        }
     }
 }

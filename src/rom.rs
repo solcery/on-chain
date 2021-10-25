@@ -3,18 +3,11 @@ use crate::card::{Card, CardType};
 use crate::vmcommand::VMCommand;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
-use tinyvec::ArrayVec;
-
-const ROM_SIZE: usize = 2_usize.pow(4);
-type InstructionRom = ArrayVec<[VMCommand; ROM_SIZE]>;
-
-const TYPE_DECK_SIZE: usize = 2_usize.pow(4);
-type TypeDeck = ArrayVec<[CardType; TYPE_DECK_SIZE]>;
 
 #[derive(Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub struct Rom {
-    card_types: TypeDeck,
-    instructions: InstructionRom,
+    card_types: Vec<CardType>,
+    instructions: Vec<VMCommand>,
     initial_board_state: Board,
 }
 impl Rom {
@@ -63,13 +56,10 @@ impl Rom {
         card_types: Vec<CardType>,
         initial_board_state: Board,
     ) -> Self {
-        let mut rom = Rom {
-            card_types: TypeDeck::new(),
-            instructions: InstructionRom::new(),
+        Rom {
+            card_types,
+            instructions,
             initial_board_state,
-        };
-        rom.card_types.fill(card_types);
-        rom.instructions.fill(instructions);
-        rom
+        }
     }
 }

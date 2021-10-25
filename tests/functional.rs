@@ -4,7 +4,6 @@ use solana_sdk::{
     account::Account, instruction::AccountMeta, signature::Signer, signer::keypair::Keypair,
     transaction::Transaction,
 };
-use std::mem;
 
 use solcery::{
     board::Board,
@@ -28,14 +27,12 @@ async fn initialize_dummy() {
     let engine_id = engine_keypair.try_pubkey().unwrap();
 
     let rom = generate_testing_rom();
-    let rom_account =
-        Account::new_data_with_space(1_000, &rom, mem::size_of::<Rom>(), &engine_id).unwrap();
+    let rom_account = Account::new_data_with_space(1_000, &rom, 1024, &engine_id).unwrap();
 
     let board = generate_testing_board();
     // Actually board should be also owned by engine, however it is impossible to test it's
     // behavior under solana-program-test (because engine_keypair should be the payer)
-    let board_account =
-        Account::new_data_with_space(1_000, &board, mem::size_of::<Board>(), &program_id).unwrap();
+    let board_account = Account::new_data_with_space(1_000, &board, 1024, &program_id).unwrap();
 
     let mut program = ProgramTest::new("solcery", program_id, processor!(process_instruction));
     program.add_account(rom_id, rom_account);

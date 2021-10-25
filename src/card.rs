@@ -1,9 +1,5 @@
 use crate::word::Word;
 use serde::{Deserialize, Serialize};
-use tinyvec::ArrayVec;
-
-const ATTRS_VEC_SIZE: usize = 2_usize.pow(4);
-type Attrs = ArrayVec<[Word; ATTRS_VEC_SIZE]>;
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Card {
@@ -13,7 +9,7 @@ pub struct Card {
     // имеет один и тот же игровой смысл.
     // Если мы оставляем это так, то имеет смысл сделать attrs приватным полем и сделать на него
     // сеттер таким образом, чтобы он не мог поменять num на bool
-    pub attrs: Attrs,
+    pub attrs: Vec<Word>,
 }
 
 impl Card {
@@ -25,7 +21,7 @@ impl Card {
         self.card_type
     }
 
-    pub fn new(id: u32, card_type: u32, attrs: Attrs) -> Self {
+    pub fn new(id: u32, card_type: u32, attrs: Vec<Word>) -> Self {
         Card {
             id,
             card_type,
@@ -34,13 +30,11 @@ impl Card {
     }
 
     pub unsafe fn from_raw_parts(id: u32, card_type: u32, attrs: Vec<Word>) -> Self {
-        let mut card = Card {
+        Card {
             id,
             card_type,
-            attrs: Attrs::new(),
-        };
-        card.attrs.fill(attrs);
-        card
+            attrs,
+        }
     }
 }
 
@@ -49,7 +43,7 @@ impl Default for Card {
         Card {
             id: 0,
             card_type: 0,
-            attrs: Attrs::new(),
+            attrs: Vec::<Word>::new(),
         }
     }
 }
@@ -83,18 +77,12 @@ impl Default for EntryPoint {
     }
 }
 
-const TYPE_ATTRS_VEC_SIZE: usize = 2_usize.pow(4);
-type TypeAttrs = ArrayVec<[Word; TYPE_ATTRS_VEC_SIZE]>;
-
-const ENTRY_POINTS_VEC_SIZE: usize = 2_usize.pow(4);
-type EntryPoints = ArrayVec<[EntryPoint; ENTRY_POINTS_VEC_SIZE]>;
-
-#[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Eq, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CardType {
     id: u32,
-    attrs: TypeAttrs,
-    init_card_attrs: Attrs,
-    action_entry_points: EntryPoints,
+    attrs: Vec<Word>,
+    init_card_attrs: Vec<Word>,
+    action_entry_points: Vec<EntryPoint>,
 }
 
 impl CardType {
@@ -108,9 +96,9 @@ impl CardType {
 
     pub fn new(
         id: u32,
-        attrs: TypeAttrs,
-        init_card_attrs: Attrs,
-        action_entry_points: EntryPoints,
+        attrs: Vec<Word>,
+        init_card_attrs: Vec<Word>,
+        action_entry_points: Vec<EntryPoint>,
     ) -> Self {
         CardType {
             id,
@@ -124,7 +112,7 @@ impl CardType {
         Card {
             id,
             card_type: self.id(),
-            attrs: self.init_card_attrs,
+            attrs: self.init_card_attrs.clone(),
         }
     }
 
@@ -138,16 +126,12 @@ impl CardType {
         init_card_attrs: Vec<Word>,
         action_entry_points: Vec<EntryPoint>,
     ) -> Self {
-        let mut card_type = CardType {
+        CardType {
             id,
-            attrs: Attrs::new(),
-            init_card_attrs: TypeAttrs::new(),
-            action_entry_points: EntryPoints::new(),
-        };
-        card_type.attrs.fill(attrs);
-        card_type.init_card_attrs.fill(init_card_attrs);
-        card_type.action_entry_points.fill(action_entry_points);
-        card_type
+            attrs,
+            init_card_attrs,
+            action_entry_points,
+        }
     }
 }
 
@@ -155,9 +139,9 @@ impl Default for CardType {
     fn default() -> Self {
         CardType {
             id: 0,
-            attrs: TypeAttrs::new(),
-            init_card_attrs: Attrs::new(),
-            action_entry_points: EntryPoints::new(),
+            attrs: Vec::<Word>::new(),
+            init_card_attrs: Vec::<Word>::new(),
+            action_entry_points: Vec::<EntryPoint>::new(),
         }
     }
 }
