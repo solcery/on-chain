@@ -44,10 +44,6 @@ jobs:
       - name: Install Solana SDK
         run: |
           sh -c "$(curl -sSfL https://release.solana.com/stable/install)"
-      - name: Test Path
-        run: |
-          which cargo
-          echo $PATH
         
       - name: Build BPF
         env:
