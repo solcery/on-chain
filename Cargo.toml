@@ -3,7 +3,7 @@ name = "solcery"
 version = "0.1.0"
 license = "Apache-2.0"
 homepage = "https://solana.com/"
-edition = "2021"
+edition = "2018"
 
 [features]
 no-entrypoint = []
