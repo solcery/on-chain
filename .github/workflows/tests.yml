@@ -8,10 +8,6 @@ on:
 
   workflow_dispatch:
 
-env:
-  CARGO_TERM_COLOR: always
-  PATH: "/home/runner/.local/share/solana/install/active_release/bin:$PATH"
-
 jobs:
   native:
     name: Native Unit Tests
@@ -48,13 +44,21 @@ jobs:
       - name: Install Solana SDK
         run: |
           sh -c "$(curl -sSfL https://release.solana.com/stable/install)"
+      - name: Test Path
+        run: |
+          which cargo
+          echo $PATH
         
       - name: Build BPF
+        env:
+          PATH: /home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/home/runner/.local/bin:/opt/pipx_bin:/usr/share/rust/.cargo/bin:/home/runner/.config/composer/vendor/bin:/usr/local/.ghcup/bin:/home/runner/.dotnet/tools:/snap/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/home/runner/.local/share/solana/install/active_release/bin
         uses: actions-rs/cargo@v1
         with:
           command: build-bpf
         
       - name: Test BPF
+        env:
+          PATH: /home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/home/runner/.local/bin:/opt/pipx_bin:/usr/share/rust/.cargo/bin:/home/runner/.config/composer/vendor/bin:/usr/local/.ghcup/bin:/home/runner/.dotnet/tools:/snap/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/home/runner/.local/share/solana/install/active_release/bin
         uses: actions-rs/cargo@v1
         with:
           command: test-bpf
