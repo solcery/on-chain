@@ -6,17 +6,55 @@ on:
   pull_request:
     branches: [ dev ]
 
+  workflow_dispatch:
+
 env:
   CARGO_TERM_COLOR: always
+  PATH: "/home/runner/.local/share/solana/install/active_release/bin:$PATH"
 
 jobs:
-  build:
-
+  native:
+    name: Native Unit Tests
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v2
-      - name: Build
-        run: cargo build
-      - name: Run tests
-        run: cargo test
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Run cargo test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+  onchain:
+    name: On-chain Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install minimal stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Install Solana SDK
+        run: |
+          sh -c "$(curl -sSfL https://release.solana.com/stable/install)"
+        
+      - name: Build BPF
+        uses: actions-rs/cargo@v1
+        with:
+          command: build-bpf
+        
+      - name: Test BPF
+        uses: actions-rs/cargo@v1
+        with:
+          command: test-bpf
