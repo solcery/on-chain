@@ -367,8 +367,8 @@ impl<'a> Memory {
             .push(Word::Numeric(i32::try_from(self.lcl).unwrap()));
         self.stack
             .push(Word::Numeric(i32::try_from(self.arg).unwrap()));
-        self.arg = self.stack.len() - n_args - 3;
         self.lcl = self.stack.len();
+        self.arg = self.stack.len() - n_args - 3;
         self.pc = address;
     }
 
@@ -388,6 +388,18 @@ impl<'a> Memory {
 
         self.stack.truncate(self.arg);
         self.stack.push(return_value);
+        self.lcl = previous_lcl as usize;
+        self.arg = previous_arg as usize;
+        self.pc = return_address as usize;
+    }
+
+    pub fn return_void(&mut self) {
+        let frame = self.lcl;
+        let return_address = self.stack[frame - 3].unwrap_numeric();
+        let previous_lcl = self.stack[frame - 2].unwrap_numeric();
+        let previous_arg = self.stack[frame - 1].unwrap_numeric();
+
+        self.stack.truncate(self.arg);
         self.lcl = previous_lcl as usize;
         self.arg = previous_arg as usize;
         self.pc = return_address as usize;
@@ -1128,19 +1140,16 @@ mod tests {
         fn call() {
             let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, true], 0, 1, 4) };
             mem.call(16, 2);
-            pretty_assertions::assert_eq!(
-                mem.stack,
-                vec!(
-                    Word::Numeric(2),
-                    Word::Boolean(true),
-                    Word::Numeric(5),
-                    Word::Numeric(0),
-                    Word::Numeric(1)
-                )
-            );
-            pretty_assertions::assert_eq!(mem.lcl, 5);
-            pretty_assertions::assert_eq!(mem.arg, 0);
-            pretty_assertions::assert_eq!(mem.pc, 16);
+            let mem_expected =
+                unsafe { Memory::from_raw_parts(word_vec![2, true, 5, 0, 1], 5, 0, 16) };
+            pretty_assertions::assert_eq!(mem, mem_expected);
+        }
+        #[test]
+        fn call_no_args() {
+            let mut mem = unsafe { Memory::from_raw_parts(word_vec![], 0, 0, 4) };
+            mem.call(16, 0);
+            let mem_expected = unsafe { Memory::from_raw_parts(word_vec![5, 0, 0], 3, 0, 16) };
+            pretty_assertions::assert_eq!(mem, mem_expected);
         }
 
         #[test]

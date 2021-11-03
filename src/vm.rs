@@ -175,6 +175,10 @@ impl<'a> VM<'a> {
                 self.memory.fn_return();
                 Ok(())
             }
+            VMCommand::ReturnVoid => {
+                self.memory.return_void();
+                Ok(())
+            }
             VMCommand::PushCardCount => {
                 let len = self.board.cards.len();
                 self.memory

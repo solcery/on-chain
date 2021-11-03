@@ -79,6 +79,8 @@ pub enum VMCommand {
         n_args: u8,
     },
     Return,
+    /// For functions that does not return a value
+    ReturnVoid,
 
     // Interactions with cards
     /// Pushes total number of cards to the stack
@@ -225,38 +227,39 @@ impl TryFrom<CommandByteCode> for VMCommand {
                 })
             }
             28 => Ok(VMCommand::Return),
-            29 => Ok(VMCommand::PushCardCount),
-            30 => Ok(VMCommand::PushTypeCount),
-            31 => Ok(VMCommand::PushCardType),
-            32 => Ok(VMCommand::PushCardCountWithCardType),
-            33 => match word[1..].try_into() {
+            29 => Ok(VMCommand::ReturnVoid),
+            30 => Ok(VMCommand::PushCardCount),
+            31 => Ok(VMCommand::PushTypeCount),
+            32 => Ok(VMCommand::PushCardType),
+            33 => Ok(VMCommand::PushCardCountWithCardType),
+            34 => match word[1..].try_into() {
                 Ok(val) => Ok(VMCommand::PushCardTypeAttrByTypeIndex {
                     attr_index: u32::from_le_bytes(val),
                 }),
                 Err(_) => Err("PushCardTypeAttrByTypeIndex argument corrupted."),
             },
-            34 => match word[1..].try_into() {
+            35 => match word[1..].try_into() {
                 Ok(val) => Ok(VMCommand::PushCardTypeAttrByCardIndex {
                     attr_index: u32::from_le_bytes(val),
                 }),
                 Err(_) => Err("PushCardTypeAttrByCardIndex argument corrupted."),
             },
-            35 => match word[1..].try_into() {
+            36 => match word[1..].try_into() {
                 Ok(val) => Ok(VMCommand::PushCardAttr {
                     attr_index: u32::from_le_bytes(val),
                 }),
                 Err(_) => Err("PushCardAttr argument corrupted."),
             },
-            36 => match word[1..].try_into() {
+            37 => match word[1..].try_into() {
                 Ok(val) => Ok(VMCommand::PopCardAttr {
                     attr_index: u32::from_le_bytes(val),
                 }),
                 Err(_) => Err("PopCardAttr argument corrupted."),
             },
-            37 => Ok(VMCommand::InstanceCardByTypeIndex),
-            38 => Ok(VMCommand::InstanceCardByTypeId),
-            39 => Ok(VMCommand::CallCardAction),
-            40 => Ok(VMCommand::RemoveCardByIndex),
+            38 => Ok(VMCommand::InstanceCardByTypeIndex),
+            39 => Ok(VMCommand::InstanceCardByTypeId),
+            40 => Ok(VMCommand::CallCardAction),
+            41 => Ok(VMCommand::RemoveCardByIndex),
             _ => Err("Illegal instruction"),
         }
     }
@@ -354,38 +357,39 @@ impl TryFrom<VMCommand> for CommandByteCode {
                 Ok(byte_code)
             }
             VMCommand::Return => Ok([28, 0, 0, 0, 0]),
-            VMCommand::PushCardCount => Ok([29, 0, 0, 0, 0]),
-            VMCommand::PushTypeCount => Ok([30, 0, 0, 0, 0]),
-            VMCommand::PushCardType => Ok([31, 0, 0, 0, 0]),
-            VMCommand::PushCardCountWithCardType => Ok([32, 0, 0, 0, 0]),
+            VMCommand::ReturnVoid => Ok([29, 0, 0, 0, 0]),
+            VMCommand::PushCardCount => Ok([30, 0, 0, 0, 0]),
+            VMCommand::PushTypeCount => Ok([31, 0, 0, 0, 0]),
+            VMCommand::PushCardType => Ok([32, 0, 0, 0, 0]),
+            VMCommand::PushCardCountWithCardType => Ok([33, 0, 0, 0, 0]),
             VMCommand::PushCardTypeAttrByTypeIndex { attr_index } => {
-                let attr_index_bytes = attr_index.to_le_bytes();
-                let mut byte_code = [33, 0, 0, 0, 0];
-                byte_code[1..].copy_from_slice(&attr_index_bytes);
-                Ok(byte_code)
-            }
-            VMCommand::PushCardTypeAttrByCardIndex { attr_index } => {
                 let attr_index_bytes = attr_index.to_le_bytes();
                 let mut byte_code = [34, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&attr_index_bytes);
                 Ok(byte_code)
             }
-            VMCommand::PushCardAttr { attr_index } => {
+            VMCommand::PushCardTypeAttrByCardIndex { attr_index } => {
                 let attr_index_bytes = attr_index.to_le_bytes();
                 let mut byte_code = [35, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&attr_index_bytes);
                 Ok(byte_code)
             }
-            VMCommand::PopCardAttr { attr_index } => {
+            VMCommand::PushCardAttr { attr_index } => {
                 let attr_index_bytes = attr_index.to_le_bytes();
                 let mut byte_code = [36, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&attr_index_bytes);
                 Ok(byte_code)
             }
-            VMCommand::InstanceCardByTypeIndex => Ok([37, 0, 0, 0, 0]),
-            VMCommand::InstanceCardByTypeId => Ok([38, 0, 0, 0, 0]),
-            VMCommand::CallCardAction => Ok([39, 0, 0, 0, 0]),
-            VMCommand::RemoveCardByIndex => Ok([40, 0, 0, 0, 0]),
+            VMCommand::PopCardAttr { attr_index } => {
+                let attr_index_bytes = attr_index.to_le_bytes();
+                let mut byte_code = [37, 0, 0, 0, 0];
+                byte_code[1..].copy_from_slice(&attr_index_bytes);
+                Ok(byte_code)
+            }
+            VMCommand::InstanceCardByTypeIndex => Ok([38, 0, 0, 0, 0]),
+            VMCommand::InstanceCardByTypeId => Ok([39, 0, 0, 0, 0]),
+            VMCommand::CallCardAction => Ok([40, 0, 0, 0, 0]),
+            VMCommand::RemoveCardByIndex => Ok([41, 0, 0, 0, 0]),
         }
     }
 }
@@ -437,6 +441,7 @@ mod tests {
     #[test_case(VMCommand::Function { n_locals: 0 })]
     #[test_case(VMCommand::Function { n_locals: 123 })]
     #[test_case(VMCommand::Return)]
+    #[test_case(VMCommand::ReturnVoid)]
     #[test_case(VMCommand::PushCardCount)]
     #[test_case(VMCommand::PushTypeCount)]
     #[test_case(VMCommand::PushCardCountWithCardType)]
