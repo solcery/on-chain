@@ -75,7 +75,7 @@ impl VMInstruction {
                     .map_err(|_| ProgramError::InvalidAccountData)?;
 
                 let board_account = next_account_info(account_info_iter)?;
-                //Actually, here we shold first transfer ownership of the board account to our
+                //Actually, here we should first transfer ownership of the board account to our
                 //program, so  we can modify it.
                 let mut board: Board = board_account
                     .deserialize_data()
@@ -87,6 +87,9 @@ impl VMInstruction {
 
                 if vm.is_halted() {
                     drop(vm);
+                    // As an optimization, we can use accounts, that store only the necessary
+                    // amount of information. If this amount is exceeded, we should call
+                    // SystemProgram::Allocate instruction, to change the size of the account.
                     serialize_data(board_account, &board)
                         .map_err(|_| ProgramError::AccountDataTooSmall)?;
                     Ok(())
