@@ -17,7 +17,7 @@ impl Default for Board {
 
 impl Board {
     pub fn new() -> Self {
-        Board {
+        Self {
             cards: Vec::<Card>::new(),
             attrs: Vec::<Word>::new(),
             card_index: 0,
@@ -30,8 +30,8 @@ impl Board {
         id
     }
 
-    pub unsafe fn from_raw_parts(cards: Vec<Card>, attrs: Vec<Word>, card_index: u32) -> Board {
-        Board {
+    pub unsafe fn from_raw_parts(cards: Vec<Card>, attrs: Vec<Word>, card_index: u32) -> Self {
+        Self {
             cards,
             attrs,
             card_index,

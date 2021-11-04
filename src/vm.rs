@@ -34,9 +34,9 @@ impl<'a> VM<'a> {
         args: &'a [Word],
         card_index: u32,
         action_index: u32,
-    ) -> VM<'a> {
+    ) -> Self {
         let memory = Memory::init_memory(args, card_index, action_index);
-        VM { rom, memory, board }
+        Self { rom, memory, board }
     }
 
     pub fn execute(&mut self, instruction_limit: usize) {
@@ -51,9 +51,9 @@ impl<'a> VM<'a> {
         rom: &'a Rom,
         board: &'a mut Board,
         sealed_memory: Sealed<Memory>,
-    ) -> VM<'a> {
+    ) -> Self {
         let memory = Sealed::<Memory>::release_data(sealed_memory);
-        VM { rom, memory, board }
+        Self { rom, memory, board }
     }
 
     pub fn stop_execution(self) -> Sealed<Memory> {

@@ -17,7 +17,7 @@ impl<'a> Memory {
         stack.push(Word::Numeric(card_index as i32));
         stack.push(Word::Numeric(action_index as i32));
 
-        Memory {
+        Self {
             stack,
             lcl: 0,
             arg: 0,
@@ -406,10 +406,10 @@ impl<'a> Memory {
     }
 
     #[cfg(test)]
-    pub unsafe fn from_raw_parts(stack: Vec<Word>, lcl: usize, arg: usize, pc: usize) -> Memory {
+    pub unsafe fn from_raw_parts(stack: Vec<Word>, lcl: usize, arg: usize, pc: usize) -> Self {
         assert!(lcl <= stack.len());
         assert!(arg <= stack.len());
-        Memory {
+        Self {
             stack,
             lcl,
             arg,

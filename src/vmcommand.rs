@@ -123,7 +123,7 @@ pub enum VMCommand {
 
 impl Default for VMCommand {
     fn default() -> Self {
-        VMCommand::Halt
+        Self::Halt
     }
 }
 
@@ -134,82 +134,80 @@ impl TryFrom<CommandByteCode> for VMCommand {
     fn try_from(word: CommandByteCode) -> Result<Self, Self::Error> {
         let descriminant = word[0];
         match descriminant {
-            0 => Ok(VMCommand::Halt),
-            1 => Ok(VMCommand::Add),
-            2 => Ok(VMCommand::Sub),
-            3 => Ok(VMCommand::Div),
-            4 => Ok(VMCommand::Mul),
-            5 => Ok(VMCommand::Rem),
-            6 => Ok(VMCommand::Neg),
-            7 => Ok(VMCommand::Inc),
-            8 => Ok(VMCommand::Dec),
-            9 => Ok(VMCommand::Abs),
-            10 => Ok(VMCommand::Eq),
-            11 => Ok(VMCommand::Gt),
-            12 => Ok(VMCommand::Lt),
-            13 => Ok(VMCommand::And),
-            14 => Ok(VMCommand::Or),
-            15 => Ok(VMCommand::Not),
+            0 => Ok(Self::Halt),
+            1 => Ok(Self::Add),
+            2 => Ok(Self::Sub),
+            3 => Ok(Self::Div),
+            4 => Ok(Self::Mul),
+            5 => Ok(Self::Rem),
+            6 => Ok(Self::Neg),
+            7 => Ok(Self::Inc),
+            8 => Ok(Self::Dec),
+            9 => Ok(Self::Abs),
+            10 => Ok(Self::Eq),
+            11 => Ok(Self::Gt),
+            12 => Ok(Self::Lt),
+            13 => Ok(Self::And),
+            14 => Ok(Self::Or),
+            15 => Ok(Self::Not),
             16 => match word[1..].try_into() {
-                Ok(val) => Ok(VMCommand::PushConstant(Word::Numeric(i32::from_le_bytes(
-                    val,
-                )))),
+                Ok(val) => Ok(Self::PushConstant(Word::Numeric(i32::from_le_bytes(val)))),
                 Err(_) => Err("PushConstant argument corrupted."),
             },
             17 => {
                 let bool_data = word[1];
                 match bool_data {
-                    0 => Ok(VMCommand::PushConstant(Word::Boolean(false))),
-                    1 => Ok(VMCommand::PushConstant(Word::Boolean(true))),
+                    0 => Ok(Self::PushConstant(Word::Boolean(false))),
+                    1 => Ok(Self::PushConstant(Word::Boolean(true))),
                     _ => Err("PushConstant argument corrupted."),
                 }
             }
             18 => match word[1..].try_into() {
-                Ok(val) => Ok(VMCommand::PushBoardAttr {
+                Ok(val) => Ok(Self::PushBoardAttr {
                     index: u32::from_le_bytes(val),
                 }),
                 Err(_) => Err("PushBoardAttr argument corrupted."),
             },
             19 => match word[1..].try_into() {
-                Ok(val) => Ok(VMCommand::PopBoardAttr {
+                Ok(val) => Ok(Self::PopBoardAttr {
                     index: u32::from_le_bytes(val),
                 }),
                 Err(_) => Err("PopBoardAttr argument corrupted."),
             },
             20 => match word[1..].try_into() {
-                Ok(val) => Ok(VMCommand::PushLocal {
+                Ok(val) => Ok(Self::PushLocal {
                     index: u32::from_le_bytes(val),
                 }),
                 Err(_) => Err("PushLocal argument corrupted."),
             },
             21 => match word[1..].try_into() {
-                Ok(val) => Ok(VMCommand::PopLocal {
+                Ok(val) => Ok(Self::PopLocal {
                     index: u32::from_le_bytes(val),
                 }),
                 Err(_) => Err("PopLocal argument corrupted."),
             },
             22 => match word[1..].try_into() {
-                Ok(val) => Ok(VMCommand::PushArgument {
+                Ok(val) => Ok(Self::PushArgument {
                     index: u32::from_le_bytes(val),
                 }),
                 Err(_) => Err("PushArgument argument corrupted."),
             },
             23 => match word[1..].try_into() {
-                Ok(val) => Ok(VMCommand::PopArgument {
+                Ok(val) => Ok(Self::PopArgument {
                     index: u32::from_le_bytes(val),
                 }),
                 Err(_) => Err("PopArgument argument corrupted."),
             },
             24 => match word[1..].try_into() {
-                Ok(val) => Ok(VMCommand::Goto(u32::from_le_bytes(val))),
+                Ok(val) => Ok(Self::Goto(u32::from_le_bytes(val))),
                 Err(_) => Err("Goto argument corrupted."),
             },
             25 => match word[1..].try_into() {
-                Ok(val) => Ok(VMCommand::IfGoto(u32::from_le_bytes(val))),
+                Ok(val) => Ok(Self::IfGoto(u32::from_le_bytes(val))),
                 Err(_) => Err("IfGoto argument corrupted."),
             },
             26 => match word[1..].try_into() {
-                Ok(val) => Ok(VMCommand::Function {
+                Ok(val) => Ok(Self::Function {
                     n_locals: u32::from_le_bytes(val),
                 }),
                 Err(_) => Err("Function argument corrupted."),
@@ -220,46 +218,46 @@ impl TryFrom<CommandByteCode> for VMCommand {
                 let mut address_bytes = [0; 4];
                 address_bytes[..3].clone_from_slice(&word[1..4]);
 
-                Ok(VMCommand::Call {
+                Ok(Self::Call {
                     address: u32::from_le_bytes(address_bytes),
 
                     n_args: word[4],
                 })
             }
-            28 => Ok(VMCommand::Return),
-            29 => Ok(VMCommand::ReturnVoid),
-            30 => Ok(VMCommand::PushCardCount),
-            31 => Ok(VMCommand::PushTypeCount),
-            32 => Ok(VMCommand::PushCardType),
-            33 => Ok(VMCommand::PushCardCountWithCardType),
+            28 => Ok(Self::Return),
+            29 => Ok(Self::ReturnVoid),
+            30 => Ok(Self::PushCardCount),
+            31 => Ok(Self::PushTypeCount),
+            32 => Ok(Self::PushCardType),
+            33 => Ok(Self::PushCardCountWithCardType),
             34 => match word[1..].try_into() {
-                Ok(val) => Ok(VMCommand::PushCardTypeAttrByTypeIndex {
+                Ok(val) => Ok(Self::PushCardTypeAttrByTypeIndex {
                     attr_index: u32::from_le_bytes(val),
                 }),
                 Err(_) => Err("PushCardTypeAttrByTypeIndex argument corrupted."),
             },
             35 => match word[1..].try_into() {
-                Ok(val) => Ok(VMCommand::PushCardTypeAttrByCardIndex {
+                Ok(val) => Ok(Self::PushCardTypeAttrByCardIndex {
                     attr_index: u32::from_le_bytes(val),
                 }),
                 Err(_) => Err("PushCardTypeAttrByCardIndex argument corrupted."),
             },
             36 => match word[1..].try_into() {
-                Ok(val) => Ok(VMCommand::PushCardAttr {
+                Ok(val) => Ok(Self::PushCardAttr {
                     attr_index: u32::from_le_bytes(val),
                 }),
                 Err(_) => Err("PushCardAttr argument corrupted."),
             },
             37 => match word[1..].try_into() {
-                Ok(val) => Ok(VMCommand::PopCardAttr {
+                Ok(val) => Ok(Self::PopCardAttr {
                     attr_index: u32::from_le_bytes(val),
                 }),
                 Err(_) => Err("PopCardAttr argument corrupted."),
             },
-            38 => Ok(VMCommand::InstanceCardByTypeIndex),
-            39 => Ok(VMCommand::InstanceCardByTypeId),
-            40 => Ok(VMCommand::CallCardAction),
-            41 => Ok(VMCommand::RemoveCardByIndex),
+            38 => Ok(Self::InstanceCardByTypeIndex),
+            39 => Ok(Self::InstanceCardByTypeId),
+            40 => Ok(Self::CallCardAction),
+            41 => Ok(Self::RemoveCardByIndex),
             _ => Err("Illegal instruction"),
         }
     }

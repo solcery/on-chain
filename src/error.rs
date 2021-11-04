@@ -14,6 +14,6 @@ pub enum VMError {
 
 impl From<VMError> for ProgramError {
     fn from(e: VMError) -> Self {
-        ProgramError::Custom(e as u32)
+        Self::Custom(e as u32)
     }
 }

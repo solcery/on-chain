@@ -56,7 +56,7 @@ impl Rom {
         card_types: Vec<CardType>,
         initial_board_state: Board,
     ) -> Self {
-        Rom {
+        Self {
             card_types,
             instructions,
             initial_board_state,

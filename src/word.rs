@@ -21,17 +21,17 @@ impl Word {
 
 impl Default for Word {
     fn default() -> Self {
-        Word::Numeric(0)
+        Self::Numeric(0)
     }
 }
 impl From<i32> for Word {
     fn from(val: i32) -> Self {
-        Word::Numeric(val)
+        Self::Numeric(val)
     }
 }
 impl From<bool> for Word {
     fn from(val: bool) -> Self {
-        Word::Boolean(val)
+        Self::Boolean(val)
     }
 }
 

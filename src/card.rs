@@ -22,7 +22,7 @@ impl Card {
     }
 
     pub fn new(id: u32, card_type: u32, attrs: Vec<Word>) -> Self {
-        Card {
+        Self {
             id,
             card_type,
             attrs,
@@ -30,7 +30,7 @@ impl Card {
     }
 
     pub unsafe fn from_raw_parts(id: u32, card_type: u32, attrs: Vec<Word>) -> Self {
-        Card {
+        Self {
             id,
             card_type,
             attrs,
@@ -40,7 +40,7 @@ impl Card {
 
 impl Default for Card {
     fn default() -> Self {
-        Card {
+        Self {
             id: 0,
             card_type: 0,
             attrs: Vec::<Word>::new(),
@@ -63,14 +63,14 @@ impl EntryPoint {
         self.n_args as usize
     }
 
-    pub unsafe fn from_raw_parts(address: u32, n_args: u32) -> EntryPoint {
-        EntryPoint { address, n_args }
+    pub unsafe fn from_raw_parts(address: u32, n_args: u32) -> Self {
+        Self { address, n_args }
     }
 }
 
 impl Default for EntryPoint {
     fn default() -> Self {
-        EntryPoint {
+        Self {
             address: 0,
             n_args: 0,
         }
@@ -100,7 +100,7 @@ impl CardType {
         init_card_attrs: Vec<Word>,
         action_entry_points: Vec<EntryPoint>,
     ) -> Self {
-        CardType {
+        Self {
             id,
             attrs,
             init_card_attrs,
@@ -126,7 +126,7 @@ impl CardType {
         init_card_attrs: Vec<Word>,
         action_entry_points: Vec<EntryPoint>,
     ) -> Self {
-        CardType {
+        Self {
             id,
             attrs,
             init_card_attrs,
@@ -137,7 +137,7 @@ impl CardType {
 
 impl Default for CardType {
     fn default() -> Self {
-        CardType {
+        Self {
             id: 0,
             attrs: Vec::<Word>::new(),
             init_card_attrs: Vec::<Word>::new(),
