@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
 /// Одна ячейка памяти на стеке может содержать либо число, либо логическое значение.
 /// Операции будут проверять, что значение нужного типа, поэтому вызвать 1 + True нельзя, это
 /// вызовет панику.
@@ -32,6 +33,46 @@ impl From<i32> for Word {
 impl From<bool> for Word {
     fn from(val: bool) -> Self {
         Self::Boolean(val)
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+pub enum ConversionError {
+    WasNumeric,
+    WasBoolean,
+    NegativeNumeric,
+}
+
+impl TryFrom<Word> for i32 {
+    type Error = ConversionError;
+
+    fn try_from(value: Word) -> Result<Self, Self::Error> {
+        match value {
+            Word::Numeric(val) => Ok(val),
+            Word::Boolean(_) => Err(Self::Error::WasBoolean),
+        }
+    }
+}
+
+impl TryFrom<Word> for bool {
+    type Error = ConversionError;
+
+    fn try_from(value: Word) -> Result<Self, Self::Error> {
+        match value {
+            Word::Numeric(_) => Err(Self::Error::WasNumeric),
+            Word::Boolean(val) => Ok(val),
+        }
+    }
+}
+impl TryFrom<Word> for usize {
+    type Error = ConversionError;
+
+    fn try_from(value: Word) -> Result<Self, Self::Error> {
+        match value {
+            Word::Numeric(val) if val >= 0 => Ok(val as usize),
+            Word::Numeric(_) => Err(Self::Error::NegativeNumeric),
+            Word::Boolean(_) => Err(Self::Error::WasBoolean),
+        }
     }
 }
 

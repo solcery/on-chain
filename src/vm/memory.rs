@@ -29,11 +29,12 @@ impl<'a> Memory {
         self.pc
     }
 
-    pub fn jmp(&mut self, address: usize) {
+    pub fn jmp(&mut self, address: usize) -> Result<(), VMError> {
         self.pc = address;
+        Ok(())
     }
 
-    pub fn ifjmp(&mut self, address: usize) {
+    pub fn ifjmp(&mut self, address: usize) -> Result<(), VMError> {
         let value = self.stack.pop();
         match value {
             Some(Word::Boolean(val)) => {
@@ -42,62 +43,52 @@ impl<'a> Memory {
                 } else {
                     self.pc += 1;
                 }
+                Ok(())
             }
-            Some(Word::Numeric(_)) => {
-                panic!("Type mismatch: attempted to use numerical value in boolean condition.");
-            }
-            None => {
-                panic!("Not enough values on the stack.");
-            }
+            Some(Word::Numeric(_)) => Err(VMError::TypeMismatch),
+            None => Err(VMError::NotEnoughtValues),
         }
     }
 
-    pub fn add(&mut self) {
+    pub fn add(&mut self) -> Result<(), VMError> {
         let first_word = self.stack.pop();
         let second_word = self.stack.pop();
         match (first_word, second_word) {
             (Some(Word::Numeric(x)), Some(Word::Numeric(y))) => {
                 self.stack.push(Word::Numeric(x + y));
                 self.pc += 1;
+                Ok(())
             }
-            (Some(Word::Boolean(_)), _) | (_, Some(Word::Boolean(_))) => {
-                panic!("Type mismatch: attempted to add boolean values.");
-            }
-            (_, None) | (None, _) => {
-                panic!("Not enough values on the stack.");
-            }
+            (Some(Word::Boolean(_)), _) | (_, Some(Word::Boolean(_))) => Err(VMError::TypeMismatch),
+            (_, None) | (None, _) => Err(VMError::NotEnoughtValues),
         }
     }
 
     /// Subtracts the last value from the stack from the previous one
-    pub fn sub(&mut self) {
+    pub fn sub(&mut self) -> Result<(), VMError> {
         let first_word = self.stack.pop();
         let second_word = self.stack.pop();
         match (first_word, second_word) {
             (Some(Word::Numeric(x)), Some(Word::Numeric(y))) => {
                 self.stack.push(Word::Numeric(x - y));
                 self.pc += 1;
+                Ok(())
             }
-            (Some(Word::Boolean(_)), _) | (_, Some(Word::Boolean(_))) => {
-                panic!("Type mismatch: attempted to substract boolean values.");
-            }
-            (_, None) | (None, _) => {
-                panic!("Not enough values on the stack.");
-            }
+            (Some(Word::Boolean(_)), _) | (_, Some(Word::Boolean(_))) => Err(VMError::TypeMismatch),
+            (_, None) | (None, _) => Err(VMError::NotEnoughtValues),
         }
     }
 
-    pub fn mul(&mut self) {
+    pub fn mul(&mut self) -> Result<(), VMError> {
         let first_word = self.stack.pop();
         let second_word = self.stack.pop();
         match (first_word, second_word) {
             (Some(Word::Numeric(x)), Some(Word::Numeric(y))) => {
                 self.stack.push(Word::Numeric(x * y));
                 self.pc += 1;
+                Ok(())
             }
-            (Some(Word::Boolean(_)), _) | (_, Some(Word::Boolean(_))) => {
-                panic!("Type mismatch: attempted to multiply boolean values.");
-            }
+            (Some(Word::Boolean(_)), _) | (_, Some(Word::Boolean(_))) => Err(VMError::TypeMismatch),
             (_, None) | (None, _) => {
                 panic!("Not enough values on the stack.");
             }
@@ -105,17 +96,16 @@ impl<'a> Memory {
     }
 
     /// Divides the last value from the stack by the previous one, returns the quotient
-    pub fn div(&mut self) {
+    pub fn div(&mut self) -> Result<(), VMError> {
         let first_word = self.stack.pop();
         let second_word = self.stack.pop();
         match (first_word, second_word) {
             (Some(Word::Numeric(x)), Some(Word::Numeric(y))) => {
                 self.stack.push(Word::Numeric(x / y));
                 self.pc += 1;
+                Ok(())
             }
-            (Some(Word::Boolean(_)), _) | (_, Some(Word::Boolean(_))) => {
-                panic!("Type mismatch: attempted to divide boolean values.");
-            }
+            (Some(Word::Boolean(_)), _) | (_, Some(Word::Boolean(_))) => Err(VMError::TypeMismatch),
             (_, None) | (None, _) => {
                 panic!("Not enough values on the stack.");
             }
@@ -123,286 +113,284 @@ impl<'a> Memory {
     }
 
     /// Divides the last value from the stack by the previous one, returnts the remainer
-    pub fn rem(&mut self) {
+    pub fn rem(&mut self) -> Result<(), VMError> {
         let first_word = self.stack.pop();
         let second_word = self.stack.pop();
         match (first_word, second_word) {
             (Some(Word::Numeric(x)), Some(Word::Numeric(y))) => {
                 self.stack.push(Word::Numeric(x % y));
                 self.pc += 1;
+                Ok(())
             }
-            (Some(Word::Boolean(_)), _) | (_, Some(Word::Boolean(_))) => {
-                panic!("Type mismatch: attempted to take the remainer of the boolean values.");
-            }
+            (Some(Word::Boolean(_)), _) | (_, Some(Word::Boolean(_))) => Err(VMError::TypeMismatch),
             (_, None) | (None, _) => {
                 panic!("Not enough values on the stack.");
             }
         }
     }
 
-    pub fn neg(&mut self) {
+    pub fn neg(&mut self) -> Result<(), VMError> {
         let value = self.stack.pop();
         match value {
             Some(Word::Numeric(x)) => {
                 self.stack.push(Word::Numeric(-x));
                 self.pc += 1;
+                Ok(())
             }
-            Some(Word::Boolean(_)) => {
-                panic!("Attempted to negate boolean value.");
-            }
+            Some(Word::Boolean(_)) => Err(VMError::TypeMismatch),
             None => {
                 panic!("Not enough values on the stack.");
             }
         }
     }
 
-    pub fn inc(&mut self) {
+    pub fn inc(&mut self) -> Result<(), VMError> {
         let value = self.stack.pop();
         match value {
             Some(Word::Numeric(x)) => {
                 self.stack.push(Word::Numeric(x + 1));
                 self.pc += 1;
+                Ok(())
             }
-            Some(Word::Boolean(_)) => {
-                panic!("Attempted to increment boolean value.");
-            }
+            Some(Word::Boolean(_)) => Err(VMError::TypeMismatch),
             None => {
                 panic!("Not enough values on the stack.");
             }
         }
     }
 
-    pub fn dec(&mut self) {
+    pub fn dec(&mut self) -> Result<(), VMError> {
         let value = self.stack.pop();
         match value {
             Some(Word::Numeric(x)) => {
                 self.stack.push(Word::Numeric(x - 1));
                 self.pc += 1;
+                Ok(())
             }
-            Some(Word::Boolean(_)) => {
-                panic!("Attempted to decrement boolean value.");
-            }
+            Some(Word::Boolean(_)) => Err(VMError::TypeMismatch),
             None => {
                 panic!("Not enough values on the stack.");
             }
         }
     }
 
-    pub fn abs(&mut self) {
+    pub fn abs(&mut self) -> Result<(), VMError> {
         let value = self.stack.pop();
         match value {
             Some(Word::Numeric(x)) => {
                 self.stack.push(Word::Numeric(x.abs()));
                 self.pc += 1;
+                Ok(())
             }
-            Some(Word::Boolean(_)) => {
-                panic!("Attempted to find modulus of boolean value.");
-            }
+            Some(Word::Boolean(_)) => Err(VMError::TypeMismatch),
             None => {
                 panic!("Not enough values on the stack.");
             }
         }
     }
 
-    pub fn push_external(&mut self, value: Word) {
+    pub fn push_external(&mut self, value: Word) -> Result<(), VMError> {
         self.stack.push(value);
         self.pc += 1;
+        Ok(())
     }
 
-    pub fn pop_external(&mut self) -> Word {
-        let value = self.stack.pop().unwrap();
-        self.pc += 1;
-        value
+    pub fn pop_external(&mut self) -> Result<Word, VMError> {
+        match self.stack.pop() {
+            Some(value) => {
+                self.pc += 1;
+                Ok(value)
+            }
+            None => Err(VMError::NotEnoughtValues),
+        }
     }
 
-    pub fn pop_external_no_pc_inc(&mut self) -> Word {
-        self.stack.pop().unwrap()
+    pub fn pop_external_no_pc_inc(&mut self) -> Result<Word, VMError> {
+        self.stack.pop().ok_or(VMError::NotEnoughtValues)
     }
 
-    pub fn push_local(&mut self, index: usize) {
+    pub fn push_local(&mut self, index: usize) -> Result<(), VMError> {
         let value = self.stack[self.lcl + index];
         self.stack.push(value);
         self.pc += 1;
+        Ok(())
     }
 
-    pub fn pop_local(&mut self, index: usize) {
-        let value = self.stack.pop().unwrap();
-        self.stack[self.lcl + index] = value;
-        self.pc += 1;
+    pub fn pop_local(&mut self, index: usize) -> Result<(), VMError> {
+        match self.stack.pop() {
+            Some(value) => {
+                self.stack[self.lcl + index] = value;
+                self.pc += 1;
+                Ok(())
+            }
+            None => Err(VMError::NotEnoughtValues),
+        }
     }
 
-    pub fn push_argument(&mut self, index: usize) {
+    pub fn push_argument(&mut self, index: usize) -> Result<(), VMError> {
         let value = self.stack[self.arg + index];
         self.stack.push(value);
         self.pc += 1;
+        Ok(())
     }
 
-    pub fn pop_argument(&mut self, index: usize) {
-        let value = self.stack.pop().unwrap();
-        self.stack[self.arg + index] = value;
-        self.pc += 1;
+    pub fn pop_argument(&mut self, index: usize) -> Result<(), VMError> {
+        match self.stack.pop() {
+            Some(value) => {
+                self.stack[self.arg + index] = value;
+                self.pc += 1;
+                Ok(())
+            }
+            None => Err(VMError::NotEnoughtValues),
+        }
     }
 
-    pub fn equal(&mut self) {
+    pub fn equal(&mut self) -> Result<(), VMError> {
         let first_word = self.stack.pop();
         let second_word = self.stack.pop();
         match (first_word, second_word) {
             (Some(Word::Numeric(x)), Some(Word::Numeric(y))) => {
                 self.stack.push(Word::Boolean(x == y));
                 self.pc += 1;
+                Ok(())
             }
-            (Some(Word::Boolean(_)), Some(Word::Boolean(_))) => {
-                panic!("Type mismatch: attempted to check boolean values for equality.");
-            }
-            (Some(_), Some(_)) => {
-                panic!("Type mismatch: attempted to compare boolean to numerical.");
-            }
+            (Some(_), Some(_)) => Err(VMError::TypeMismatch),
             (_, None) | (None, _) => {
                 panic!("Not enough values on the stack.");
             }
         }
     }
 
-    pub fn gt(&mut self) {
+    pub fn gt(&mut self) -> Result<(), VMError> {
         let first_word = self.stack.pop();
         let second_word = self.stack.pop();
         match (first_word, second_word) {
             (Some(Word::Numeric(x)), Some(Word::Numeric(y))) => {
                 self.stack.push(Word::Boolean(x > y));
                 self.pc += 1;
+                Ok(())
             }
-            (Some(Word::Boolean(_)), Some(Word::Boolean(_))) => {
-                panic!("Type mismatch: attempted to check boolean values for equality.");
-            }
-            (Some(_), Some(_)) => {
-                panic!("Type mismatch: attempted to compare boolean to numerical.");
-            }
+            (Some(_), Some(_)) => Err(VMError::TypeMismatch),
             (_, None) | (None, _) => {
                 panic!("Not enough values on the stack.");
             }
         }
     }
 
-    pub fn lt(&mut self) {
+    pub fn lt(&mut self) -> Result<(), VMError> {
         let first_word = self.stack.pop();
         let second_word = self.stack.pop();
         match (first_word, second_word) {
             (Some(Word::Numeric(x)), Some(Word::Numeric(y))) => {
                 self.stack.push(Word::Boolean(x < y));
                 self.pc += 1;
+                Ok(())
             }
-            (Some(Word::Boolean(_)), Some(Word::Boolean(_))) => {
-                panic!("Type mismatch: attempted to check boolean values for equality.");
-            }
-            (Some(_), Some(_)) => {
-                panic!("Type mismatch: attempted to compare boolean to numerical.");
-            }
+            (Some(_), Some(_)) => Err(VMError::TypeMismatch),
             (_, None) | (None, _) => {
                 panic!("Not enough values on the stack.");
             }
         }
     }
 
-    pub fn and(&mut self) {
+    pub fn and(&mut self) -> Result<(), VMError> {
         let first_word = self.stack.pop();
         let second_word = self.stack.pop();
         match (first_word, second_word) {
             (Some(Word::Boolean(x)), Some(Word::Boolean(y))) => {
                 self.stack.push(Word::Boolean(x && y));
                 self.pc += 1;
+                Ok(())
             }
-            (Some(Word::Numeric(_)), Some(Word::Numeric(_))) => {
-                panic!("Type mismatch: attempted to AND numerical values.");
-            }
-            (Some(_), Some(_)) => {
-                panic!("Type mismatch: attempted to AND boolean to numerical.");
-            }
+            (Some(_), Some(_)) => Err(VMError::TypeMismatch),
             (_, None) | (None, _) => {
                 panic!("Not enough values on the stack.");
             }
         }
     }
 
-    pub fn or(&mut self) {
+    pub fn or(&mut self) -> Result<(), VMError> {
         let first_word = self.stack.pop();
         let second_word = self.stack.pop();
         match (first_word, second_word) {
             (Some(Word::Boolean(x)), Some(Word::Boolean(y))) => {
                 self.stack.push(Word::Boolean(x || y));
                 self.pc += 1;
+                Ok(())
             }
-            (Some(Word::Numeric(_)), Some(Word::Numeric(_))) => {
-                panic!("Type mismatch: attempted to OR numerical values.");
-            }
-            (Some(_), Some(_)) => {
-                panic!("Type mismatch: attempted to OR boolean to numerical.");
-            }
+            (Some(_), Some(_)) => Err(VMError::TypeMismatch),
             (_, None) | (None, _) => {
                 panic!("Not enough values on the stack.");
             }
         }
     }
 
-    pub fn not(&mut self) {
+    pub fn not(&mut self) -> Result<(), VMError> {
         let value = self.stack.pop();
         match value {
             Some(Word::Boolean(x)) => {
                 self.stack.push(Word::Boolean(!x));
                 self.pc += 1;
+                Ok(())
             }
-            Some(Word::Numeric(_)) => {
-                panic!("Attempted to NOT numerical value.");
-            }
+            Some(Word::Numeric(_)) => Err(VMError::TypeMismatch),
             None => {
                 panic!("Not enough values on the stack.");
             }
         }
     }
 
-    pub fn call(&mut self, address: usize, n_args: usize) {
+    pub fn call(&mut self, address: usize, n_args: usize) -> Result<(), VMError> {
         let return_address = self.pc + 1;
-        self.stack
-            .push(Word::Numeric(i32::try_from(return_address).unwrap()));
-        self.stack
-            .push(Word::Numeric(i32::try_from(self.lcl).unwrap()));
-        self.stack
-            .push(Word::Numeric(i32::try_from(self.arg).unwrap()));
+        self.stack.push(Word::Numeric(return_address as i32));
+        self.stack.push(Word::Numeric(self.lcl as i32));
+        self.stack.push(Word::Numeric(self.arg as i32));
         self.lcl = self.stack.len();
         self.arg = self.stack.len() - n_args - 3;
         self.pc = address;
+        Ok(())
     }
 
-    pub fn function(&mut self, n_locals: usize) {
+    pub fn function(&mut self, n_locals: usize) -> Result<(), VMError> {
         for _ in 0..n_locals {
             self.stack.push(Word::Numeric(0));
         }
         self.pc += 1;
+        Ok(())
     }
 
-    pub fn fn_return(&mut self) {
+    pub fn fn_return(&mut self) -> Result<(), VMError> {
         let frame = self.lcl;
-        let return_address = self.stack[frame - 3].unwrap_numeric();
-        let previous_lcl = self.stack[frame - 2].unwrap_numeric();
-        let previous_arg = self.stack[frame - 1].unwrap_numeric();
-        let return_value = self.stack.pop().unwrap();
+        let return_address =
+            i32::try_from(self.stack[frame - 3]).map_err(|_| VMError::TypeMismatch)?;
+        let previous_lcl =
+            i32::try_from(self.stack[frame - 2]).map_err(|_| VMError::TypeMismatch)?;
+        let previous_arg =
+            i32::try_from(self.stack[frame - 1]).map_err(|_| VMError::TypeMismatch)?;
+        let return_value = self.stack.pop().ok_or(VMError::NotEnoughtValues)?;
 
         self.stack.truncate(self.arg);
         self.stack.push(return_value);
         self.lcl = previous_lcl as usize;
         self.arg = previous_arg as usize;
         self.pc = return_address as usize;
+        Ok(())
     }
 
-    pub fn return_void(&mut self) {
+    pub fn return_void(&mut self) -> Result<(), VMError> {
         let frame = self.lcl;
-        let return_address = self.stack[frame - 3].unwrap_numeric();
-        let previous_lcl = self.stack[frame - 2].unwrap_numeric();
-        let previous_arg = self.stack[frame - 1].unwrap_numeric();
+        let return_address =
+            i32::try_from(self.stack[frame - 3]).map_err(|_| VMError::TypeMismatch)?;
+        let previous_lcl =
+            i32::try_from(self.stack[frame - 2]).map_err(|_| VMError::TypeMismatch)?;
+        let previous_arg =
+            i32::try_from(self.stack[frame - 1]).map_err(|_| VMError::TypeMismatch)?;
 
         self.stack.truncate(self.arg);
         self.lcl = previous_lcl as usize;
         self.arg = previous_arg as usize;
         self.pc = return_address as usize;
+        Ok(())
     }
 
     #[cfg(test)]
@@ -416,6 +404,13 @@ impl<'a> Memory {
             pc,
         }
     }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+pub enum VMError {
+    Halt,
+    NotEnoughtValues,
+    TypeMismatch,
 }
 
 #[cfg(test)]

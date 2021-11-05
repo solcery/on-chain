@@ -5,10 +5,12 @@ use crate::rom::Rom;
 use crate::vmcommand::VMCommand;
 use crate::word::Word;
 use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
 use std::convert::TryInto;
 
 mod memory;
 use memory::Memory;
+use memory::VMError;
 
 #[derive(Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub struct Sealed<T> {
@@ -60,197 +62,88 @@ impl<'a> VM<'a> {
         Sealed::<Memory> { data: self.memory }
     }
 
-    fn run_one_instruction(&mut self) -> Result<(), ()> {
+    fn run_one_instruction(&mut self) -> Result<(), VMError> {
         //TODO: better handing for Halt instruction.
         //Probably, we need to propogate errors from the instructions to this function.
         let instruction = self.rom.fetch_instruction(self.memory.pc());
         match instruction {
-            VMCommand::Add => {
-                self.memory.add();
-                Ok(())
-            }
-            VMCommand::Sub => {
-                self.memory.sub();
-                Ok(())
-            }
-            VMCommand::Mul => {
-                self.memory.mul();
-                Ok(())
-            }
-            VMCommand::Div => {
-                self.memory.div();
-                Ok(())
-            }
-            VMCommand::Rem => {
-                self.memory.rem();
-                Ok(())
-            }
-            VMCommand::Neg => {
-                self.memory.neg();
-                Ok(())
-            }
-            VMCommand::Inc => {
-                self.memory.inc();
-                Ok(())
-            }
-            VMCommand::Dec => {
-                self.memory.dec();
-                Ok(())
-            }
-            VMCommand::Abs => {
-                self.memory.abs();
-                Ok(())
-            }
-            VMCommand::Eq => {
-                self.memory.equal();
-                Ok(())
-            }
-            VMCommand::Gt => {
-                self.memory.gt();
-                Ok(())
-            }
-            VMCommand::Lt => {
-                self.memory.lt();
-                Ok(())
-            }
-            VMCommand::Or => {
-                self.memory.or();
-                Ok(())
-            }
-            VMCommand::And => {
-                self.memory.and();
-                Ok(())
-            }
-            VMCommand::Not => {
-                self.memory.not();
-                Ok(())
-            }
-            VMCommand::PushConstant(word) => {
-                self.memory.push_external(word);
-                Ok(())
-            }
+            VMCommand::Add => self.memory.add(),
+            VMCommand::Sub => self.memory.sub(),
+            VMCommand::Mul => self.memory.mul(),
+            VMCommand::Div => self.memory.div(),
+            VMCommand::Rem => self.memory.rem(),
+            VMCommand::Neg => self.memory.neg(),
+            VMCommand::Inc => self.memory.inc(),
+            VMCommand::Dec => self.memory.dec(),
+            VMCommand::Abs => self.memory.abs(),
+            VMCommand::Eq => self.memory.equal(),
+            VMCommand::Gt => self.memory.gt(),
+            VMCommand::Lt => self.memory.lt(),
+            VMCommand::Or => self.memory.or(),
+            VMCommand::And => self.memory.and(),
+            VMCommand::Not => self.memory.not(),
+            VMCommand::PushConstant(word) => self.memory.push_external(word),
             VMCommand::PushBoardAttr { index } => {
                 let attr = self.board.attrs[index as usize];
-                self.memory.push_external(attr);
-                Ok(())
+                self.memory.push_external(attr)
             }
             VMCommand::PopBoardAttr { index } => {
-                let value = self.memory.pop_external();
+                let value = self.memory.pop_external()?;
                 self.board.attrs[index as usize] = value;
                 Ok(())
             }
-            VMCommand::PushLocal { index } => {
-                self.memory.push_local(index as usize);
-                Ok(())
-            }
-            VMCommand::PopLocal { index } => {
-                self.memory.pop_local(index as usize);
-                Ok(())
-            }
-            VMCommand::PushArgument { index } => {
-                self.memory.push_argument(index as usize);
-                Ok(())
-            }
-            VMCommand::PopArgument { index } => {
-                self.memory.pop_argument(index as usize);
-                Ok(())
-            }
-            VMCommand::Goto(instruction) => {
-                self.memory.jmp(instruction as usize);
-                Ok(())
-            }
-            VMCommand::IfGoto(instruction) => {
-                self.memory.ifjmp(instruction as usize);
-                Ok(())
-            }
+            VMCommand::PushLocal { index } => self.memory.push_local(index as usize),
+            VMCommand::PopLocal { index } => self.memory.pop_local(index as usize),
+            VMCommand::PushArgument { index } => self.memory.push_argument(index as usize),
+            VMCommand::PopArgument { index } => self.memory.pop_argument(index as usize),
+            VMCommand::Goto(instruction) => self.memory.jmp(instruction as usize),
+            VMCommand::IfGoto(instruction) => self.memory.ifjmp(instruction as usize),
             VMCommand::Call { address, n_args } => {
-                self.memory.call(address as usize, n_args as usize);
-                Ok(())
+                self.memory.call(address as usize, n_args as usize)
             }
-            VMCommand::Function { n_locals } => {
-                self.memory.function(n_locals as usize);
-                Ok(())
-            }
-            VMCommand::Return => {
-                self.memory.fn_return();
-                Ok(())
-            }
-            VMCommand::ReturnVoid => {
-                self.memory.return_void();
-                Ok(())
-            }
+            VMCommand::Function { n_locals } => self.memory.function(n_locals as usize),
+            VMCommand::Return => self.memory.fn_return(),
+            VMCommand::ReturnVoid => self.memory.return_void(),
             VMCommand::PushCardCount => {
                 let len = self.board.cards.len();
-                self.memory
-                    .push_external(Word::Numeric(TryInto::try_into(len).unwrap()));
-                Ok(())
+                self.memory.push_external(Word::Numeric(len as i32))
             }
             VMCommand::PushTypeCount => {
                 let len = self.rom.card_type_count();
-                self.memory
-                    .push_external(Word::Numeric(TryInto::try_into(len).unwrap()));
-                Ok(())
+                self.memory.push_external(Word::Numeric(len as i32))
             }
-            VMCommand::PushCardCountWithCardType => {
-                self.push_card_count_with_type();
-                Ok(())
-            }
-            VMCommand::PushCardType => {
-                self.push_card_type();
-                Ok(())
-            }
+            VMCommand::PushCardCountWithCardType => self.push_card_count_with_type(),
+            VMCommand::PushCardType => self.push_card_type(),
             VMCommand::PushCardTypeAttrByTypeIndex { attr_index } => {
-                self.push_card_type_attr_by_type_index(attr_index);
-                Ok(())
+                self.push_card_type_attr_by_type_index(attr_index)
             }
             VMCommand::PushCardTypeAttrByCardIndex { attr_index } => {
-                self.push_card_type_attr_by_card_index(attr_index);
-                Ok(())
+                self.push_card_type_attr_by_card_index(attr_index)
             }
-            VMCommand::PushCardAttr { attr_index } => {
-                self.push_card_attr(attr_index);
-                Ok(())
-            }
-            VMCommand::PopCardAttr { attr_index } => {
-                self.pop_card_attr(attr_index);
-                Ok(())
-            }
-            VMCommand::InstanceCardByTypeIndex => {
-                self.instantiate_card_by_type_index();
-                Ok(())
-            }
-            VMCommand::InstanceCardByTypeId => {
-                self.instantiate_card_by_type_id();
-                Ok(())
-            }
-            VMCommand::CallCardAction => {
-                self.call_card_action();
-                Ok(())
-            }
-            VMCommand::RemoveCardByIndex => {
-                self.remove_card_by_index();
-                Ok(())
-            }
-            VMCommand::Halt => Err(()),
+            VMCommand::PushCardAttr { attr_index } => self.push_card_attr(attr_index),
+            VMCommand::PopCardAttr { attr_index } => self.pop_card_attr(attr_index),
+            VMCommand::InstanceCardByTypeIndex => self.instantiate_card_by_type_index(),
+            VMCommand::InstanceCardByTypeId => self.instantiate_card_by_type_id(),
+            VMCommand::CallCardAction => self.call_card_action(),
+            VMCommand::RemoveCardByIndex => self.remove_card_by_index(),
+            VMCommand::Halt => Err(VMError::Halt),
         }
     }
 
-    fn push_card_type(&mut self) {
-        let index = self.memory.pop_external_no_pc_inc();
+    fn push_card_type(&mut self) -> Result<(), VMError> {
+        let index = self.memory.pop_external_no_pc_inc()?;
         match index {
             Word::Numeric(i) => {
                 let card_type = self.board.cards[i as usize].card_type();
                 let word = Word::Numeric(TryInto::try_into(card_type).unwrap());
-                self.memory.push_external(word);
+                self.memory.push_external(word)
             }
-            Word::Boolean(_) => {
-                panic!("Type mismath: bool can not be interpreted as index.");
-            }
+            Word::Boolean(_) => Err(VMError::TypeMismatch),
         }
     }
 
-    fn push_card_count_with_type(&mut self) {
-        let card_type = self.memory.pop_external_no_pc_inc();
+    fn push_card_count_with_type(&mut self) -> Result<(), VMError> {
+        let card_type = self.memory.pop_external_no_pc_inc()?;
         match card_type {
             Word::Numeric(id) => {
                 // Word::Numeric contains i32, but card_type is u32, so convert is needed
@@ -263,32 +156,28 @@ impl<'a> VM<'a> {
                     .count();
 
                 let word = Word::Numeric(TryInto::try_into(count).unwrap());
-                self.memory.push_external(word);
+                self.memory.push_external(word)
             }
-            Word::Boolean(_) => {
-                panic!("Type mismath: bool can not be interpreted as index.");
-            }
+            Word::Boolean(_) => Err(VMError::TypeMismatch),
         }
     }
 
-    fn push_card_type_attr_by_type_index(&mut self, attr_index: u32) {
-        let type_index = self.memory.pop_external_no_pc_inc();
+    fn push_card_type_attr_by_type_index(&mut self, attr_index: u32) -> Result<(), VMError> {
+        let type_index = self.memory.pop_external_no_pc_inc()?;
         match type_index {
             Word::Numeric(id) => {
                 let card_type = self.rom.card_type_by_type_index(id as usize);
                 let attr_value = card_type.attr_by_index(attr_index as usize);
 
                 let word = attr_value;
-                self.memory.push_external(word);
+                self.memory.push_external(word)
             }
-            Word::Boolean(_) => {
-                panic!("Type mismath: bool can not be interpreted as index.");
-            }
+            Word::Boolean(_) => Err(VMError::TypeMismatch),
         }
     }
 
-    fn push_card_type_attr_by_card_index(&mut self, attr_index: u32) {
-        let card_index = self.memory.pop_external_no_pc_inc();
+    fn push_card_type_attr_by_card_index(&mut self, attr_index: u32) -> Result<(), VMError> {
+        let card_index = self.memory.pop_external_no_pc_inc()?;
         match card_index {
             Word::Numeric(id) => {
                 let card = &self.board.cards[id as usize];
@@ -297,23 +186,21 @@ impl<'a> VM<'a> {
                 let attr_value = card_type.attr_by_index(attr_index as usize);
 
                 let word = attr_value;
-                self.memory.push_external(word);
+                self.memory.push_external(word)
             }
-            Word::Boolean(_) => {
-                panic!("Type mismath: bool can not be interpreted as index.");
-            }
+            Word::Boolean(_) => Err(VMError::TypeMismatch),
         }
     }
 
-    fn push_card_attr(&mut self, attr_index: u32) {
-        let card_index = self.memory.pop_external_no_pc_inc();
+    fn push_card_attr(&mut self, attr_index: u32) -> Result<(), VMError> {
+        let card_index = self.memory.pop_external_no_pc_inc()?;
         match card_index {
             Word::Numeric(id) => {
                 let card = &self.board.cards[id as usize];
                 let attr_value = card.attrs[attr_index as usize];
 
                 let word = attr_value;
-                self.memory.push_external(word);
+                self.memory.push_external(word)
             }
             Word::Boolean(_) => {
                 panic!("Type mismath: bool can not be interpreted as index.");
@@ -321,23 +208,22 @@ impl<'a> VM<'a> {
         }
     }
 
-    fn pop_card_attr(&mut self, attr_index: u32) {
-        let card_index = self.memory.pop_external_no_pc_inc();
+    fn pop_card_attr(&mut self, attr_index: u32) -> Result<(), VMError> {
+        let card_index = self.memory.pop_external_no_pc_inc()?;
         match card_index {
             Word::Numeric(id) => {
                 let card = &mut self.board.cards[id as usize];
-                let attr_value = self.memory.pop_external();
+                let attr_value = self.memory.pop_external()?;
 
                 card.attrs[attr_index as usize] = attr_value;
+                Ok(())
             }
-            Word::Boolean(_) => {
-                panic!("Type mismath: bool can not be interpreted as index.");
-            }
+            Word::Boolean(_) => Err(VMError::TypeMismatch),
         }
     }
 
-    fn instantiate_card_by_type_index(&mut self) {
-        let index = self.memory.pop_external();
+    fn instantiate_card_by_type_index(&mut self) -> Result<(), VMError> {
+        let index = self.memory.pop_external()?;
         match index {
             Word::Numeric(index) => {
                 let id = index.try_into().unwrap();
@@ -346,15 +232,14 @@ impl<'a> VM<'a> {
                     .instance_card_by_type_index(id, self.board.generate_card_id())
                     .unwrap();
                 self.board.cards.push(card);
+                Ok(())
             }
-            Word::Boolean(_) => {
-                panic!("Type mismath: bool can not be interpreted as index.");
-            }
+            Word::Boolean(_) => Err(VMError::TypeMismatch),
         }
     }
 
-    fn instantiate_card_by_type_id(&mut self) {
-        let index = self.memory.pop_external();
+    fn instantiate_card_by_type_id(&mut self) -> Result<(), VMError> {
+        let index = self.memory.pop_external()?;
         match index {
             Word::Numeric(index) => {
                 let id = index.try_into().unwrap();
@@ -363,40 +248,31 @@ impl<'a> VM<'a> {
                     .instance_card_by_type_id(id, self.board.generate_card_id())
                     .unwrap();
                 self.board.cards.push(card);
+                Ok(())
             }
-            Word::Boolean(_) => {
-                panic!("Type mismath: bool can not be interpreted as index.");
-            }
+            Word::Boolean(_) => Err(VMError::TypeMismatch),
         }
     }
 
-    fn call_card_action(&mut self) {
-        let action_index: usize = self
-            .memory
-            .pop_external_no_pc_inc()
-            .unwrap_numeric()
-            .try_into()
-            .unwrap();
-        let type_index: usize = self
-            .memory
-            .pop_external_no_pc_inc()
-            .unwrap_numeric()
-            .try_into()
-            .unwrap();
-        let card_type = self.rom.card_type_by_type_index(type_index);
-        let entry_point = card_type.action_entry_point(action_index);
+    fn call_card_action(&mut self) -> Result<(), VMError> {
+        let action_index_word = self.memory.pop_external_no_pc_inc()?;
+        let action_index = i32::try_from(action_index_word).map_err(|_| VMError::TypeMismatch)?;
+
+        let type_index_word = self.memory.pop_external_no_pc_inc()?;
+        let type_index = i32::try_from(type_index_word).map_err(|_| VMError::TypeMismatch)?;
+
+        let card_type = self.rom.card_type_by_type_index(type_index as usize);
+        let entry_point = card_type.action_entry_point(action_index as usize);
         self.memory
-            .call(entry_point.address(), entry_point.n_args());
+            .call(entry_point.address(), entry_point.n_args())
     }
 
-    fn remove_card_by_index(&mut self) {
-        let card_index: usize = self
-            .memory
-            .pop_external()
-            .unwrap_numeric()
-            .try_into()
-            .unwrap();
-        self.board.cards.remove(card_index);
+    fn remove_card_by_index(&mut self) -> Result<(), VMError> {
+        let card_index_word = self.memory.pop_external()?;
+        let card_index = i32::try_from(card_index_word).map_err(|_| VMError::TypeMismatch)?;
+
+        self.board.cards.remove(card_index as usize);
+        Ok(())
     }
 
     #[cfg(test)]
