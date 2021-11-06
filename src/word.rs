@@ -10,6 +10,7 @@ pub enum Word {
 }
 
 impl Word {
+    #[must_use]
     pub fn unwrap_numeric(self) -> i32 {
         match self {
             Word::Numeric(i) => i,
@@ -69,7 +70,7 @@ impl TryFrom<Word> for usize {
 
     fn try_from(value: Word) -> Result<Self, Self::Error> {
         match value {
-            Word::Numeric(val) if val >= 0 => Ok(val as usize),
+            Word::Numeric(val) if val >= 0 => Ok(val as Self),
             Word::Numeric(_) => Err(Self::Error::NegativeNumeric),
             Word::Boolean(_) => Err(Self::Error::WasBoolean),
         }

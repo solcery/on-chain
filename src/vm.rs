@@ -58,6 +58,7 @@ impl<'a> VM<'a> {
         Self { rom, memory, board }
     }
 
+    #[must_use]
     pub fn stop_execution(self) -> Sealed<Memory> {
         Sealed::<Memory> { data: self.memory }
     }
@@ -280,6 +281,7 @@ impl<'a> VM<'a> {
         self.memory
     }
 
+    #[must_use]
     pub fn is_halted(&self) -> bool {
         let instruction = self.rom.fetch_instruction(self.memory.pc());
         instruction == VMCommand::Halt

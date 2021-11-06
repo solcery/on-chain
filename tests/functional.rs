@@ -1,5 +1,5 @@
 use solana_program::{instruction::Instruction, pubkey::Pubkey};
-use solana_program_test::*;
+use solana_program_test::{processor, tokio, ProgramTest};
 use solana_sdk::{
     account::Account, instruction::AccountMeta, signature::Signer, signer::keypair::Keypair,
     transaction::Transaction,

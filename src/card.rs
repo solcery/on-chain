@@ -13,14 +13,17 @@ pub struct Card {
 }
 
 impl Card {
+    #[must_use]
     pub fn id(&self) -> u32 {
         self.id
     }
 
+    #[must_use]
     pub fn card_type(&self) -> u32 {
         self.card_type
     }
 
+    #[must_use]
     pub fn new(id: u32, card_type: u32, attrs: Vec<Word>) -> Self {
         Self {
             id,
@@ -29,6 +32,7 @@ impl Card {
         }
     }
 
+    #[must_use]
     pub unsafe fn from_raw_parts(id: u32, card_type: u32, attrs: Vec<Word>) -> Self {
         Self {
             id,
@@ -55,14 +59,17 @@ pub struct EntryPoint {
 }
 
 impl EntryPoint {
+    #[must_use]
     pub fn address(&self) -> usize {
         self.address as usize
     }
 
+    #[must_use]
     pub fn n_args(&self) -> usize {
         self.n_args as usize
     }
 
+    #[must_use]
     pub unsafe fn from_raw_parts(address: u32, n_args: u32) -> Self {
         Self { address, n_args }
     }
@@ -86,14 +93,17 @@ pub struct CardType {
 }
 
 impl CardType {
+    #[must_use]
     pub fn id(&self) -> u32 {
         self.id
     }
 
+    #[must_use]
     pub fn attr_by_index(&self, index: usize) -> Word {
         self.attrs[index]
     }
 
+    #[must_use]
     pub fn new(
         id: u32,
         attrs: Vec<Word>,
@@ -108,6 +118,7 @@ impl CardType {
         }
     }
 
+    #[must_use]
     pub fn instantiate_card(&self, id: u32) -> Card {
         Card {
             id,
@@ -116,10 +127,12 @@ impl CardType {
         }
     }
 
+    #[must_use]
     pub fn action_entry_point(&self, index: usize) -> EntryPoint {
         self.action_entry_points[index]
     }
 
+    #[must_use]
     pub unsafe fn from_raw_parts(
         id: u32,
         attrs: Vec<Word>,

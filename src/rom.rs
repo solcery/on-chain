@@ -11,18 +11,22 @@ pub struct Rom {
     initial_board_state: Board,
 }
 impl Rom {
+    #[must_use]
     pub fn fetch_instruction(&self, pc: usize) -> VMCommand {
         self.instructions[pc]
     }
 
+    #[must_use]
     pub fn card_type_count(&self) -> usize {
         self.card_types.len()
     }
 
+    #[must_use]
     pub fn card_type_by_type_index(&self, type_index: usize) -> &CardType {
         &self.card_types[type_index]
     }
 
+    #[must_use]
     pub fn card_type_by_type_id(&self, type_id: u32) -> Option<&CardType> {
         self.card_types
             .iter()
@@ -47,10 +51,12 @@ impl Rom {
         }
     }
 
+    #[must_use]
     pub fn initialize_board(&self) -> Board {
         self.initial_board_state.clone()
     }
 
+    #[must_use]
     pub unsafe fn from_raw_parts(
         instructions: Vec<VMCommand>,
         card_types: Vec<CardType>,
