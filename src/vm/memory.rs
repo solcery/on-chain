@@ -9,6 +9,8 @@ pub struct Memory {
     lcl: usize,
     arg: usize,
     pc: usize,
+    n_args: usize,
+    n_locals: usize,
 }
 
 impl<'a> Memory {
@@ -23,6 +25,8 @@ impl<'a> Memory {
             lcl: 0,
             arg: 0,
             pc: 0,
+            n_args: 0,
+            n_locals: 0,
         }
     }
 
@@ -320,13 +324,17 @@ impl<'a> Memory {
         self.stack.push(Word::Numeric(return_address as i32));
         self.stack.push(Word::Numeric(self.lcl as i32));
         self.stack.push(Word::Numeric(self.arg as i32));
+        self.stack.push(Word::Numeric(self.n_args as i32));
+        self.stack.push(Word::Numeric(self.n_locals as i32));
         self.lcl = self.stack.len();
-        self.arg = self.stack.len() - n_args - 3;
+        self.arg = self.stack.len() - n_args - 5;
+        self.n_args = n_args;
         self.pc = address;
         Ok(())
     }
 
     pub fn function(&mut self, n_locals: usize) -> Result<(), VMError> {
+        self.n_locals = n_locals;
         for _ in 0..n_locals {
             self.stack.push(Word::Numeric(0));
         }
@@ -336,41 +344,60 @@ impl<'a> Memory {
 
     pub fn fn_return(&mut self) -> Result<(), VMError> {
         let frame = self.lcl;
-        let return_address = usize::try_from(self.stack[frame - 3])?;
-        let previous_lcl = usize::try_from(self.stack[frame - 2])?;
-        let previous_arg = usize::try_from(self.stack[frame - 1])?;
+        let return_address = usize::try_from(self.stack[frame - 5])?;
+        let previous_lcl = usize::try_from(self.stack[frame - 4])?;
+        let previous_arg = usize::try_from(self.stack[frame - 3])?;
+        let previous_n_args = usize::try_from(self.stack[frame - 2])?;
+        let previous_n_locals = usize::try_from(self.stack[frame - 1])?;
         let return_value = self.stack.pop().ok_or(VMError::NotEnoughtValues)?;
 
         self.stack.truncate(self.arg);
         self.stack.push(return_value);
         self.lcl = previous_lcl;
         self.arg = previous_arg;
+        self.n_args = previous_n_args;
+        self.n_locals = previous_n_locals;
         self.pc = return_address;
         Ok(())
     }
 
     pub fn return_void(&mut self) -> Result<(), VMError> {
         let frame = self.lcl;
-        let return_address = usize::try_from(self.stack[frame - 3])?;
-        let previous_lcl = usize::try_from(self.stack[frame - 2])?;
-        let previous_arg = usize::try_from(self.stack[frame - 1])?;
+        let return_address = usize::try_from(self.stack[frame - 5])?;
+        let previous_lcl = usize::try_from(self.stack[frame - 4])?;
+        let previous_arg = usize::try_from(self.stack[frame - 3])?;
+        let previous_n_args = usize::try_from(self.stack[frame - 2])?;
+        let previous_n_locals = usize::try_from(self.stack[frame - 1])?;
 
         self.stack.truncate(self.arg);
         self.lcl = previous_lcl;
         self.arg = previous_arg;
+        self.n_args = previous_n_args;
+        self.n_locals = previous_n_locals;
         self.pc = return_address;
         Ok(())
     }
 
     #[cfg(test)]
-    pub unsafe fn from_raw_parts(stack: Vec<Word>, lcl: usize, arg: usize, pc: usize) -> Self {
-        assert!(lcl <= stack.len());
-        assert!(arg <= stack.len());
+    pub unsafe fn from_raw_parts(
+        stack: Vec<Word>,
+        lcl: usize,
+        arg: usize,
+        pc: usize,
+        n_args: usize,
+        n_locals: usize,
+    ) -> Self {
+        if arg * n_args != 0 {
+            assert_eq!(arg + n_args + 5, lcl);
+        }
+        assert!(lcl + n_locals <= stack.len());
         Self {
             stack,
             lcl,
             arg,
             pc,
+            n_args,
+            n_locals,
         }
     }
 }
@@ -404,18 +431,20 @@ mod tests {
             ($method:ident, $stack:expr, $expected_stack: expr) => {
                 #[test]
                 fn $method() {
-                    let mut mem = unsafe { Memory::from_raw_parts($stack, 0, 0, 0) };
+                    let mut mem = unsafe { Memory::from_raw_parts($stack, 0, 0, 0, 0, 0) };
                     mem.$method().unwrap();
-                    let mem_expected = unsafe { Memory::from_raw_parts($expected_stack, 0, 0, 1) };
+                    let mem_expected =
+                        unsafe { Memory::from_raw_parts($expected_stack, 0, 0, 1, 0, 0) };
                     assert_eq!(mem, mem_expected);
                 }
             };
             ($method:ident, $stack:expr, $expected_stack: expr, $name: ident) => {
                 #[test]
                 fn $name() {
-                    let mut mem = unsafe { Memory::from_raw_parts($stack, 0, 0, 0) };
+                    let mut mem = unsafe { Memory::from_raw_parts($stack, 0, 0, 0, 0, 0) };
                     mem.$method().unwrap();
-                    let mem_expected = unsafe { Memory::from_raw_parts($expected_stack, 0, 0, 1) };
+                    let mem_expected =
+                        unsafe { Memory::from_raw_parts($expected_stack, 0, 0, 1, 0, 0) };
                     assert_eq!(mem, mem_expected);
                 }
             };
@@ -477,7 +506,7 @@ mod tests {
             ($method:ident, $stack:expr, $expected_err: expr) => {
                 #[test]
                 fn $method() {
-                    let mut mem = unsafe { Memory::from_raw_parts($stack, 0, 0, 0) };
+                    let mut mem = unsafe { Memory::from_raw_parts($stack, 0, 0, 0, 0, 0) };
 
                     assert_eq!(mem.$method().unwrap_err(), $expected_err);
                 }
@@ -485,7 +514,7 @@ mod tests {
             ($method:ident, $stack:expr, $expected_err: expr, $name: ident) => {
                 #[test]
                 fn $name() {
-                    let mut mem = unsafe { Memory::from_raw_parts($stack, 0, 0, 0) };
+                    let mut mem = unsafe { Memory::from_raw_parts($stack, 0, 0, 0, 0, 0) };
 
                     assert_eq!(mem.$method().unwrap_err(), $expected_err);
                 }
@@ -547,84 +576,86 @@ mod tests {
 
         #[test]
         fn push_external_data() {
-            let mut mem = unsafe { Memory::from_raw_parts(word_vec![], 0, 0, 0) };
+            let mut mem = unsafe { Memory::from_raw_parts(word_vec![], 0, 0, 0, 0, 0) };
             mem.push_external(Word::Numeric(0)).unwrap();
 
-            let mem_expected = unsafe { Memory::from_raw_parts(word_vec![0], 0, 0, 1) };
+            let mem_expected = unsafe { Memory::from_raw_parts(word_vec![0], 0, 0, 1, 0, 0) };
 
             assert_eq!(mem, mem_expected);
         }
 
         #[test]
         fn pop_external_data() {
-            let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, 6], 0, 0, 0) };
+            let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, 6], 0, 0, 0, 0, 0) };
 
             assert_eq!(mem.pop_external(), Ok(Word::Numeric(6)));
             assert_eq!(mem.pop_external(), Ok(Word::Numeric(2)));
             assert_eq!(mem.pop_external(), Err(VMError::NotEnoughtValues));
 
-            let mem_expected = unsafe { Memory::from_raw_parts(word_vec![], 0, 0, 2) };
+            let mem_expected = unsafe { Memory::from_raw_parts(word_vec![], 0, 0, 2, 0, 0) };
 
             assert_eq!(mem, mem_expected);
         }
 
         #[test]
         fn pop_external_no_inc() {
-            let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, 6], 0, 0, 0) };
+            let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, 6], 0, 0, 0, 0, 0) };
 
             assert_eq!(mem.pop_external_no_pc_inc(), Ok(Word::Numeric(6)));
             assert_eq!(mem.pop_external_no_pc_inc(), Ok(Word::Numeric(2)));
             assert_eq!(mem.pop_external_no_pc_inc(), Err(VMError::NotEnoughtValues));
 
-            let mem_expected = unsafe { Memory::from_raw_parts(word_vec![], 0, 0, 0) };
+            let mem_expected = unsafe { Memory::from_raw_parts(word_vec![], 0, 0, 0, 0, 0) };
 
             assert_eq!(mem, mem_expected);
         }
 
         #[test]
         fn push_local_data() {
-            let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, 6, 8], 1, 0, 0) };
+            let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, 6, 8], 1, 0, 0, 0, 0) };
 
             mem.push_local(0).unwrap();
             mem.push_local(1).unwrap();
 
-            let mem_expected = unsafe { Memory::from_raw_parts(word_vec![2, 6, 8, 6, 8], 1, 0, 2) };
+            let mem_expected =
+                unsafe { Memory::from_raw_parts(word_vec![2, 6, 8, 6, 8], 1, 0, 2, 0, 0) };
 
             assert_eq!(mem, mem_expected);
         }
 
         #[test]
         fn pop_local_data() {
-            let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, 6, 8, 16,], 0, 0, 0) };
+            let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, 6, 8, 16,], 0, 0, 0, 0, 0) };
 
             mem.pop_local(0).unwrap();
             mem.pop_local(1).unwrap();
 
-            let mem_expected = unsafe { Memory::from_raw_parts(word_vec![16, 8], 0, 0, 2) };
+            let mem_expected = unsafe { Memory::from_raw_parts(word_vec![16, 8], 0, 0, 2, 0, 0) };
 
             assert_eq!(mem, mem_expected);
         }
 
         #[test]
         fn push_argument_data() {
-            let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, 6, 8], 0, 1, 0) };
+            let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, 6, 8], 0, 1, 0, 0, 0) };
 
             mem.push_argument(0).unwrap();
             mem.push_argument(1).unwrap();
 
-            let mem_expected = unsafe { Memory::from_raw_parts(word_vec![2, 6, 8, 6, 8], 0, 1, 2) };
+            let mem_expected =
+                unsafe { Memory::from_raw_parts(word_vec![2, 6, 8, 6, 8], 0, 1, 2, 0, 0) };
 
             assert_eq!(mem, mem_expected);
         }
 
         #[test]
         fn pop_argument_data() {
-            let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, 6, 8, 16,], 0, 0, 0) };
+            let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, 6, 8, 16,], 0, 0, 0, 0, 0) };
 
             mem.pop_argument(0).unwrap();
             mem.pop_argument(1).unwrap();
 
-            let mem_expected = unsafe { Memory::from_raw_parts(word_vec![16, 8], 0, 0, 2) };
+            let mem_expected = unsafe { Memory::from_raw_parts(word_vec![16, 8], 0, 0, 2, 0, 0) };
 
             assert_eq!(mem, mem_expected);
         }
@@ -636,46 +667,87 @@ mod tests {
 
         #[test]
         fn call() {
-            let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, true], 0, 1, 4) };
+            let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, true], 0, 1, 4, 0, 0) };
 
             mem.call(16, 2).unwrap();
 
-            let mem_expected =
-                unsafe { Memory::from_raw_parts(word_vec![2, true, 5, 0, 1], 5, 0, 16) };
+            let mem_expected = unsafe {
+                Memory::from_raw_parts(word_vec![2, true, 5, 0, 1, 0, 0], 7, 0, 16, 2, 0)
+            };
 
             assert_eq!(mem, mem_expected);
         }
         #[test]
         fn call_no_args() {
-            let mut mem = unsafe { Memory::from_raw_parts(word_vec![], 0, 0, 4) };
+            let mut mem = unsafe { Memory::from_raw_parts(word_vec![], 0, 0, 4, 0, 0) };
 
             mem.call(16, 0).unwrap();
 
-            let mem_expected = unsafe { Memory::from_raw_parts(word_vec![5, 0, 0], 3, 0, 16) };
+            let mem_expected =
+                unsafe { Memory::from_raw_parts(word_vec![5, 0, 0, 0, 0], 5, 0, 16, 0, 0) };
 
             assert_eq!(mem, mem_expected);
         }
 
         #[test]
         fn fn_return() {
-            let mut mem =
-                unsafe { Memory::from_raw_parts(word_vec![2, true, 5, 0, 1, false], 5, 0, 16) };
+            let mut mem = unsafe {
+                Memory::from_raw_parts(
+                    word_vec![
+                        // locals of the previous stack frame
+                        1,     // prev_local 0
+                        1,     // prev_local 1
+                        1,     // prev_local 2
+                        2,     // arg 0
+                        true,  // arg 1
+                        5,     // return address
+                        0,     // prev_lcl
+                        0,     // prev_arg
+                        0,     // prev_n_args
+                        3,     // prev_n_locals
+                        3,     // loc 0
+                        4,     // loc 1
+                        5,     // loc 2
+                        6,     // loc 3
+                        false, // return value of the function
+                    ],
+                    10, // lcl
+                    3,  // arg
+                    16, // pc
+                    2,  // n_args
+                    4,  // n_locals
+                )
+            };
 
             mem.fn_return().unwrap();
 
-            let mem_expected = unsafe { Memory::from_raw_parts(word_vec![false], 0, 1, 5) };
+            let mem_expected = unsafe {
+                Memory::from_raw_parts(
+                    word_vec![
+                        1,     // local 0
+                        1,     // local 1
+                        1,     // local 2
+                        false, // return value of the function
+                    ],
+                    0, // arg
+                    0, // lcl
+                    5, // pc
+                    0, // n_args
+                    3, // n_locals
+                )
+            };
 
             assert_eq!(mem, mem_expected);
         }
 
         #[test]
         fn function() {
-            let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, true], 2, 0, 16) };
+            let mut mem = unsafe { Memory::from_raw_parts(word_vec![2, true], 2, 0, 16, 0, 0) };
 
             mem.function(3).unwrap();
 
             let mem_expected =
-                unsafe { Memory::from_raw_parts(word_vec![2, true, 0, 0, 0], 2, 0, 17) };
+                unsafe { Memory::from_raw_parts(word_vec![2, true, 0, 0, 0], 2, 0, 17, 0, 3) };
 
             assert_eq!(mem, mem_expected);
         }
@@ -686,35 +758,35 @@ mod tests {
 
             #[test]
             fn conditional_jump_successful() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![true], 0, 0, 0) };
+                let mut mem = unsafe { Memory::from_raw_parts(word_vec![true], 0, 0, 0, 0, 0) };
 
                 mem.ifjmp(10).unwrap();
 
-                let mem_expected = unsafe { Memory::from_raw_parts(word_vec![], 0, 0, 10) };
+                let mem_expected = unsafe { Memory::from_raw_parts(word_vec![], 0, 0, 10, 0, 0) };
 
                 assert_eq!(mem, mem_expected);
             }
 
             #[test]
             fn conditional_jump_unsuccessful() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![false], 0, 0, 0) };
+                let mut mem = unsafe { Memory::from_raw_parts(word_vec![false], 0, 0, 0, 0, 0) };
 
                 mem.ifjmp(10).unwrap();
 
-                let mem_expected = unsafe { Memory::from_raw_parts(word_vec![], 0, 0, 1) };
+                let mem_expected = unsafe { Memory::from_raw_parts(word_vec![], 0, 0, 1, 0, 0) };
 
                 assert_eq!(mem, mem_expected);
             }
 
             #[test]
             fn type_mismatch() {
-                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1], 0, 0, 0) };
+                let mut mem = unsafe { Memory::from_raw_parts(word_vec![1], 0, 0, 0, 0, 0) };
                 assert_eq!(mem.ifjmp(10), Err(VMError::TypeMismatch));
             }
 
             #[test]
             fn empty_stack() {
-                let mut mem = unsafe { Memory::from_raw_parts(Vec::<Word>::new(), 0, 0, 0) };
+                let mut mem = unsafe { Memory::from_raw_parts(Vec::<Word>::new(), 0, 0, 0, 0, 0) };
                 assert_eq!(mem.ifjmp(10), Err(VMError::NotEnoughtValues));
             }
         }

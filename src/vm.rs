@@ -360,7 +360,7 @@ mod tests {
         let args = vec![];
         let vm = VM::init_vm(&rom, &mut board, &args, 0, 0);
         let memory = VM::release_memory(vm);
-        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0], 0, 0, 0) };
+        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0], 0, 0, 0, 0, 0) };
 
         assert_eq!(memory, needed_memory);
     }
@@ -384,7 +384,7 @@ mod tests {
         assert!(vm.is_halted());
 
         let memory = VM::release_memory(vm);
-        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0, 1], 0, 0, 2) };
+        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0, 1], 0, 0, 2, 0, 0) };
 
         assert_eq!(memory, needed_memory);
 
@@ -413,7 +413,7 @@ mod tests {
         assert!(vm.is_halted());
 
         let memory = VM::release_memory(vm);
-        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0, 2], 0, 0, 2) };
+        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0, 2], 0, 0, 2, 0, 0) };
 
         assert_eq!(memory, needed_memory);
 
@@ -442,7 +442,7 @@ mod tests {
         assert!(vm.is_halted());
 
         let memory = VM::release_memory(vm);
-        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0, true], 0, 0, 2) };
+        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0, true], 0, 0, 2, 0, 0) };
 
         assert_eq!(memory, needed_memory);
 
@@ -471,7 +471,7 @@ mod tests {
         assert!(vm.is_halted());
 
         let memory = VM::release_memory(vm);
-        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0, true], 0, 0, 2) };
+        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0, true], 0, 0, 2, 0, 0) };
 
         assert_eq!(memory, needed_memory);
 
@@ -500,7 +500,7 @@ mod tests {
         assert!(vm.is_halted());
 
         let memory = VM::release_memory(vm);
-        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0, true], 0, 0, 2) };
+        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0, true], 0, 0, 2, 0, 0) };
 
         assert_eq!(memory, needed_memory);
 
@@ -530,7 +530,7 @@ mod tests {
         assert!(vm.is_halted());
 
         let memory = VM::release_memory(vm);
-        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0], 0, 0, 3) };
+        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0], 0, 0, 3, 0, 0) };
 
         assert_eq!(memory, needed_memory);
 
@@ -560,7 +560,7 @@ mod tests {
         assert!(vm.is_halted());
 
         let memory = VM::release_memory(vm);
-        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0], 0, 0, 2) };
+        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0], 0, 0, 2, 0, 0) };
 
         assert_eq!(memory, needed_memory);
 
@@ -592,7 +592,7 @@ mod tests {
         assert!(vm.is_halted());
 
         let memory = VM::release_memory(vm);
-        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0], 0, 0, 2) };
+        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0], 0, 0, 2, 0, 0) };
 
         assert_eq!(memory, needed_memory);
 
@@ -631,7 +631,7 @@ mod tests {
         assert!(vm.is_halted());
 
         let memory = VM::release_memory(vm);
-        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![5], 0, 0, 1) };
+        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![5], 0, 0, 1, 0, 0) };
 
         assert_eq!(memory, needed_memory);
 
@@ -663,7 +663,7 @@ mod tests {
         assert!(vm.is_halted());
 
         let memory = VM::release_memory(vm);
-        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0], 0, 0, 2) };
+        let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0], 0, 0, 2, 0, 0) };
 
         assert_eq!(memory, needed_memory);
 
