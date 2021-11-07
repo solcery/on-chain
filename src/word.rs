@@ -39,9 +39,8 @@ impl From<bool> for Word {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum ConversionError {
-    WasNumeric,
-    WasBoolean,
-    NegativeNumeric,
+    TypeMismatch,
+    NegativeAddress,
 }
 
 impl TryFrom<Word> for i32 {
@@ -50,7 +49,7 @@ impl TryFrom<Word> for i32 {
     fn try_from(value: Word) -> Result<Self, Self::Error> {
         match value {
             Word::Numeric(val) => Ok(val),
-            Word::Boolean(_) => Err(Self::Error::WasBoolean),
+            Word::Boolean(_) => Err(Self::Error::TypeMismatch),
         }
     }
 }
@@ -60,7 +59,7 @@ impl TryFrom<Word> for bool {
 
     fn try_from(value: Word) -> Result<Self, Self::Error> {
         match value {
-            Word::Numeric(_) => Err(Self::Error::WasNumeric),
+            Word::Numeric(_) => Err(Self::Error::TypeMismatch),
             Word::Boolean(val) => Ok(val),
         }
     }
@@ -71,8 +70,8 @@ impl TryFrom<Word> for usize {
     fn try_from(value: Word) -> Result<Self, Self::Error> {
         match value {
             Word::Numeric(val) if val >= 0 => Ok(val as Self),
-            Word::Numeric(_) => Err(Self::Error::NegativeNumeric),
-            Word::Boolean(_) => Err(Self::Error::WasBoolean),
+            Word::Numeric(_) => Err(Self::Error::NegativeAddress),
+            Word::Boolean(_) => Err(Self::Error::TypeMismatch),
         }
     }
 }

@@ -1,3 +1,4 @@
+use crate::word::ConversionError;
 use crate::word::Word;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -335,35 +336,29 @@ impl<'a> Memory {
 
     pub fn fn_return(&mut self) -> Result<(), VMError> {
         let frame = self.lcl;
-        let return_address =
-            i32::try_from(self.stack[frame - 3]).map_err(|_| VMError::TypeMismatch)?;
-        let previous_lcl =
-            i32::try_from(self.stack[frame - 2]).map_err(|_| VMError::TypeMismatch)?;
-        let previous_arg =
-            i32::try_from(self.stack[frame - 1]).map_err(|_| VMError::TypeMismatch)?;
+        let return_address = usize::try_from(self.stack[frame - 3])?;
+        let previous_lcl = usize::try_from(self.stack[frame - 2])?;
+        let previous_arg = usize::try_from(self.stack[frame - 1])?;
         let return_value = self.stack.pop().ok_or(VMError::NotEnoughtValues)?;
 
         self.stack.truncate(self.arg);
         self.stack.push(return_value);
-        self.lcl = previous_lcl as usize;
-        self.arg = previous_arg as usize;
-        self.pc = return_address as usize;
+        self.lcl = previous_lcl;
+        self.arg = previous_arg;
+        self.pc = return_address;
         Ok(())
     }
 
     pub fn return_void(&mut self) -> Result<(), VMError> {
         let frame = self.lcl;
-        let return_address =
-            i32::try_from(self.stack[frame - 3]).map_err(|_| VMError::TypeMismatch)?;
-        let previous_lcl =
-            i32::try_from(self.stack[frame - 2]).map_err(|_| VMError::TypeMismatch)?;
-        let previous_arg =
-            i32::try_from(self.stack[frame - 1]).map_err(|_| VMError::TypeMismatch)?;
+        let return_address = usize::try_from(self.stack[frame - 3])?;
+        let previous_lcl = usize::try_from(self.stack[frame - 2])?;
+        let previous_arg = usize::try_from(self.stack[frame - 1])?;
 
         self.stack.truncate(self.arg);
-        self.lcl = previous_lcl as usize;
-        self.arg = previous_arg as usize;
-        self.pc = return_address as usize;
+        self.lcl = previous_lcl;
+        self.arg = previous_arg;
+        self.pc = return_address;
         Ok(())
     }
 
@@ -385,6 +380,15 @@ pub enum VMError {
     Halt,
     NotEnoughtValues,
     TypeMismatch,
+    NegativeAddress,
+}
+impl From<ConversionError> for VMError {
+    fn from(err: ConversionError) -> Self {
+        match err {
+            ConversionError::TypeMismatch => Self::TypeMismatch,
+            ConversionError::NegativeAddress => Self::NegativeAddress,
+        }
+    }
 }
 
 #[cfg(test)]
