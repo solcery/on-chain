@@ -52,7 +52,7 @@ impl<'a> Memory {
                     Ok(())
                 }
                 Some(Word::Numeric(_)) => Err(VMError::TypeMismatch),
-                None => unreachable!(),
+                _ => unreachable!(),
             }
         } else {
             Err(VMError::NotEnoughtValues)
@@ -72,7 +72,7 @@ impl<'a> Memory {
                 (Some(Word::Boolean(_)), _) | (_, Some(Word::Boolean(_))) => {
                     Err(VMError::TypeMismatch)
                 }
-                (_, None) | (None, _) => unreachable!(),
+                _ => unreachable!(),
             }
         } else {
             Err(VMError::NotEnoughtValues)
@@ -93,7 +93,7 @@ impl<'a> Memory {
                 (Some(Word::Boolean(_)), _) | (_, Some(Word::Boolean(_))) => {
                     Err(VMError::TypeMismatch)
                 }
-                (_, None) | (None, _) => Err(VMError::NotEnoughtValues),
+                _ => unreachable!(),
             }
         } else {
             Err(VMError::NotEnoughtValues)
@@ -113,7 +113,7 @@ impl<'a> Memory {
                 (Some(Word::Boolean(_)), _) | (_, Some(Word::Boolean(_))) => {
                     Err(VMError::TypeMismatch)
                 }
-                (_, None) | (None, _) => Err(VMError::NotEnoughtValues),
+                _ => unreachable!(),
             }
         } else {
             Err(VMError::NotEnoughtValues)
@@ -134,7 +134,7 @@ impl<'a> Memory {
                 (Some(Word::Boolean(_)), _) | (_, Some(Word::Boolean(_))) => {
                     Err(VMError::TypeMismatch)
                 }
-                (_, None) | (None, _) => Err(VMError::NotEnoughtValues),
+                _ => unreachable!(),
             }
         } else {
             Err(VMError::NotEnoughtValues)
@@ -155,7 +155,7 @@ impl<'a> Memory {
                 (Some(Word::Boolean(_)), _) | (_, Some(Word::Boolean(_))) => {
                     Err(VMError::TypeMismatch)
                 }
-                (_, None) | (None, _) => Err(VMError::NotEnoughtValues),
+                _ => unreachable!(),
             }
         } else {
             Err(VMError::NotEnoughtValues)
@@ -172,7 +172,7 @@ impl<'a> Memory {
                     Ok(())
                 }
                 Some(Word::Boolean(_)) => Err(VMError::TypeMismatch),
-                None => Err(VMError::NotEnoughtValues),
+                _ => unreachable!(),
             }
         } else {
             Err(VMError::NotEnoughtValues)
@@ -189,7 +189,7 @@ impl<'a> Memory {
                     Ok(())
                 }
                 Some(Word::Boolean(_)) => Err(VMError::TypeMismatch),
-                None => Err(VMError::NotEnoughtValues),
+                _ => unreachable!(),
             }
         } else {
             Err(VMError::NotEnoughtValues)
@@ -206,7 +206,7 @@ impl<'a> Memory {
                     Ok(())
                 }
                 Some(Word::Boolean(_)) => Err(VMError::TypeMismatch),
-                None => Err(VMError::NotEnoughtValues),
+                _ => unreachable!(),
             }
         } else {
             Err(VMError::NotEnoughtValues)
@@ -223,7 +223,7 @@ impl<'a> Memory {
                     Ok(())
                 }
                 Some(Word::Boolean(_)) => Err(VMError::TypeMismatch),
-                None => Err(VMError::NotEnoughtValues),
+                _ => unreachable!(),
             }
         } else {
             Err(VMError::NotEnoughtValues)
@@ -243,7 +243,7 @@ impl<'a> Memory {
                     self.pc += 1;
                     Ok(value)
                 }
-                None => Err(VMError::NotEnoughtValues),
+                _ => unreachable!(),
             }
         } else {
             Err(VMError::NotEnoughtValues)
@@ -278,7 +278,7 @@ impl<'a> Memory {
                         self.pc += 1;
                         Ok(())
                     }
-                    None => Err(VMError::NotEnoughtValues),
+                    _ => unreachable!(),
                 }
             } else {
                 Err(VMError::NotEnoughtValues)
@@ -308,7 +308,7 @@ impl<'a> Memory {
                         self.pc += 1;
                         Ok(())
                     }
-                    None => Err(VMError::NotEnoughtValues),
+                    _ => unreachable!(),
                 }
             } else {
                 Err(VMError::NotEnoughtValues)
@@ -329,7 +329,7 @@ impl<'a> Memory {
                     Ok(())
                 }
                 (Some(_), Some(_)) => Err(VMError::TypeMismatch),
-                (_, None) | (None, _) => Err(VMError::NotEnoughtValues),
+                _ => unreachable!(),
             }
         } else {
             Err(VMError::NotEnoughtValues)
@@ -347,7 +347,7 @@ impl<'a> Memory {
                     Ok(())
                 }
                 (Some(_), Some(_)) => Err(VMError::TypeMismatch),
-                (_, None) | (None, _) => Err(VMError::NotEnoughtValues),
+                _ => unreachable!(),
             }
         } else {
             Err(VMError::NotEnoughtValues)
@@ -365,7 +365,7 @@ impl<'a> Memory {
                     Ok(())
                 }
                 (Some(_), Some(_)) => Err(VMError::TypeMismatch),
-                (_, None) | (None, _) => Err(VMError::NotEnoughtValues),
+                _ => unreachable!(),
             }
         } else {
             Err(VMError::NotEnoughtValues)
@@ -383,7 +383,7 @@ impl<'a> Memory {
                     Ok(())
                 }
                 (Some(_), Some(_)) => Err(VMError::TypeMismatch),
-                (_, None) | (None, _) => Err(VMError::NotEnoughtValues),
+                _ => unreachable!(),
             }
         } else {
             Err(VMError::NotEnoughtValues)
@@ -401,7 +401,7 @@ impl<'a> Memory {
                     Ok(())
                 }
                 (Some(_), Some(_)) => Err(VMError::TypeMismatch),
-                (_, None) | (None, _) => Err(VMError::NotEnoughtValues),
+                _ => unreachable!(),
             }
         } else {
             Err(VMError::NotEnoughtValues)
@@ -418,7 +418,7 @@ impl<'a> Memory {
                     Ok(())
                 }
                 Some(Word::Numeric(_)) => Err(VMError::TypeMismatch),
-                None => Err(VMError::NotEnoughtValues),
+                _ => unreachable!(),
             }
         } else {
             Err(VMError::NotEnoughtValues)
@@ -449,22 +449,26 @@ impl<'a> Memory {
     }
 
     pub fn fn_return(&mut self) -> Result<(), VMError> {
-        let frame = self.lcl;
-        let return_address = usize::try_from(self.stack[frame - 5])?;
-        let previous_lcl = usize::try_from(self.stack[frame - 4])?;
-        let previous_arg = usize::try_from(self.stack[frame - 3])?;
-        let previous_n_args = usize::try_from(self.stack[frame - 2])?;
-        let previous_n_locals = usize::try_from(self.stack[frame - 1])?;
-        let return_value = self.stack.pop().ok_or(VMError::NotEnoughtValues)?;
+        if self.lcl + self.n_locals + 1 <= self.stack.len() {
+            let frame = self.lcl;
+            let return_address = usize::try_from(self.stack[frame - 5])?;
+            let previous_lcl = usize::try_from(self.stack[frame - 4])?;
+            let previous_arg = usize::try_from(self.stack[frame - 3])?;
+            let previous_n_args = usize::try_from(self.stack[frame - 2])?;
+            let previous_n_locals = usize::try_from(self.stack[frame - 1])?;
+            let return_value = self.stack.pop().ok_or(VMError::NotEnoughtValues)?;
 
-        self.stack.truncate(self.arg);
-        self.stack.push(return_value);
-        self.lcl = previous_lcl;
-        self.arg = previous_arg;
-        self.n_args = previous_n_args;
-        self.n_locals = previous_n_locals;
-        self.pc = return_address;
-        Ok(())
+            self.stack.truncate(self.arg);
+            self.stack.push(return_value);
+            self.lcl = previous_lcl;
+            self.arg = previous_arg;
+            self.n_args = previous_n_args;
+            self.n_locals = previous_n_locals;
+            self.pc = return_address;
+            Ok(())
+        } else {
+            Err(VMError::NotEnoughtValues)
+        }
     }
 
     pub fn return_void(&mut self) -> Result<(), VMError> {
