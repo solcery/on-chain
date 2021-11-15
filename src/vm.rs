@@ -10,7 +10,7 @@ use std::convert::TryInto;
 
 mod memory;
 use memory::Memory;
-use memory::VMError;
+use memory::Error;
 
 #[derive(Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub struct Sealed<T> {
@@ -63,7 +63,7 @@ impl<'a> VM<'a> {
         Sealed::<Memory> { data: self.memory }
     }
 
-    fn run_one_instruction(&mut self) -> Result<(), VMError> {
+    fn run_one_instruction(&mut self) -> Result<(), Error> {
         //TODO: better handing for Halt instruction.
         //Probably, we need to propogate errors from the instructions to this function.
         let instruction = self.rom.fetch_instruction(self.memory.pc());
@@ -127,11 +127,11 @@ impl<'a> VM<'a> {
             VMCommand::InstanceCardByTypeId => self.instantiate_card_by_type_id(),
             VMCommand::CallCardAction => self.call_card_action(),
             VMCommand::RemoveCardByIndex => self.remove_card_by_index(),
-            VMCommand::Halt => Err(VMError::Halt),
+            VMCommand::Halt => Err(Error::Halt),
         }
     }
 
-    fn push_card_type(&mut self) -> Result<(), VMError> {
+    fn push_card_type(&mut self) -> Result<(), Error> {
         let index = self.memory.pop_external_no_pc_inc()?;
         match index {
             Word::Numeric(i) => {
@@ -139,11 +139,11 @@ impl<'a> VM<'a> {
                 let word = Word::Numeric(TryInto::try_into(card_type).unwrap());
                 self.memory.push_external(word)
             }
-            Word::Boolean(_) => Err(VMError::TypeMismatch),
+            Word::Boolean(_) => Err(Error::TypeMismatch),
         }
     }
 
-    fn push_card_count_with_type(&mut self) -> Result<(), VMError> {
+    fn push_card_count_with_type(&mut self) -> Result<(), Error> {
         let card_type = self.memory.pop_external_no_pc_inc()?;
         match card_type {
             Word::Numeric(id) => {
@@ -159,11 +159,11 @@ impl<'a> VM<'a> {
                 let word = Word::Numeric(TryInto::try_into(count).unwrap());
                 self.memory.push_external(word)
             }
-            Word::Boolean(_) => Err(VMError::TypeMismatch),
+            Word::Boolean(_) => Err(Error::TypeMismatch),
         }
     }
 
-    fn push_card_type_attr_by_type_index(&mut self, attr_index: u32) -> Result<(), VMError> {
+    fn push_card_type_attr_by_type_index(&mut self, attr_index: u32) -> Result<(), Error> {
         let type_index = self.memory.pop_external_no_pc_inc()?;
         match type_index {
             Word::Numeric(id) => {
@@ -173,11 +173,11 @@ impl<'a> VM<'a> {
                 let word = attr_value;
                 self.memory.push_external(word)
             }
-            Word::Boolean(_) => Err(VMError::TypeMismatch),
+            Word::Boolean(_) => Err(Error::TypeMismatch),
         }
     }
 
-    fn push_card_type_attr_by_card_index(&mut self, attr_index: u32) -> Result<(), VMError> {
+    fn push_card_type_attr_by_card_index(&mut self, attr_index: u32) -> Result<(), Error> {
         let card_index = self.memory.pop_external_no_pc_inc()?;
         match card_index {
             Word::Numeric(id) => {
@@ -189,11 +189,11 @@ impl<'a> VM<'a> {
                 let word = attr_value;
                 self.memory.push_external(word)
             }
-            Word::Boolean(_) => Err(VMError::TypeMismatch),
+            Word::Boolean(_) => Err(Error::TypeMismatch),
         }
     }
 
-    fn push_card_attr(&mut self, attr_index: u32) -> Result<(), VMError> {
+    fn push_card_attr(&mut self, attr_index: u32) -> Result<(), Error> {
         let card_index = self.memory.pop_external_no_pc_inc()?;
         match card_index {
             Word::Numeric(id) => {
@@ -209,7 +209,7 @@ impl<'a> VM<'a> {
         }
     }
 
-    fn pop_card_attr(&mut self, attr_index: u32) -> Result<(), VMError> {
+    fn pop_card_attr(&mut self, attr_index: u32) -> Result<(), Error> {
         let card_index = self.memory.pop_external_no_pc_inc()?;
         match card_index {
             Word::Numeric(id) => {
@@ -219,11 +219,11 @@ impl<'a> VM<'a> {
                 card.attrs[attr_index as usize] = attr_value;
                 Ok(())
             }
-            Word::Boolean(_) => Err(VMError::TypeMismatch),
+            Word::Boolean(_) => Err(Error::TypeMismatch),
         }
     }
 
-    fn instantiate_card_by_type_index(&mut self) -> Result<(), VMError> {
+    fn instantiate_card_by_type_index(&mut self) -> Result<(), Error> {
         let index = self.memory.pop_external()?;
         match index {
             Word::Numeric(index) => {
@@ -235,11 +235,11 @@ impl<'a> VM<'a> {
                 self.board.cards.push(card);
                 Ok(())
             }
-            Word::Boolean(_) => Err(VMError::TypeMismatch),
+            Word::Boolean(_) => Err(Error::TypeMismatch),
         }
     }
 
-    fn instantiate_card_by_type_id(&mut self) -> Result<(), VMError> {
+    fn instantiate_card_by_type_id(&mut self) -> Result<(), Error> {
         let index = self.memory.pop_external()?;
         match index {
             Word::Numeric(index) => {
@@ -251,16 +251,16 @@ impl<'a> VM<'a> {
                 self.board.cards.push(card);
                 Ok(())
             }
-            Word::Boolean(_) => Err(VMError::TypeMismatch),
+            Word::Boolean(_) => Err(Error::TypeMismatch),
         }
     }
 
-    fn call_card_action(&mut self) -> Result<(), VMError> {
+    fn call_card_action(&mut self) -> Result<(), Error> {
         let action_index_word = self.memory.pop_external_no_pc_inc()?;
-        let action_index = i32::try_from(action_index_word).map_err(|_| VMError::TypeMismatch)?;
+        let action_index = i32::try_from(action_index_word).map_err(|_| Error::TypeMismatch)?;
 
         let type_index_word = self.memory.pop_external_no_pc_inc()?;
-        let type_index = i32::try_from(type_index_word).map_err(|_| VMError::TypeMismatch)?;
+        let type_index = i32::try_from(type_index_word).map_err(|_| Error::TypeMismatch)?;
 
         let card_type = self.rom.card_type_by_type_index(type_index as usize);
         let entry_point = card_type.action_entry_point(action_index as usize);
@@ -268,9 +268,9 @@ impl<'a> VM<'a> {
             .call(entry_point.address(), entry_point.n_args())
     }
 
-    fn remove_card_by_index(&mut self) -> Result<(), VMError> {
+    fn remove_card_by_index(&mut self) -> Result<(), Error> {
         let card_index_word = self.memory.pop_external()?;
-        let card_index = i32::try_from(card_index_word).map_err(|_| VMError::TypeMismatch)?;
+        let card_index = i32::try_from(card_index_word).map_err(|_| Error::TypeMismatch)?;
 
         self.board.cards.remove(card_index as usize);
         Ok(())

@@ -34,12 +34,12 @@ impl<'a> Memory {
         self.pc
     }
 
-    pub fn jmp(&mut self, address: usize) -> Result<(), VMError> {
+    pub fn jmp(&mut self, address: usize) -> Result<(), Error> {
         self.pc = address;
         Ok(())
     }
 
-    pub fn ifjmp(&mut self, address: usize) -> Result<(), VMError> {
+    pub fn ifjmp(&mut self, address: usize) -> Result<(), Error> {
         if self.lcl + self.n_locals + 1 <= self.stack.len() {
             let value = self.stack.pop();
             match value {
@@ -51,15 +51,15 @@ impl<'a> Memory {
                     }
                     Ok(())
                 }
-                Some(Word::Numeric(_)) => Err(VMError::TypeMismatch),
+                Some(Word::Numeric(_)) => Err(Error::TypeMismatch),
                 _ => unreachable!(),
             }
         } else {
-            Err(VMError::NotEnoughtValues)
+            Err(Error::NotEnoughtValues)
         }
     }
 
-    pub fn add(&mut self) -> Result<(), VMError> {
+    pub fn add(&mut self) -> Result<(), Error> {
         if self.lcl + self.n_locals + 2 <= self.stack.len() {
             let first_word = self.stack.pop();
             let second_word = self.stack.pop();
@@ -70,17 +70,17 @@ impl<'a> Memory {
                     Ok(())
                 }
                 (Some(Word::Boolean(_)), _) | (_, Some(Word::Boolean(_))) => {
-                    Err(VMError::TypeMismatch)
+                    Err(Error::TypeMismatch)
                 }
                 _ => unreachable!(),
             }
         } else {
-            Err(VMError::NotEnoughtValues)
+            Err(Error::NotEnoughtValues)
         }
     }
 
     /// Subtracts the last value from the stack from the previous one
-    pub fn sub(&mut self) -> Result<(), VMError> {
+    pub fn sub(&mut self) -> Result<(), Error> {
         if self.lcl + self.n_locals + 2 <= self.stack.len() {
             let first_word = self.stack.pop();
             let second_word = self.stack.pop();
@@ -91,16 +91,16 @@ impl<'a> Memory {
                     Ok(())
                 }
                 (Some(Word::Boolean(_)), _) | (_, Some(Word::Boolean(_))) => {
-                    Err(VMError::TypeMismatch)
+                    Err(Error::TypeMismatch)
                 }
                 _ => unreachable!(),
             }
         } else {
-            Err(VMError::NotEnoughtValues)
+            Err(Error::NotEnoughtValues)
         }
     }
 
-    pub fn mul(&mut self) -> Result<(), VMError> {
+    pub fn mul(&mut self) -> Result<(), Error> {
         if self.lcl + self.n_locals + 2 <= self.stack.len() {
             let first_word = self.stack.pop();
             let second_word = self.stack.pop();
@@ -111,17 +111,17 @@ impl<'a> Memory {
                     Ok(())
                 }
                 (Some(Word::Boolean(_)), _) | (_, Some(Word::Boolean(_))) => {
-                    Err(VMError::TypeMismatch)
+                    Err(Error::TypeMismatch)
                 }
                 _ => unreachable!(),
             }
         } else {
-            Err(VMError::NotEnoughtValues)
+            Err(Error::NotEnoughtValues)
         }
     }
 
     /// Divides the last value from the stack by the previous one, returns the quotient
-    pub fn div(&mut self) -> Result<(), VMError> {
+    pub fn div(&mut self) -> Result<(), Error> {
         if self.lcl + self.n_locals + 2 <= self.stack.len() {
             let first_word = self.stack.pop();
             let second_word = self.stack.pop();
@@ -132,17 +132,17 @@ impl<'a> Memory {
                     Ok(())
                 }
                 (Some(Word::Boolean(_)), _) | (_, Some(Word::Boolean(_))) => {
-                    Err(VMError::TypeMismatch)
+                    Err(Error::TypeMismatch)
                 }
                 _ => unreachable!(),
             }
         } else {
-            Err(VMError::NotEnoughtValues)
+            Err(Error::NotEnoughtValues)
         }
     }
 
     /// Divides the last value from the stack by the previous one, returnts the remainer
-    pub fn rem(&mut self) -> Result<(), VMError> {
+    pub fn rem(&mut self) -> Result<(), Error> {
         if self.lcl + self.n_locals + 2 <= self.stack.len() {
             let first_word = self.stack.pop();
             let second_word = self.stack.pop();
@@ -153,16 +153,16 @@ impl<'a> Memory {
                     Ok(())
                 }
                 (Some(Word::Boolean(_)), _) | (_, Some(Word::Boolean(_))) => {
-                    Err(VMError::TypeMismatch)
+                    Err(Error::TypeMismatch)
                 }
                 _ => unreachable!(),
             }
         } else {
-            Err(VMError::NotEnoughtValues)
+            Err(Error::NotEnoughtValues)
         }
     }
 
-    pub fn neg(&mut self) -> Result<(), VMError> {
+    pub fn neg(&mut self) -> Result<(), Error> {
         if self.lcl + self.n_locals + 1 <= self.stack.len() {
             let value = self.stack.pop();
             match value {
@@ -171,15 +171,15 @@ impl<'a> Memory {
                     self.pc += 1;
                     Ok(())
                 }
-                Some(Word::Boolean(_)) => Err(VMError::TypeMismatch),
+                Some(Word::Boolean(_)) => Err(Error::TypeMismatch),
                 _ => unreachable!(),
             }
         } else {
-            Err(VMError::NotEnoughtValues)
+            Err(Error::NotEnoughtValues)
         }
     }
 
-    pub fn inc(&mut self) -> Result<(), VMError> {
+    pub fn inc(&mut self) -> Result<(), Error> {
         if self.lcl + self.n_locals + 1 <= self.stack.len() {
             let value = self.stack.pop();
             match value {
@@ -188,15 +188,15 @@ impl<'a> Memory {
                     self.pc += 1;
                     Ok(())
                 }
-                Some(Word::Boolean(_)) => Err(VMError::TypeMismatch),
+                Some(Word::Boolean(_)) => Err(Error::TypeMismatch),
                 _ => unreachable!(),
             }
         } else {
-            Err(VMError::NotEnoughtValues)
+            Err(Error::NotEnoughtValues)
         }
     }
 
-    pub fn dec(&mut self) -> Result<(), VMError> {
+    pub fn dec(&mut self) -> Result<(), Error> {
         if self.lcl + self.n_locals + 1 <= self.stack.len() {
             let value = self.stack.pop();
             match value {
@@ -205,15 +205,15 @@ impl<'a> Memory {
                     self.pc += 1;
                     Ok(())
                 }
-                Some(Word::Boolean(_)) => Err(VMError::TypeMismatch),
+                Some(Word::Boolean(_)) => Err(Error::TypeMismatch),
                 _ => unreachable!(),
             }
         } else {
-            Err(VMError::NotEnoughtValues)
+            Err(Error::NotEnoughtValues)
         }
     }
 
-    pub fn abs(&mut self) -> Result<(), VMError> {
+    pub fn abs(&mut self) -> Result<(), Error> {
         if self.lcl + self.n_locals + 1 <= self.stack.len() {
             let value = self.stack.pop();
             match value {
@@ -222,21 +222,21 @@ impl<'a> Memory {
                     self.pc += 1;
                     Ok(())
                 }
-                Some(Word::Boolean(_)) => Err(VMError::TypeMismatch),
+                Some(Word::Boolean(_)) => Err(Error::TypeMismatch),
                 _ => unreachable!(),
             }
         } else {
-            Err(VMError::NotEnoughtValues)
+            Err(Error::NotEnoughtValues)
         }
     }
 
-    pub fn push_external(&mut self, value: Word) -> Result<(), VMError> {
+    pub fn push_external(&mut self, value: Word) -> Result<(), Error> {
         self.stack.push(value);
         self.pc += 1;
         Ok(())
     }
 
-    pub fn pop_external(&mut self) -> Result<Word, VMError> {
+    pub fn pop_external(&mut self) -> Result<Word, Error> {
         if self.lcl + self.n_locals + 1 <= self.stack.len() {
             match self.stack.pop() {
                 Some(value) => {
@@ -246,30 +246,30 @@ impl<'a> Memory {
                 _ => unreachable!(),
             }
         } else {
-            Err(VMError::NotEnoughtValues)
+            Err(Error::NotEnoughtValues)
         }
     }
 
-    pub fn pop_external_no_pc_inc(&mut self) -> Result<Word, VMError> {
+    pub fn pop_external_no_pc_inc(&mut self) -> Result<Word, Error> {
         if self.lcl + self.n_locals + 1 <= self.stack.len() {
-            self.stack.pop().ok_or(VMError::NotEnoughtValues)
+            self.stack.pop().ok_or(Error::NotEnoughtValues)
         } else {
-            Err(VMError::NotEnoughtValues)
+            Err(Error::NotEnoughtValues)
         }
     }
 
-    pub fn push_local(&mut self, index: usize) -> Result<(), VMError> {
+    pub fn push_local(&mut self, index: usize) -> Result<(), Error> {
         if index < self.n_locals {
             let value = self.stack[self.lcl + index];
             self.stack.push(value);
             self.pc += 1;
             Ok(())
         } else {
-            Err(VMError::LocalVarOutOfBounds)
+            Err(Error::LocalVarOutOfBounds)
         }
     }
 
-    pub fn pop_local(&mut self, index: usize) -> Result<(), VMError> {
+    pub fn pop_local(&mut self, index: usize) -> Result<(), Error> {
         if index < self.n_locals {
             if self.lcl + self.n_locals + 1 <= self.stack.len() {
                 match self.stack.pop() {
@@ -281,25 +281,25 @@ impl<'a> Memory {
                     _ => unreachable!(),
                 }
             } else {
-                Err(VMError::NotEnoughtValues)
+                Err(Error::NotEnoughtValues)
             }
         } else {
-            Err(VMError::LocalVarOutOfBounds)
+            Err(Error::LocalVarOutOfBounds)
         }
     }
 
-    pub fn push_argument(&mut self, index: usize) -> Result<(), VMError> {
+    pub fn push_argument(&mut self, index: usize) -> Result<(), Error> {
         if index < self.n_args {
             let value = self.stack[self.arg + index];
             self.stack.push(value);
             self.pc += 1;
             Ok(())
         } else {
-            Err(VMError::ArgumentOutOfBounds)
+            Err(Error::ArgumentOutOfBounds)
         }
     }
 
-    pub fn pop_argument(&mut self, index: usize) -> Result<(), VMError> {
+    pub fn pop_argument(&mut self, index: usize) -> Result<(), Error> {
         if index < self.n_args {
             if self.lcl + self.n_locals + 1 <= self.stack.len() {
                 match self.stack.pop() {
@@ -311,14 +311,14 @@ impl<'a> Memory {
                     _ => unreachable!(),
                 }
             } else {
-                Err(VMError::NotEnoughtValues)
+                Err(Error::NotEnoughtValues)
             }
         } else {
-            Err(VMError::ArgumentOutOfBounds)
+            Err(Error::ArgumentOutOfBounds)
         }
     }
 
-    pub fn equal(&mut self) -> Result<(), VMError> {
+    pub fn equal(&mut self) -> Result<(), Error> {
         if self.lcl + self.n_locals + 2 <= self.stack.len() {
             let first_word = self.stack.pop();
             let second_word = self.stack.pop();
@@ -328,15 +328,15 @@ impl<'a> Memory {
                     self.pc += 1;
                     Ok(())
                 }
-                (Some(_), Some(_)) => Err(VMError::TypeMismatch),
+                (Some(_), Some(_)) => Err(Error::TypeMismatch),
                 _ => unreachable!(),
             }
         } else {
-            Err(VMError::NotEnoughtValues)
+            Err(Error::NotEnoughtValues)
         }
     }
 
-    pub fn gt(&mut self) -> Result<(), VMError> {
+    pub fn gt(&mut self) -> Result<(), Error> {
         if self.lcl + self.n_locals + 2 <= self.stack.len() {
             let first_word = self.stack.pop();
             let second_word = self.stack.pop();
@@ -346,15 +346,15 @@ impl<'a> Memory {
                     self.pc += 1;
                     Ok(())
                 }
-                (Some(_), Some(_)) => Err(VMError::TypeMismatch),
+                (Some(_), Some(_)) => Err(Error::TypeMismatch),
                 _ => unreachable!(),
             }
         } else {
-            Err(VMError::NotEnoughtValues)
+            Err(Error::NotEnoughtValues)
         }
     }
 
-    pub fn lt(&mut self) -> Result<(), VMError> {
+    pub fn lt(&mut self) -> Result<(), Error> {
         if self.lcl + self.n_locals + 2 <= self.stack.len() {
             let first_word = self.stack.pop();
             let second_word = self.stack.pop();
@@ -364,15 +364,15 @@ impl<'a> Memory {
                     self.pc += 1;
                     Ok(())
                 }
-                (Some(_), Some(_)) => Err(VMError::TypeMismatch),
+                (Some(_), Some(_)) => Err(Error::TypeMismatch),
                 _ => unreachable!(),
             }
         } else {
-            Err(VMError::NotEnoughtValues)
+            Err(Error::NotEnoughtValues)
         }
     }
 
-    pub fn and(&mut self) -> Result<(), VMError> {
+    pub fn and(&mut self) -> Result<(), Error> {
         if self.lcl + self.n_locals + 2 <= self.stack.len() {
             let first_word = self.stack.pop();
             let second_word = self.stack.pop();
@@ -382,15 +382,15 @@ impl<'a> Memory {
                     self.pc += 1;
                     Ok(())
                 }
-                (Some(_), Some(_)) => Err(VMError::TypeMismatch),
+                (Some(_), Some(_)) => Err(Error::TypeMismatch),
                 _ => unreachable!(),
             }
         } else {
-            Err(VMError::NotEnoughtValues)
+            Err(Error::NotEnoughtValues)
         }
     }
 
-    pub fn or(&mut self) -> Result<(), VMError> {
+    pub fn or(&mut self) -> Result<(), Error> {
         if self.lcl + self.n_locals + 2 <= self.stack.len() {
             let first_word = self.stack.pop();
             let second_word = self.stack.pop();
@@ -400,15 +400,15 @@ impl<'a> Memory {
                     self.pc += 1;
                     Ok(())
                 }
-                (Some(_), Some(_)) => Err(VMError::TypeMismatch),
+                (Some(_), Some(_)) => Err(Error::TypeMismatch),
                 _ => unreachable!(),
             }
         } else {
-            Err(VMError::NotEnoughtValues)
+            Err(Error::NotEnoughtValues)
         }
     }
 
-    pub fn not(&mut self) -> Result<(), VMError> {
+    pub fn not(&mut self) -> Result<(), Error> {
         if self.lcl + self.n_locals + 1 <= self.stack.len() {
             let value = self.stack.pop();
             match value {
@@ -417,15 +417,15 @@ impl<'a> Memory {
                     self.pc += 1;
                     Ok(())
                 }
-                Some(Word::Numeric(_)) => Err(VMError::TypeMismatch),
+                Some(Word::Numeric(_)) => Err(Error::TypeMismatch),
                 _ => unreachable!(),
             }
         } else {
-            Err(VMError::NotEnoughtValues)
+            Err(Error::NotEnoughtValues)
         }
     }
 
-    pub fn call(&mut self, address: usize, n_args: usize) -> Result<(), VMError> {
+    pub fn call(&mut self, address: usize, n_args: usize) -> Result<(), Error> {
         let return_address = self.pc + 1;
         self.stack.push(Word::Numeric(return_address as i32));
         self.stack.push(Word::Numeric(self.lcl as i32));
@@ -439,7 +439,7 @@ impl<'a> Memory {
         Ok(())
     }
 
-    pub fn function(&mut self, n_locals: usize) -> Result<(), VMError> {
+    pub fn function(&mut self, n_locals: usize) -> Result<(), Error> {
         self.n_locals = n_locals;
         for _ in 0..n_locals {
             self.stack.push(Word::Numeric(0));
@@ -448,7 +448,7 @@ impl<'a> Memory {
         Ok(())
     }
 
-    pub fn fn_return(&mut self) -> Result<(), VMError> {
+    pub fn fn_return(&mut self) -> Result<(), Error> {
         if self.lcl + self.n_locals + 1 <= self.stack.len() {
             let frame = self.lcl;
             let return_address = usize::try_from(self.stack[frame - 5])?;
@@ -456,7 +456,7 @@ impl<'a> Memory {
             let previous_arg = usize::try_from(self.stack[frame - 3])?;
             let previous_n_args = usize::try_from(self.stack[frame - 2])?;
             let previous_n_locals = usize::try_from(self.stack[frame - 1])?;
-            let return_value = self.stack.pop().ok_or(VMError::NotEnoughtValues)?;
+            let return_value = self.stack.pop().ok_or(Error::NotEnoughtValues)?;
 
             self.stack.truncate(self.arg);
             self.stack.push(return_value);
@@ -467,11 +467,11 @@ impl<'a> Memory {
             self.pc = return_address;
             Ok(())
         } else {
-            Err(VMError::NotEnoughtValues)
+            Err(Error::NotEnoughtValues)
         }
     }
 
-    pub fn return_void(&mut self) -> Result<(), VMError> {
+    pub fn return_void(&mut self) -> Result<(), Error> {
         let frame = self.lcl;
         let return_address = usize::try_from(self.stack[frame - 5])?;
         let previous_lcl = usize::try_from(self.stack[frame - 4])?;
@@ -513,7 +513,7 @@ impl<'a> Memory {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
-pub enum VMError {
+pub enum Error {
     Halt,
     NotEnoughtValues,
     TypeMismatch,
@@ -522,7 +522,7 @@ pub enum VMError {
     ArgumentOutOfBounds,
 }
 
-impl From<ConversionError> for VMError {
+impl From<ConversionError> for Error {
     fn from(err: ConversionError) -> Self {
         match err {
             ConversionError::TypeMismatch => Self::TypeMismatch,
@@ -613,7 +613,7 @@ mod tests {
 
     mod error {
         use super::*;
-        use VMError::{NotEnoughtValues, TypeMismatch};
+        use Error::{NotEnoughtValues, TypeMismatch};
 
         macro_rules! errorneus_operation {
             ($method:ident, $stack:expr, $expected_err: expr) => {
@@ -703,7 +703,7 @@ mod tests {
 
             assert_eq!(mem.pop_external(), Ok(Word::Numeric(6)));
             assert_eq!(mem.pop_external(), Ok(Word::Numeric(2)));
-            assert_eq!(mem.pop_external(), Err(VMError::NotEnoughtValues));
+            assert_eq!(mem.pop_external(), Err(Error::NotEnoughtValues));
 
             let mem_expected = unsafe { Memory::from_raw_parts(word_vec![], 0, 0, 2, 0, 0) };
 
@@ -716,7 +716,7 @@ mod tests {
 
             assert_eq!(mem.pop_external_no_pc_inc(), Ok(Word::Numeric(6)));
             assert_eq!(mem.pop_external_no_pc_inc(), Ok(Word::Numeric(2)));
-            assert_eq!(mem.pop_external_no_pc_inc(), Err(VMError::NotEnoughtValues));
+            assert_eq!(mem.pop_external_no_pc_inc(), Err(Error::NotEnoughtValues));
 
             let mem_expected = unsafe { Memory::from_raw_parts(word_vec![], 0, 0, 0, 0, 0) };
 
@@ -894,13 +894,13 @@ mod tests {
             #[test]
             fn type_mismatch() {
                 let mut mem = unsafe { Memory::from_raw_parts(word_vec![1], 0, 0, 0, 0, 0) };
-                assert_eq!(mem.ifjmp(10), Err(VMError::TypeMismatch));
+                assert_eq!(mem.ifjmp(10), Err(Error::TypeMismatch));
             }
 
             #[test]
             fn empty_stack() {
                 let mut mem = unsafe { Memory::from_raw_parts(Vec::<Word>::new(), 0, 0, 0, 0, 0) };
-                assert_eq!(mem.ifjmp(10), Err(VMError::NotEnoughtValues));
+                assert_eq!(mem.ifjmp(10), Err(Error::NotEnoughtValues));
             }
         }
     }
