@@ -40,7 +40,7 @@ macro_rules! two_nums_method {
 macro_rules! one_num_method {
     ($name:ident, $var_ident: ident, $op:expr) => {
         pub fn $name(&mut self) -> Result<(), Error> {
-            if self.lcl + self.n_locals + 1 <= self.stack.len() {
+            if self.lcl + self.n_locals < self.stack.len() {
                 let value = self.stack.pop();
                 match value {
                     Some(Word::Numeric($var_ident)) => {
@@ -101,7 +101,7 @@ macro_rules! pop_variable {
     ($name:ident, $n_variables:ident, $variable_kind:ident, $err:ident) => {
         pub fn $name(&mut self, index: usize) -> Result<(), Error> {
             if index < self.$n_variables {
-                if self.lcl + self.n_locals + 1 <= self.stack.len() {
+                if self.lcl + self.n_locals < self.stack.len() {
                     match self.stack.pop() {
                         Some(value) => {
                             self.stack[self.$variable_kind + index] = value;
@@ -147,7 +147,7 @@ impl<'a> Memory {
     }
 
     pub fn ifjmp(&mut self, address: usize) -> Result<(), Error> {
-        if self.lcl + self.n_locals + 1 <= self.stack.len() {
+        if self.lcl + self.n_locals < self.stack.len() {
             let value = self.stack.pop();
             match value {
                 Some(Word::Boolean(val)) => {
@@ -196,7 +196,7 @@ impl<'a> Memory {
     }
 
     pub fn pop_external(&mut self) -> Result<Word, Error> {
-        if self.lcl + self.n_locals + 1 <= self.stack.len() {
+        if self.lcl + self.n_locals < self.stack.len() {
             match self.stack.pop() {
                 Some(value) => {
                     self.pc += 1;
@@ -210,7 +210,7 @@ impl<'a> Memory {
     }
 
     pub fn pop_external_no_pc_inc(&mut self) -> Result<Word, Error> {
-        if self.lcl + self.n_locals + 1 <= self.stack.len() {
+        if self.lcl + self.n_locals < self.stack.len() {
             self.stack.pop().ok_or(Error::NotEnoughtValues)
         } else {
             Err(Error::NotEnoughtValues)
@@ -218,7 +218,7 @@ impl<'a> Memory {
     }
 
     pub fn not(&mut self) -> Result<(), Error> {
-        if self.lcl + self.n_locals + 1 <= self.stack.len() {
+        if self.lcl + self.n_locals < self.stack.len() {
             let value = self.stack.pop();
             match value {
                 Some(Word::Boolean(x)) => {
@@ -258,7 +258,7 @@ impl<'a> Memory {
     }
 
     pub fn fn_return(&mut self) -> Result<(), Error> {
-        if self.lcl + self.n_locals + 1 <= self.stack.len() {
+        if self.lcl + self.n_locals < self.stack.len() {
             let frame = self.lcl;
             let return_address = usize::try_from(self.stack[frame - 5])?;
             let previous_lcl = usize::try_from(self.stack[frame - 4])?;
