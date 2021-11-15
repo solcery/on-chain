@@ -9,8 +9,8 @@ use std::convert::TryFrom;
 use std::convert::TryInto;
 
 mod memory;
-use memory::Memory;
 use memory::Error;
+use memory::Memory;
 
 #[derive(Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub struct Sealed<T> {
