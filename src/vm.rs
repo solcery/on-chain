@@ -23,10 +23,13 @@ impl<T> Sealed<T> {
     }
 }
 
+type Log = Vec<Event>;
+
 pub struct VM<'a> {
     rom: &'a Rom,
     memory: Memory,
     board: &'a mut Board,
+    log: Log,
 }
 
 impl<'a> VM<'a> {
@@ -38,15 +41,29 @@ impl<'a> VM<'a> {
         action_index: u32,
     ) -> Self {
         let memory = Memory::init_memory(args, card_index, action_index);
-        Self { rom, memory, board }
+        Self {
+            rom,
+            memory,
+            board,
+            log: vec![],
+        }
     }
 
-    pub fn execute(&mut self, instruction_limit: usize) {
+    pub fn execute(&mut self, instruction_limit: usize) -> Result<(), Error> {
         for _ in 0..instruction_limit {
-            if self.run_one_instruction().is_err() {
-                break;
+            match self.run_one_instruction() {
+                Ok(()) => {}
+                Err(err) => match err {
+                    Error::Halt => {
+                        return Ok(());
+                    }
+                    err => {
+                        return Err(err);
+                    }
+                },
             }
         }
+        Ok(())
     }
 
     pub fn resume_execution(
@@ -55,12 +72,21 @@ impl<'a> VM<'a> {
         sealed_memory: Sealed<Memory>,
     ) -> Self {
         let memory = Sealed::<Memory>::release_data(sealed_memory);
-        Self { rom, memory, board }
+        Self {
+            rom,
+            memory,
+            board,
+            log: vec![],
+        }
     }
 
     #[must_use]
-    pub fn stop_execution(self) -> Sealed<Memory> {
-        Sealed::<Memory> { data: self.memory }
+    pub fn stop_execution(self) -> ExecutionResult {
+        if self.is_halted() {
+            ExecutionResult::Finished(self.log)
+        } else {
+            ExecutionResult::Unfinished(self.log, Sealed::<Memory> { data: self.memory })
+        }
     }
 
     fn run_one_instruction(&mut self) -> Result<(), Error> {
@@ -90,6 +116,11 @@ impl<'a> VM<'a> {
             }
             VMCommand::PopBoardAttr { index } => {
                 let value = self.memory.pop_external()?;
+                self.log.push(Event::BoardChange {
+                    attr_index: index,
+                    previous_value: self.board.attrs[index as usize],
+                    new_value: value,
+                });
                 self.board.attrs[index as usize] = value;
                 Ok(())
             }
@@ -216,6 +247,13 @@ impl<'a> VM<'a> {
                 let card = &mut self.board.cards[id as usize];
                 let attr_value = self.memory.pop_external()?;
 
+                self.log.push(Event::CardChange {
+                    card_index: id as u32,
+                    attr_index,
+                    previous_value: card.attrs[attr_index as usize],
+                    new_value: attr_value,
+                });
+
                 card.attrs[attr_index as usize] = attr_value;
                 Ok(())
             }
@@ -233,6 +271,11 @@ impl<'a> VM<'a> {
                     .instance_card_by_type_index(id, self.board.generate_card_id())
                     .unwrap();
                 self.board.cards.push(card);
+
+                self.log.push(Event::AddCardByIndex {
+                    card_index: (self.board.cards.len() - 1) as u32,
+                    cargtype_index: id as u32,
+                });
                 Ok(())
             }
             Word::Boolean(_) => Err(Error::TypeMismatch),
@@ -249,6 +292,11 @@ impl<'a> VM<'a> {
                     .instance_card_by_type_id(id, self.board.generate_card_id())
                     .unwrap();
                 self.board.cards.push(card);
+
+                self.log.push(Event::AddCardById {
+                    card_index: (self.board.cards.len() - 1) as u32,
+                    cargtype_id: id as u32,
+                });
                 Ok(())
             }
             Word::Boolean(_) => Err(Error::TypeMismatch),
@@ -257,22 +305,33 @@ impl<'a> VM<'a> {
 
     fn call_card_action(&mut self) -> Result<(), Error> {
         let action_index_word = self.memory.pop_external_no_pc_inc()?;
-        let action_index = i32::try_from(action_index_word).map_err(|_| Error::TypeMismatch)?;
+        let action_index = usize::try_from(action_index_word).map_err(|_| Error::TypeMismatch)?;
 
         let type_index_word = self.memory.pop_external_no_pc_inc()?;
-        let type_index = i32::try_from(type_index_word).map_err(|_| Error::TypeMismatch)?;
+        let type_index = usize::try_from(type_index_word).map_err(|_| Error::TypeMismatch)?;
 
-        let card_type = self.rom.card_type_by_type_index(type_index as usize);
-        let entry_point = card_type.action_entry_point(action_index as usize);
+        let card_type = self.rom.card_type_by_type_index(type_index);
+        let entry_point = card_type.action_entry_point(action_index);
         self.memory
-            .call(entry_point.address(), entry_point.n_args())
+            .call(entry_point.address(), entry_point.n_args())?;
+
+        self.log.push(Event::CardActionStarted {
+            cardtype_index: type_index as u32,
+            action_index: action_index as u32,
+            args: self.memory.args(),
+        });
+        Ok(())
     }
 
     fn remove_card_by_index(&mut self) -> Result<(), Error> {
         let card_index_word = self.memory.pop_external()?;
-        let card_index = i32::try_from(card_index_word).map_err(|_| Error::TypeMismatch)?;
+        let card_index = usize::try_from(card_index_word).map_err(|_| Error::TypeMismatch)?;
 
-        self.board.cards.remove(card_index as usize);
+        self.board.cards.remove(card_index);
+
+        self.log.push(Event::RemoveCard {
+            card_index: card_index as u32,
+        });
         Ok(())
     }
 
@@ -286,6 +345,42 @@ impl<'a> VM<'a> {
         let instruction = self.rom.fetch_instruction(self.memory.pc());
         instruction == VMCommand::Halt
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+pub enum Event {
+    BoardChange {
+        attr_index: u32,
+        previous_value: Word,
+        new_value: Word,
+    },
+    CardChange {
+        card_index: u32,
+        attr_index: u32,
+        previous_value: Word,
+        new_value: Word,
+    },
+    AddCardById {
+        card_index: u32,
+        cargtype_id: u32,
+    },
+    AddCardByIndex {
+        card_index: u32,
+        cargtype_index: u32,
+    },
+    RemoveCard {
+        card_index: u32,
+    },
+    CardActionStarted {
+        cardtype_index: u32,
+        action_index: u32,
+        args: Vec<Word>,
+    },
+}
+
+pub enum ExecutionResult {
+    Finished(Log),
+    Unfinished(Log, Sealed<Memory>),
 }
 
 #[cfg(test)]
@@ -380,7 +475,7 @@ mod tests {
         let args = vec![];
         let mut vm = VM::init_vm(&rom, &mut board, &args, 0, 0);
 
-        vm.execute(10);
+        vm.execute(10).unwrap();
         assert!(vm.is_halted());
 
         let memory = VM::release_memory(vm);
@@ -408,7 +503,7 @@ mod tests {
         let args = vec![];
         let mut vm = VM::init_vm(&rom, &mut board, &args, 0, 0);
 
-        vm.execute(10);
+        vm.execute(10).unwrap();
 
         assert!(vm.is_halted());
 
@@ -437,7 +532,7 @@ mod tests {
         let args = vec![];
         let mut vm = VM::init_vm(&rom, &mut board, &args, 0, 0);
 
-        vm.execute(10);
+        vm.execute(10).unwrap();
 
         assert!(vm.is_halted());
 
@@ -466,7 +561,7 @@ mod tests {
         let args = vec![];
         let mut vm = VM::init_vm(&rom, &mut board, &args, 0, 0);
 
-        vm.execute(10);
+        vm.execute(10).unwrap();
 
         assert!(vm.is_halted());
 
@@ -495,7 +590,7 @@ mod tests {
         let args = vec![];
         let mut vm = VM::init_vm(&rom, &mut board, &args, 0, 0);
 
-        vm.execute(10);
+        vm.execute(10).unwrap();
 
         assert!(vm.is_halted());
 
@@ -525,7 +620,7 @@ mod tests {
         let args = vec![];
         let mut vm = VM::init_vm(&rom, &mut board, &args, 0, 0);
 
-        vm.execute(10);
+        vm.execute(10).unwrap();
 
         assert!(vm.is_halted());
 
@@ -555,7 +650,7 @@ mod tests {
         let args = vec![];
         let mut vm = VM::init_vm(&rom, &mut board, &args, 0, 0);
 
-        vm.execute(10);
+        vm.execute(10).unwrap();
 
         assert!(vm.is_halted());
 
@@ -587,7 +682,7 @@ mod tests {
         let args = vec![];
         let mut vm = VM::init_vm(&rom, &mut board, &args, 0, 0);
 
-        vm.execute(10);
+        vm.execute(10).unwrap();
 
         assert!(vm.is_halted());
 
@@ -626,7 +721,7 @@ mod tests {
         let args = vec![];
         let mut vm = VM::init_vm(&rom, &mut board, &args, 0, 0);
 
-        vm.execute(10);
+        vm.execute(10).unwrap();
 
         assert!(vm.is_halted());
 
@@ -658,7 +753,7 @@ mod tests {
         let args = vec![];
         let mut vm = VM::init_vm(&rom, &mut board, &args, 0, 0);
 
-        vm.execute(10);
+        vm.execute(10).unwrap();
 
         assert!(vm.is_halted());
 

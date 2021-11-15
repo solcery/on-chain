@@ -297,6 +297,10 @@ impl<'a> Memory {
         Ok(())
     }
 
+    pub fn args(&self) -> Vec<Word> {
+        self.stack[self.arg..self.arg + self.n_args].to_vec()
+    }
+
     #[cfg(test)]
     pub unsafe fn from_raw_parts(
         stack: Vec<Word>,
