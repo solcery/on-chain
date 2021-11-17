@@ -1,7 +1,7 @@
 use crate::board::Board;
 use crate::error::VMError;
 use crate::rom::Rom;
-use crate::vm::VM;
+use crate::vm::{SingleExecutionResult, VM};
 use crate::word::Word;
 use bincode;
 use solana_program::{
@@ -83,19 +83,23 @@ impl VMInstruction {
 
                 let mut vm = VM::init_vm(&rom, &mut board, args, *cardtype_index, *action_index);
 
-                vm.execute(MAX_NUM_OF_VM_INSTRUCTION);
-
-                if vm.is_halted() {
-                    drop(vm);
-                    // As an optimization, we can use accounts, that store only the necessary
-                    // amount of information. If this amount is exceeded, we should call
-                    // SystemProgram::Allocate instruction, to change the size of the account.
-                    Ok(())
-                } else {
-                    Err(ProgramError::from(VMError::ComputationNotFinished))
+                match vm.execute(MAX_NUM_OF_VM_INSTRUCTION) {
+                    Ok(SingleExecutionResult::Finished) => {
+                        drop(vm);
+                        // As an optimization, we can use accounts, that store only the necessary
+                        // amount of information. If this amount is exceeded, we should call
+                        // SystemProgram::Allocate instruction, to change the size of the account.
                         board_account
                             .serialize_data(&board)
                             .map_err(|_| ProgramError::AccountDataTooSmall)?;
+                        Ok(())
+                    }
+                    Ok(SingleExecutionResult::Unfinished) => {
+                        Err(ProgramError::from(VMError::ComputationNotFinished))
+                    }
+                    Err(err) => {
+                        unimplemented!();
+                    }
                 }
             }
         }
