@@ -90,27 +90,14 @@ impl VMInstruction {
                     // As an optimization, we can use accounts, that store only the necessary
                     // amount of information. If this amount is exceeded, we should call
                     // SystemProgram::Allocate instruction, to change the size of the account.
-                    serialize_data(board_account, &board)
-                        .map_err(|_| ProgramError::AccountDataTooSmall)?;
                     Ok(())
                 } else {
                     Err(ProgramError::from(VMError::ComputationNotFinished))
+                        board_account
+                            .serialize_data(&board)
+                            .map_err(|_| ProgramError::AccountDataTooSmall)?;
                 }
             }
         }
     }
-}
-
-// duct tape helper function
-// Delete then solana-labs/solana #20919 is merged into solana-sdk
-// L84 should be replaced to:
-// board_account.serialize_data(&board).map_err(|_| ProgramError::AccountDataTooSmall)?;
-fn serialize_data<T: serde::Serialize>(
-    account: &AccountInfo,
-    state: &T,
-) -> Result<(), bincode::Error> {
-    if bincode::serialized_size(state)? > account.data_len() as u64 {
-        return Err(Box::new(bincode::ErrorKind::SizeLimit));
-    }
-    bincode::serialize_into(&mut account.data.borrow_mut()[..], state)
 }
