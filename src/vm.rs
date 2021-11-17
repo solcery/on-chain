@@ -12,6 +12,12 @@ mod memory;
 use memory::Error;
 use memory::Memory;
 
+mod log;
+use log::{Event, Log};
+
+mod enums;
+use enums::ExecutionResult;
+pub use enums::SingleExecutionResult;
 #[derive(Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub struct Sealed<T> {
     data: T,
@@ -22,8 +28,6 @@ impl<T> Sealed<T> {
         self.data
     }
 }
-
-type Log = Vec<Event>;
 
 pub struct VM<'a> {
     rom: &'a Rom,
@@ -345,42 +349,6 @@ impl<'a> VM<'a> {
         let instruction = self.rom.fetch_instruction(self.memory.pc());
         instruction == VMCommand::Halt
     }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
-pub enum Event {
-    BoardChange {
-        attr_index: u32,
-        previous_value: Word,
-        new_value: Word,
-    },
-    CardChange {
-        card_index: u32,
-        attr_index: u32,
-        previous_value: Word,
-        new_value: Word,
-    },
-    AddCardById {
-        card_index: u32,
-        cargtype_id: u32,
-    },
-    AddCardByIndex {
-        card_index: u32,
-        cargtype_index: u32,
-    },
-    RemoveCard {
-        card_index: u32,
-    },
-    CardActionStarted {
-        cardtype_index: u32,
-        action_index: u32,
-        args: Vec<Word>,
-    },
-}
-
-pub enum ExecutionResult {
-    Finished(Log),
-    Unfinished(Log, Sealed<Memory>),
 }
 
 #[cfg(test)]
