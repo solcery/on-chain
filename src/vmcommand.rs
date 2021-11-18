@@ -5,49 +5,46 @@ use std::convert::TryInto;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum VMCommand {
-    // The halting command
+    /// Halts the virtual machine.
+    /// This is the only way to stop the VM.
     Halt,
+
     // Arithmetic
-    /// Adds two topmost values from the stack
-    /// # Panics
-    /// Panics if there are no enough elements on the stack or if one of the arguments is
-    /// [Word::Boolean]
+    /// Returns `x + y`, where `x` is the first value from the stack add `y` is the second
     Add,
+    /// Returns `x - y`, where `x` is the first value from the stack add `y` is the second
     Sub,
+    /// Returns `x / y`, where `x` is the first value from the stack add `y` is the second
     Div,
-    /// Multiplies two topmost values from the stack
-    /// # Panics
-    /// Panics if there are no enough elements on the stack or if one of the arguments is
-    /// [Word::Boolean]
+    /// Returns `x * y`, where `x` is the first value from the stack add `y` is the second
     Mul,
+    /// Returns `x % y`, where `x` is the first value from the stack add `y` is the second
     Rem,
     /// Negates the topmost value on the stack
-    /// # Panics
-    /// Panics if there are no enough elements on the stack or if  the argumentsis
-    /// [Word::Boolean]
     Neg,
     /// Increments the topmost value on the stack
-    /// Panics if there are no enough elements on the stack or if  the argumentsis
-    /// [Word::Boolean]
     Inc,
     /// Decrements the topmost value on the stack
-    /// Panics if there are no enough elements on the stack or if  the argumentsis
-    /// [Word::Boolean]
     Dec,
-    /// Computes the absolute value of the topmost value on the stack
-    /// Panics if there are no enough elements on the stack or if  the argumentsis
-    /// [Word::Boolean]
+    /// Returns the absolute value of the topmost value from the stack
     Abs,
 
     // Logic
+    /// Returns `x == y`, where `x` is the first value from the stack add `y` is the second
     Eq,
+    /// Returns `x > y`, where `x` is the first value from the stack add `y` is the second
     Gt,
+    /// Returns `x < y`, where `x` is the first value from the stack add `y` is the second
     Lt,
+    /// Returns `x && y`, where `x` is the first value from the stack add `y` is the second
     And,
+    /// Returns `x || y`, where `x` is the first value from the stack add `y` is the second
     Or,
+    /// Logically negates the topmost value on the stack
     Not,
 
     // Data transfer
+    ///Pushes external value on the stack
     PushConstant(Word),
     PushBoardAttr {
         index: u32,
