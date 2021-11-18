@@ -225,7 +225,10 @@ impl<'a> VM<'a> {
             Word::Numeric(id) => {
                 let card = &self.board.cards[id as usize];
                 let card_type_id = card.card_type();
-                let card_type = self.rom.card_type_by_type_id(card_type_id).ok_or(InternalError::NoSuchType)?;
+                let card_type = self
+                    .rom
+                    .card_type_by_type_id(card_type_id)
+                    .ok_or(InternalError::NoSuchType)?;
                 let attr_value = card_type.attr_by_index(attr_index as usize);
 
                 let word = attr_value;

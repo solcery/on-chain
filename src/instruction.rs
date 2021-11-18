@@ -97,7 +97,7 @@ impl VMInstruction {
                     Ok(SingleExecutionResult::Unfinished) => {
                         Err(ProgramError::from(VMError::ComputationNotFinished))
                     }
-                    Err(err) => {
+                    Err(_) => {
                         unimplemented!();
                     }
                 }

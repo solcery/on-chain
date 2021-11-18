@@ -2,7 +2,7 @@ use crate::board::Board;
 use crate::card::{Card, CardType};
 use crate::vmcommand::VMCommand;
 use serde::{Deserialize, Serialize};
-use std::convert::TryInto;
+use thiserror::Error;
 
 #[derive(Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub struct Rom {
@@ -33,21 +33,28 @@ impl Rom {
             .find(|card_type| card_type.id() == type_id)
     }
 
-    pub fn instance_card_by_type_id(&self, type_id: u32, card_id: u32) -> Result<Card, ()> {
+    pub fn instance_card_by_type_id(&self, type_id: u32, card_id: u32) -> Result<Card, Error> {
         let typ = &self.card_types.iter().find(|typ| typ.id() == type_id);
         match typ {
             Some(typ) => Ok(typ.instantiate_card(card_id)),
-            None => Err(()),
+            None => Err(Error::NoSuchTypeId(type_id)),
         }
     }
 
-    pub fn instance_card_by_type_index(&self, type_index: u32, card_id: u32) -> Result<Card, ()> {
-        let index: usize = type_index.try_into().unwrap();
+    pub fn instance_card_by_type_index(
+        &self,
+        type_index: u32,
+        card_id: u32,
+    ) -> Result<Card, Error> {
+        let index: usize = type_index as usize;
         if index < self.card_types.len() {
             let typ: &CardType = &self.card_types[index];
             Ok(typ.instantiate_card(card_id))
         } else {
-            Err(())
+            Err(Error::TypeIndexOutOfBounds {
+                index: type_index,
+                len: self.card_types.len() as u32,
+            })
         }
     }
 
@@ -68,4 +75,12 @@ impl Rom {
             initial_board_state,
         }
     }
+}
+
+#[derive(Error, Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+pub enum Error {
+    #[error("type index is out of bounds (index is {index}, but there are only {len} types)")]
+    TypeIndexOutOfBounds { index: u32, len: u32 },
+    #[error("there are no such type id ({0})")]
+    NoSuchTypeId(u32),
 }

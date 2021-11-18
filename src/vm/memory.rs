@@ -333,6 +333,7 @@ pub enum Error {
     NegativeAddress,
     LocalVarOutOfBounds,
     ArgumentOutOfBounds,
+    NoSuchType,
 }
 
 impl From<ConversionError> for Error {
