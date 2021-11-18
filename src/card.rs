@@ -24,15 +24,6 @@ impl Card {
     }
 
     #[must_use]
-    pub fn new(id: u32, card_type: u32, attrs: Vec<Word>) -> Self {
-        Self {
-            id,
-            card_type,
-            attrs,
-        }
-    }
-
-    #[must_use]
     pub unsafe fn from_raw_parts(id: u32, card_type: u32, attrs: Vec<Word>) -> Self {
         Self {
             id,
@@ -101,21 +92,6 @@ impl CardType {
     #[must_use]
     pub fn attr_by_index(&self, index: usize) -> Word {
         self.attrs[index]
-    }
-
-    #[must_use]
-    pub fn new(
-        id: u32,
-        attrs: Vec<Word>,
-        init_card_attrs: Vec<Word>,
-        action_entry_points: Vec<EntryPoint>,
-    ) -> Self {
-        Self {
-            id,
-            attrs,
-            init_card_attrs,
-            action_entry_points,
-        }
     }
 
     #[must_use]
