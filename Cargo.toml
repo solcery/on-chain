@@ -1,8 +1,8 @@
 [package]
-name = "solcery"
+name = "solcery-vm"
 version = "0.1.0"
 license = "Apache-2.0"
-homepage = "https://solana.com/"
+homepage = "https://solcery.xyz/"
 edition = "2018"
 
 [features]
@@ -23,5 +23,5 @@ solana-sdk = "1.8.2"
 test-case = "1.2.0"
 
 [lib]
-name = "solcery"
+name = "solcery_vm"
 crate-type = ["cdylib", "lib"]

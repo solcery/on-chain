@@ -5,7 +5,7 @@ use solana_sdk::{
     transaction::Transaction,
 };
 
-use solcery::{
+use solcery_vm::{
     board::Board,
     card::{Card, CardType, EntryPoint},
     entrypoint::process_instruction,
@@ -34,7 +34,7 @@ async fn initialize_dummy() {
     // behavior under solana-program-test (because engine_keypair should be the payer)
     let board_account = Account::new_data_with_space(1_000, &board, 1024, &program_id).unwrap();
 
-    let mut program = ProgramTest::new("solcery", program_id, processor!(process_instruction));
+    let mut program = ProgramTest::new("solcery_vm", program_id, processor!(process_instruction));
     program.add_account(rom_id, rom_account);
     program.add_account(board_id, board_account);
 
@@ -96,7 +96,7 @@ async fn remove_dummy() {
     // behavior under solana-program-test (because engine_keypair should be the payer)
     let board_account = Account::new_data_with_space(1_000, &board, 1024, &program_id).unwrap();
 
-    let mut program = ProgramTest::new("solcery", program_id, processor!(process_instruction));
+    let mut program = ProgramTest::new("solcery_vm", program_id, processor!(process_instruction));
     program.add_account(rom_id, rom_account);
     program.add_account(board_id, board_account);
 
