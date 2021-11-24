@@ -31,7 +31,7 @@ macro_rules! two_nums_method {
                     _ => unreachable!(),
                 }
             } else {
-                Err(Error::NotEnoughtValues)
+                Err(Error::NotEnoughValues)
             }
         }
     };
@@ -52,7 +52,7 @@ macro_rules! one_num_method {
                     _ => unreachable!(),
                 }
             } else {
-                Err(Error::NotEnoughtValues)
+                Err(Error::NotEnoughValues)
             }
         }
     };
@@ -76,7 +76,7 @@ macro_rules! two_bools_method {
                     _ => unreachable!(),
                 }
             } else {
-                Err(Error::NotEnoughtValues)
+                Err(Error::NotEnoughValues)
             }
         }
     };
@@ -111,7 +111,7 @@ macro_rules! pop_variable {
                         _ => unreachable!(),
                     }
                 } else {
-                    Err(Error::NotEnoughtValues)
+                    Err(Error::NotEnoughValues)
                 }
             } else {
                 Err(Error::$err)
@@ -162,7 +162,7 @@ impl<'a> Memory {
                 _ => unreachable!(),
             }
         } else {
-            Err(Error::NotEnoughtValues)
+            Err(Error::NotEnoughValues)
         }
     }
 
@@ -205,15 +205,15 @@ impl<'a> Memory {
                 _ => unreachable!(),
             }
         } else {
-            Err(Error::NotEnoughtValues)
+            Err(Error::NotEnoughValues)
         }
     }
 
     pub fn pop_external_no_pc_inc(&mut self) -> Result<Word, Error> {
         if self.lcl + self.n_locals < self.stack.len() {
-            self.stack.pop().ok_or(Error::NotEnoughtValues)
+            self.stack.pop().ok_or(Error::NotEnoughValues)
         } else {
-            Err(Error::NotEnoughtValues)
+            Err(Error::NotEnoughValues)
         }
     }
 
@@ -230,7 +230,7 @@ impl<'a> Memory {
                 _ => unreachable!(),
             }
         } else {
-            Err(Error::NotEnoughtValues)
+            Err(Error::NotEnoughValues)
         }
     }
 
@@ -265,7 +265,7 @@ impl<'a> Memory {
             let previous_arg = usize::try_from(self.stack[frame - 3])?;
             let previous_n_args = usize::try_from(self.stack[frame - 2])?;
             let previous_n_locals = usize::try_from(self.stack[frame - 1])?;
-            let return_value = self.stack.pop().ok_or(Error::NotEnoughtValues)?;
+            let return_value = self.stack.pop().ok_or(Error::NotEnoughValues)?;
 
             self.stack.truncate(self.arg);
             self.stack.push(return_value);
@@ -276,7 +276,7 @@ impl<'a> Memory {
             self.pc = return_address;
             Ok(())
         } else {
-            Err(Error::NotEnoughtValues)
+            Err(Error::NotEnoughValues)
         }
     }
 
@@ -328,7 +328,7 @@ impl<'a> Memory {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum Error {
     Halt,
-    NotEnoughtValues,
+    NotEnoughValues,
     TypeMismatch,
     NegativeAddress,
     LocalVarOutOfBounds,
@@ -427,9 +427,9 @@ mod tests {
 
     mod error {
         use super::*;
-        use Error::{NotEnoughtValues, TypeMismatch};
+        use Error::{NotEnoughValues, TypeMismatch};
 
-        macro_rules! errorneus_operation {
+        macro_rules! erroneous_operation {
             ($method:ident, $stack:expr, $expected_err: expr) => {
                 #[test]
                 fn $method() {
@@ -453,47 +453,47 @@ mod tests {
             use pretty_assertions::assert_eq;
 
             // Arithmetic
-            errorneus_operation!(add, word_vec![1, true], TypeMismatch);
-            errorneus_operation!(sub, word_vec![1, true], TypeMismatch);
-            errorneus_operation!(mul, word_vec![1, true], TypeMismatch);
-            errorneus_operation!(div, word_vec![1, true], TypeMismatch);
-            errorneus_operation!(rem, word_vec![1, true], TypeMismatch);
-            errorneus_operation!(neg, word_vec![1, true], TypeMismatch);
-            errorneus_operation!(inc, word_vec![1, true], TypeMismatch);
-            errorneus_operation!(dec, word_vec![1, true], TypeMismatch);
-            errorneus_operation!(abs, word_vec![1, true], TypeMismatch);
+            erroneous_operation!(add, word_vec![1, true], TypeMismatch);
+            erroneous_operation!(sub, word_vec![1, true], TypeMismatch);
+            erroneous_operation!(mul, word_vec![1, true], TypeMismatch);
+            erroneous_operation!(div, word_vec![1, true], TypeMismatch);
+            erroneous_operation!(rem, word_vec![1, true], TypeMismatch);
+            erroneous_operation!(neg, word_vec![1, true], TypeMismatch);
+            erroneous_operation!(inc, word_vec![1, true], TypeMismatch);
+            erroneous_operation!(dec, word_vec![1, true], TypeMismatch);
+            erroneous_operation!(abs, word_vec![1, true], TypeMismatch);
 
             // Logic
-            errorneus_operation!(equal, word_vec![1, true], TypeMismatch);
-            errorneus_operation!(gt, word_vec![1, true], TypeMismatch);
-            errorneus_operation!(lt, word_vec![1, true], TypeMismatch);
-            errorneus_operation!(and, word_vec![1, true], TypeMismatch);
-            errorneus_operation!(or, word_vec![1, true], TypeMismatch);
-            errorneus_operation!(not, word_vec![1], TypeMismatch);
+            erroneous_operation!(equal, word_vec![1, true], TypeMismatch);
+            erroneous_operation!(gt, word_vec![1, true], TypeMismatch);
+            erroneous_operation!(lt, word_vec![1, true], TypeMismatch);
+            erroneous_operation!(and, word_vec![1, true], TypeMismatch);
+            erroneous_operation!(or, word_vec![1, true], TypeMismatch);
+            erroneous_operation!(not, word_vec![1], TypeMismatch);
         }
 
-        mod not_enought_values {
+        mod not_enough_values {
             use super::*;
             use pretty_assertions::assert_eq;
 
             // Arithmetic
-            errorneus_operation!(add, word_vec![1], NotEnoughtValues);
-            errorneus_operation!(sub, word_vec![1], NotEnoughtValues);
-            errorneus_operation!(mul, word_vec![1], NotEnoughtValues);
-            errorneus_operation!(div, word_vec![1], NotEnoughtValues);
-            errorneus_operation!(rem, word_vec![1], NotEnoughtValues);
-            errorneus_operation!(neg, word_vec![], NotEnoughtValues);
-            errorneus_operation!(inc, word_vec![], NotEnoughtValues);
-            errorneus_operation!(dec, word_vec![], NotEnoughtValues);
-            errorneus_operation!(abs, word_vec![], NotEnoughtValues);
+            erroneous_operation!(add, word_vec![1], NotEnoughValues);
+            erroneous_operation!(sub, word_vec![1], NotEnoughValues);
+            erroneous_operation!(mul, word_vec![1], NotEnoughValues);
+            erroneous_operation!(div, word_vec![1], NotEnoughValues);
+            erroneous_operation!(rem, word_vec![1], NotEnoughValues);
+            erroneous_operation!(neg, word_vec![], NotEnoughValues);
+            erroneous_operation!(inc, word_vec![], NotEnoughValues);
+            erroneous_operation!(dec, word_vec![], NotEnoughValues);
+            erroneous_operation!(abs, word_vec![], NotEnoughValues);
 
             // Logic
-            errorneus_operation!(equal, word_vec![1], NotEnoughtValues);
-            errorneus_operation!(gt, word_vec![1], NotEnoughtValues);
-            errorneus_operation!(lt, word_vec![1], NotEnoughtValues);
-            errorneus_operation!(and, word_vec![true], NotEnoughtValues);
-            errorneus_operation!(or, word_vec![true], NotEnoughtValues);
-            errorneus_operation!(not, word_vec![], NotEnoughtValues);
+            erroneous_operation!(equal, word_vec![1], NotEnoughValues);
+            erroneous_operation!(gt, word_vec![1], NotEnoughValues);
+            erroneous_operation!(lt, word_vec![1], NotEnoughValues);
+            erroneous_operation!(and, word_vec![true], NotEnoughValues);
+            erroneous_operation!(or, word_vec![true], NotEnoughValues);
+            erroneous_operation!(not, word_vec![], NotEnoughValues);
         }
     }
 
@@ -517,7 +517,7 @@ mod tests {
 
             assert_eq!(mem.pop_external(), Ok(Word::Numeric(6)));
             assert_eq!(mem.pop_external(), Ok(Word::Numeric(2)));
-            assert_eq!(mem.pop_external(), Err(Error::NotEnoughtValues));
+            assert_eq!(mem.pop_external(), Err(Error::NotEnoughValues));
 
             let mem_expected = unsafe { Memory::from_raw_parts(word_vec![], 0, 0, 2, 0, 0) };
 
@@ -530,7 +530,7 @@ mod tests {
 
             assert_eq!(mem.pop_external_no_pc_inc(), Ok(Word::Numeric(6)));
             assert_eq!(mem.pop_external_no_pc_inc(), Ok(Word::Numeric(2)));
-            assert_eq!(mem.pop_external_no_pc_inc(), Err(Error::NotEnoughtValues));
+            assert_eq!(mem.pop_external_no_pc_inc(), Err(Error::NotEnoughValues));
 
             let mem_expected = unsafe { Memory::from_raw_parts(word_vec![], 0, 0, 0, 0, 0) };
 
@@ -714,7 +714,7 @@ mod tests {
             #[test]
             fn empty_stack() {
                 let mut mem = unsafe { Memory::from_raw_parts(Vec::<Word>::new(), 0, 0, 0, 0, 0) };
-                assert_eq!(mem.ifjmp(10), Err(Error::NotEnoughtValues));
+                assert_eq!(mem.ifjmp(10), Err(Error::NotEnoughValues));
             }
         }
     }

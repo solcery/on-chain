@@ -129,8 +129,8 @@ type CommandByteCode = [u8; 5];
 impl TryFrom<CommandByteCode> for VMCommand {
     type Error = &'static str;
     fn try_from(word: CommandByteCode) -> Result<Self, Self::Error> {
-        let descriminant = word[0];
-        match descriminant {
+        let discriminant = word[0];
+        match discriminant {
             0 => Ok(Self::Halt),
             1 => Ok(Self::Add),
             2 => Ok(Self::Sub),
