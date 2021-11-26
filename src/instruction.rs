@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::error::VMError;
-use crate::rom::Rom;
+use crate::rom::{CardTypesRom, InstructionRom, Rom};
 use crate::vm::{SingleExecutionResult, VM};
 use crate::word::Word;
 use bincode;
@@ -81,7 +81,18 @@ impl VMInstruction {
                     .deserialize_data()
                     .map_err(|_| ProgramError::InvalidAccountData)?;
 
-                let mut vm = VM::init_vm(&rom, &mut board, args, *cardtype_index, *action_index);
+                //TODO: change this to actual Instructions and CardTypes accounts
+                let instructions = unsafe { InstructionRom::from_raw_parts(&rom.instructions) };
+                let card_types = unsafe { CardTypesRom::from_raw_parts(&rom.card_types) };
+
+                let mut vm = VM::init_vm(
+                    instructions,
+                    card_types,
+                    &mut board,
+                    args,
+                    *cardtype_index,
+                    *action_index,
+                );
 
                 match vm.execute(MAX_NUM_OF_VM_INSTRUCTION) {
                     Ok(SingleExecutionResult::Finished) => {

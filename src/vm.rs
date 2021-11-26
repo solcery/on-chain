@@ -1,7 +1,7 @@
 //! # The Sorcery Virtual Machine
 
 use crate::board::Board;
-use crate::rom::Rom;
+use crate::rom::{CardTypesRom, InstructionRom};
 use crate::vmcommand::VMCommand;
 use crate::word::Word;
 use serde::{Deserialize, Serialize};
@@ -34,7 +34,8 @@ impl<T> Sealed<T> {
 }
 
 pub struct VM<'a> {
-    rom: &'a Rom,
+    instructions: InstructionRom<'a>,
+    card_types: CardTypesRom<'a>,
     memory: Memory,
     board: &'a mut Board,
     log: Log,
@@ -42,7 +43,8 @@ pub struct VM<'a> {
 
 impl<'a> VM<'a> {
     pub fn init_vm(
-        rom: &'a Rom,
+        instructions: InstructionRom<'a>,
+        card_types: CardTypesRom<'a>,
         board: &'a mut Board,
         args: &'a [Word],
         card_index: u32,
@@ -50,7 +52,8 @@ impl<'a> VM<'a> {
     ) -> Self {
         let memory = Memory::init_memory(args, card_index, action_index);
         Self {
-            rom,
+            instructions,
+            card_types,
             memory,
             board,
             log: vec![],
@@ -66,6 +69,7 @@ impl<'a> VM<'a> {
                         return Ok(SingleExecutionResult::Finished);
                     }
                     err => {
+                        // Should be changed with Error trait
                         let error = Error {
                             instruction: self.memory.pc() as u32,
                             error: err,
@@ -79,13 +83,15 @@ impl<'a> VM<'a> {
     }
 
     pub fn resume_execution(
-        rom: &'a Rom,
+        instructions: InstructionRom<'a>,
+        card_types: CardTypesRom<'a>,
         board: &'a mut Board,
         sealed_memory: Sealed<Memory>,
     ) -> Self {
         let memory = Sealed::<Memory>::release_data(sealed_memory);
         Self {
-            rom,
+            instructions,
+            card_types,
             memory,
             board,
             log: vec![],
@@ -104,7 +110,7 @@ impl<'a> VM<'a> {
     fn run_one_instruction(&mut self) -> Result<(), InternalError> {
         //TODO: better handing for Halt instruction.
         //Probably, we need to propogate InternalErrors from the instructions to this function.
-        let instruction = self.rom.fetch_instruction(self.memory.pc());
+        let instruction = self.instructions.fetch_instruction(self.memory.pc());
         match instruction {
             VMCommand::Add => self.memory.add(),
             VMCommand::Sub => self.memory.sub(),
@@ -153,7 +159,7 @@ impl<'a> VM<'a> {
                 self.memory.push_external(Word::Numeric(len as i32))
             }
             VMCommand::PushTypeCount => {
-                let len = self.rom.card_type_count();
+                let len = self.card_types.card_type_count();
                 self.memory.push_external(Word::Numeric(len as i32))
             }
             VMCommand::PushCardCountWithCardType => self.push_card_count_with_type(),
@@ -209,7 +215,7 @@ impl<'a> VM<'a> {
         let type_index = self.memory.pop_external_no_pc_inc()?;
         match type_index {
             Word::Numeric(id) => {
-                let card_type = self.rom.card_type_by_type_index(id as usize);
+                let card_type = self.card_types.card_type_by_type_index(id as usize);
                 let attr_value = card_type.attr_by_index(attr_index as usize);
 
                 let word = attr_value;
@@ -226,7 +232,7 @@ impl<'a> VM<'a> {
                 let card = &self.board.cards[id as usize];
                 let card_type_id = card.card_type();
                 let card_type = self
-                    .rom
+                    .card_types
                     .card_type_by_type_id(card_type_id)
                     .ok_or(InternalError::NoSuchType)?;
                 let attr_value = card_type.attr_by_index(attr_index as usize);
@@ -281,7 +287,7 @@ impl<'a> VM<'a> {
             Word::Numeric(index) => {
                 let id = index.try_into().unwrap();
                 let card = self
-                    .rom
+                    .card_types
                     .instance_card_by_type_index(id, self.board.generate_card_id())
                     .unwrap();
                 self.board.cards.push(card);
@@ -302,7 +308,7 @@ impl<'a> VM<'a> {
             Word::Numeric(index) => {
                 let id = index.try_into().unwrap();
                 let card = self
-                    .rom
+                    .card_types
                     .instance_card_by_type_id(id, self.board.generate_card_id())
                     .unwrap();
                 self.board.cards.push(card);
@@ -326,7 +332,7 @@ impl<'a> VM<'a> {
         let type_index =
             usize::try_from(type_index_word).map_err(|_| InternalError::TypeMismatch)?;
 
-        let card_type = self.rom.card_type_by_type_index(type_index);
+        let card_type = self.card_types.card_type_by_type_index(type_index);
         let entry_point = card_type.action_entry_point(action_index);
         self.memory
             .call(entry_point.address(), entry_point.n_args())?;
@@ -359,7 +365,7 @@ impl<'a> VM<'a> {
 
     #[must_use]
     pub fn is_halted(&self) -> bool {
-        let instruction = self.rom.fetch_instruction(self.memory.pc());
+        let instruction = self.instructions.fetch_instruction(self.memory.pc());
         instruction == VMCommand::Halt
     }
 }
@@ -428,13 +434,15 @@ mod tests {
             VMCommand::PushCardType,
             VMCommand::Halt,
         ];
-        let card_types = vec![type1(), type2()];
+        let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
-        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
+        let card_types = vec![type1(), type2()];
+        let card_types = unsafe { CardTypesRom::from_raw_parts(&card_types) };
+
         let mut board = testing_board();
 
         let args = vec![];
-        let vm = VM::init_vm(&rom, &mut board, &args, 0, 0);
+        let vm = VM::init_vm(instructions, card_types, &mut board, &args, 0, 0);
         let memory = VM::release_memory(vm);
         let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0], 0, 0, 0, 0, 0) };
 
@@ -448,13 +456,15 @@ mod tests {
             VMCommand::PushCardType,
             VMCommand::Halt,
         ];
-        let card_types = vec![type1(), type2()];
+        let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
-        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
+        let card_types = vec![type1(), type2()];
+        let card_types = unsafe { CardTypesRom::from_raw_parts(&card_types) };
+
         let mut board = testing_board();
 
         let args = vec![];
-        let mut vm = VM::init_vm(&rom, &mut board, &args, 0, 0);
+        let mut vm = VM::init_vm(instructions, card_types, &mut board, &args, 0, 0);
 
         vm.execute(10).unwrap();
         assert!(vm.is_halted());
@@ -476,13 +486,15 @@ mod tests {
             VMCommand::PushCardCountWithCardType,
             VMCommand::Halt,
         ];
-        let card_types = vec![type1(), type2()];
+        let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
-        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
+        let card_types = vec![type1(), type2()];
+        let card_types = unsafe { CardTypesRom::from_raw_parts(&card_types) };
+
         let mut board = testing_board();
 
         let args = vec![];
-        let mut vm = VM::init_vm(&rom, &mut board, &args, 0, 0);
+        let mut vm = VM::init_vm(instructions, card_types, &mut board, &args, 0, 0);
 
         vm.execute(10).unwrap();
 
@@ -505,13 +517,15 @@ mod tests {
             VMCommand::PushCardTypeAttrByTypeIndex { attr_index: 3 },
             VMCommand::Halt,
         ];
-        let card_types = vec![type1(), type2()];
+        let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
-        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
+        let card_types = vec![type1(), type2()];
+        let card_types = unsafe { CardTypesRom::from_raw_parts(&card_types) };
+
         let mut board = testing_board();
 
         let args = vec![];
-        let mut vm = VM::init_vm(&rom, &mut board, &args, 0, 0);
+        let mut vm = VM::init_vm(instructions, card_types, &mut board, &args, 0, 0);
 
         vm.execute(10).unwrap();
 
@@ -534,13 +548,15 @@ mod tests {
             VMCommand::PushCardTypeAttrByCardIndex { attr_index: 3 },
             VMCommand::Halt,
         ];
-        let card_types = vec![type1(), type2()];
+        let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
-        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
+        let card_types = vec![type1(), type2()];
+        let card_types = unsafe { CardTypesRom::from_raw_parts(&card_types) };
+
         let mut board = testing_board();
 
         let args = vec![];
-        let mut vm = VM::init_vm(&rom, &mut board, &args, 0, 0);
+        let mut vm = VM::init_vm(instructions, card_types, &mut board, &args, 0, 0);
 
         vm.execute(10).unwrap();
 
@@ -563,13 +579,15 @@ mod tests {
             VMCommand::PushCardAttr { attr_index: 3 },
             VMCommand::Halt,
         ];
-        let card_types = vec![type1(), type2()];
+        let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
-        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
+        let card_types = vec![type1(), type2()];
+        let card_types = unsafe { CardTypesRom::from_raw_parts(&card_types) };
+
         let mut board = testing_board();
 
         let args = vec![];
-        let mut vm = VM::init_vm(&rom, &mut board, &args, 0, 0);
+        let mut vm = VM::init_vm(instructions, card_types, &mut board, &args, 0, 0);
 
         vm.execute(10).unwrap();
 
@@ -593,13 +611,15 @@ mod tests {
             VMCommand::PopCardAttr { attr_index: 3 },
             VMCommand::Halt,
         ];
-        let card_types = vec![type1(), type2()];
+        let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
-        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
+        let card_types = vec![type1(), type2()];
+        let card_types = unsafe { CardTypesRom::from_raw_parts(&card_types) };
+
         let mut board = testing_board();
 
         let args = vec![];
-        let mut vm = VM::init_vm(&rom, &mut board, &args, 0, 0);
+        let mut vm = VM::init_vm(instructions, card_types, &mut board, &args, 0, 0);
 
         vm.execute(10).unwrap();
 
@@ -623,13 +643,15 @@ mod tests {
             VMCommand::InstanceCardByTypeIndex,
             VMCommand::Halt,
         ];
-        let card_types = vec![type1(), type2()];
+        let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
-        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
+        let card_types = vec![type1(), type2()];
+        let card_types = unsafe { CardTypesRom::from_raw_parts(&card_types) };
+
         let mut board = initial_board();
 
         let args = vec![];
-        let mut vm = VM::init_vm(&rom, &mut board, &args, 0, 0);
+        let mut vm = VM::init_vm(instructions, card_types, &mut board, &args, 0, 0);
 
         vm.execute(10).unwrap();
 
@@ -655,13 +677,15 @@ mod tests {
             VMCommand::InstanceCardByTypeId,
             VMCommand::Halt,
         ];
-        let card_types = vec![type1(), type2()];
+        let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
-        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
+        let card_types = vec![type1(), type2()];
+        let card_types = unsafe { CardTypesRom::from_raw_parts(&card_types) };
+
         let mut board = initial_board();
 
         let args = vec![];
-        let mut vm = VM::init_vm(&rom, &mut board, &args, 0, 0);
+        let mut vm = VM::init_vm(instructions, card_types, &mut board, &args, 0, 0);
 
         vm.execute(10).unwrap();
 
@@ -693,14 +717,15 @@ mod tests {
             VMCommand::Return,
             //}
         ];
+        let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
         let card_types = vec![type1(), type2()];
+        let card_types = unsafe { CardTypesRom::from_raw_parts(&card_types) };
 
-        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
         let mut board = initial_board();
 
         let args = vec![];
-        let mut vm = VM::init_vm(&rom, &mut board, &args, 0, 0);
+        let mut vm = VM::init_vm(instructions, card_types, &mut board, &args, 0, 0);
 
         vm.execute(10).unwrap();
 
@@ -725,14 +750,15 @@ mod tests {
             VMCommand::RemoveCardByIndex,
             VMCommand::Halt,
         ];
+        let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
         let card_types = vec![type1(), type2()];
+        let card_types = unsafe { CardTypesRom::from_raw_parts(&card_types) };
 
-        let rom = unsafe { Rom::from_raw_parts(instructions, card_types, initial_board()) };
         let mut board = testing_board();
 
         let args = vec![];
-        let mut vm = VM::init_vm(&rom, &mut board, &args, 0, 0);
+        let mut vm = VM::init_vm(instructions, card_types, &mut board, &args, 0, 0);
 
         vm.execute(10).unwrap();
 
