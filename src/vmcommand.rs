@@ -124,9 +124,10 @@ impl Default for VMCommand {
     }
 }
 
-type CommandByteCode = [u8; 5];
+pub type CommandByteCode = [u8; 5];
 
 impl TryFrom<CommandByteCode> for VMCommand {
+    //TODO: implement a dedicated error type
     type Error = &'static str;
     fn try_from(word: CommandByteCode) -> Result<Self, Self::Error> {
         let discriminant = word[0];

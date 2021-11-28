@@ -2,6 +2,7 @@ use crate::board::Board;
 use crate::card::{Card, CardType};
 use crate::vmcommand::VMCommand;
 use serde::{Deserialize, Serialize};
+
 use thiserror::Error;
 
 #[derive(Debug, Eq, PartialEq, Deserialize, Serialize)]
@@ -10,23 +11,6 @@ pub struct Rom {
     pub card_types: Vec<CardType>,
     pub instructions: Vec<VMCommand>,
     initial_board_state: Board,
-}
-
-#[derive(Debug, Eq, PartialEq)]
-pub struct InstructionRom<'a> {
-    instructions: &'a [VMCommand],
-}
-
-impl<'a> InstructionRom<'a> {
-    #[must_use]
-    pub fn fetch_instruction(&self, pc: usize) -> VMCommand {
-        self.instructions[pc]
-    }
-
-    #[must_use]
-    pub unsafe fn from_raw_parts(instructions: &'a [VMCommand]) -> Self {
-        Self { instructions }
-    }
 }
 
 #[derive(Debug, Eq, PartialEq)]
