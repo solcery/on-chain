@@ -1,4 +1,4 @@
-use crate::vmcommand::{VMCommand, CommandByteCode};
+use crate::vmcommand::{CommandByteCode, VMCommand};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct InstructionRom<'a> {

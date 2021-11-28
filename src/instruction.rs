@@ -1,7 +1,7 @@
 use crate::board::Board;
 use crate::error::VMError;
-use crate::rom::{CardTypesRom, Rom};
 use crate::instruction_rom::InstructionRom;
+use crate::rom::{CardTypesRom, Rom};
 use crate::vm::{SingleExecutionResult, VM};
 use crate::word::Word;
 use bincode;

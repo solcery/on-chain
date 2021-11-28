@@ -1,10 +1,10 @@
 //! # The Sorcery Virtual Machine
 
 use crate::board::Board;
+use crate::instruction_rom::InstructionRom;
 use crate::rom::CardTypesRom;
 use crate::vmcommand::VMCommand;
 use crate::word::Word;
-use crate::instruction_rom::InstructionRom;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::convert::TryInto;
