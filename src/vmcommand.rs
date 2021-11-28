@@ -260,131 +260,130 @@ impl TryFrom<CommandByteCode> for VMCommand {
     }
 }
 
-impl TryFrom<VMCommand> for CommandByteCode {
-    type Error = &'static str;
-    fn try_from(instruction: VMCommand) -> Result<Self, Self::Error> {
+impl From<VMCommand> for CommandByteCode {
+    fn from(instruction: VMCommand) -> Self {
         match instruction {
-            VMCommand::Halt => Ok([0, 0, 0, 0, 0]),
-            VMCommand::Add => Ok([1, 0, 0, 0, 0]),
-            VMCommand::Sub => Ok([2, 0, 0, 0, 0]),
-            VMCommand::Div => Ok([3, 0, 0, 0, 0]),
-            VMCommand::Mul => Ok([4, 0, 0, 0, 0]),
-            VMCommand::Rem => Ok([5, 0, 0, 0, 0]),
-            VMCommand::Neg => Ok([6, 0, 0, 0, 0]),
-            VMCommand::Inc => Ok([7, 0, 0, 0, 0]),
-            VMCommand::Dec => Ok([8, 0, 0, 0, 0]),
-            VMCommand::Abs => Ok([9, 0, 0, 0, 0]),
-            VMCommand::Eq => Ok([10, 0, 0, 0, 0]),
-            VMCommand::Gt => Ok([11, 0, 0, 0, 0]),
-            VMCommand::Lt => Ok([12, 0, 0, 0, 0]),
-            VMCommand::And => Ok([13, 0, 0, 0, 0]),
-            VMCommand::Or => Ok([14, 0, 0, 0, 0]),
-            VMCommand::Not => Ok([15, 0, 0, 0, 0]),
+            VMCommand::Halt => [0, 0, 0, 0, 0],
+            VMCommand::Add => [1, 0, 0, 0, 0],
+            VMCommand::Sub => [2, 0, 0, 0, 0],
+            VMCommand::Div => [3, 0, 0, 0, 0],
+            VMCommand::Mul => [4, 0, 0, 0, 0],
+            VMCommand::Rem => [5, 0, 0, 0, 0],
+            VMCommand::Neg => [6, 0, 0, 0, 0],
+            VMCommand::Inc => [7, 0, 0, 0, 0],
+            VMCommand::Dec => [8, 0, 0, 0, 0],
+            VMCommand::Abs => [9, 0, 0, 0, 0],
+            VMCommand::Eq => [10, 0, 0, 0, 0],
+            VMCommand::Gt => [11, 0, 0, 0, 0],
+            VMCommand::Lt => [12, 0, 0, 0, 0],
+            VMCommand::And => [13, 0, 0, 0, 0],
+            VMCommand::Or => [14, 0, 0, 0, 0],
+            VMCommand::Not => [15, 0, 0, 0, 0],
             VMCommand::PushConstant(word) => match word {
                 Word::Numeric(val) => {
                     let val_bytes = val.to_le_bytes();
                     let mut byte_code = [16, 0, 0, 0, 0];
                     byte_code[1..].copy_from_slice(&val_bytes);
-                    Ok(byte_code)
+                    byte_code
                 }
-                Word::Boolean(false) => Ok([17, 0, 0, 0, 0]),
-                Word::Boolean(true) => Ok([17, 1, 0, 0, 0]),
+                Word::Boolean(false) => [17, 0, 0, 0, 0],
+                Word::Boolean(true) => [17, 1, 0, 0, 0],
             },
             VMCommand::PushBoardAttr { index } => {
                 let index_bytes = index.to_le_bytes();
                 let mut byte_code = [18, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&index_bytes);
-                Ok(byte_code)
+                byte_code
             }
             VMCommand::PopBoardAttr { index } => {
                 let index_bytes = index.to_le_bytes();
                 let mut byte_code = [19, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&index_bytes);
-                Ok(byte_code)
+                byte_code
             }
             VMCommand::PushLocal { index } => {
                 let index_bytes = index.to_le_bytes();
                 let mut byte_code = [20, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&index_bytes);
-                Ok(byte_code)
+                byte_code
             }
             VMCommand::PopLocal { index } => {
                 let index_bytes = index.to_le_bytes();
                 let mut byte_code = [21, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&index_bytes);
-                Ok(byte_code)
+                byte_code
             }
             VMCommand::PushArgument { index } => {
                 let index_bytes = index.to_le_bytes();
                 let mut byte_code = [22, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&index_bytes);
-                Ok(byte_code)
+                byte_code
             }
             VMCommand::PopArgument { index } => {
                 let index_bytes = index.to_le_bytes();
                 let mut byte_code = [23, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&index_bytes);
-                Ok(byte_code)
+                byte_code
             }
             VMCommand::Goto(address) => {
                 let address_bytes = address.to_le_bytes();
                 let mut byte_code = [24, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&address_bytes);
-                Ok(byte_code)
+                byte_code
             }
             VMCommand::IfGoto(address) => {
                 let address_bytes = address.to_le_bytes();
                 let mut byte_code = [25, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&address_bytes);
-                Ok(byte_code)
+                byte_code
             }
             VMCommand::Function { n_locals } => {
                 let n_locals_bytes = n_locals.to_le_bytes();
                 let mut byte_code = [26, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&n_locals_bytes);
-                Ok(byte_code)
+                byte_code
             }
             VMCommand::Call { address, n_args } => {
                 let address_bytes = address.to_le_bytes(); // [u8;4]
                 let mut byte_code: [u8; 5] = [27, 0, 0, 0, 0];
                 byte_code[1..4].copy_from_slice(&address_bytes[0..3]);
                 byte_code[4] = n_args as u8;
-                Ok(byte_code)
+                byte_code
             }
-            VMCommand::Return => Ok([28, 0, 0, 0, 0]),
-            VMCommand::ReturnVoid => Ok([29, 0, 0, 0, 0]),
-            VMCommand::PushCardCount => Ok([30, 0, 0, 0, 0]),
-            VMCommand::PushTypeCount => Ok([31, 0, 0, 0, 0]),
-            VMCommand::PushCardType => Ok([32, 0, 0, 0, 0]),
-            VMCommand::PushCardCountWithCardType => Ok([33, 0, 0, 0, 0]),
+            VMCommand::Return => [28, 0, 0, 0, 0],
+            VMCommand::ReturnVoid => [29, 0, 0, 0, 0],
+            VMCommand::PushCardCount => [30, 0, 0, 0, 0],
+            VMCommand::PushTypeCount => [31, 0, 0, 0, 0],
+            VMCommand::PushCardType => [32, 0, 0, 0, 0],
+            VMCommand::PushCardCountWithCardType => [33, 0, 0, 0, 0],
             VMCommand::PushCardTypeAttrByTypeIndex { attr_index } => {
                 let attr_index_bytes = attr_index.to_le_bytes();
                 let mut byte_code = [34, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&attr_index_bytes);
-                Ok(byte_code)
+                byte_code
             }
             VMCommand::PushCardTypeAttrByCardIndex { attr_index } => {
                 let attr_index_bytes = attr_index.to_le_bytes();
                 let mut byte_code = [35, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&attr_index_bytes);
-                Ok(byte_code)
+                byte_code
             }
             VMCommand::PushCardAttr { attr_index } => {
                 let attr_index_bytes = attr_index.to_le_bytes();
                 let mut byte_code = [36, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&attr_index_bytes);
-                Ok(byte_code)
+                byte_code
             }
             VMCommand::PopCardAttr { attr_index } => {
                 let attr_index_bytes = attr_index.to_le_bytes();
                 let mut byte_code = [37, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&attr_index_bytes);
-                Ok(byte_code)
+                byte_code
             }
-            VMCommand::InstanceCardByTypeIndex => Ok([38, 0, 0, 0, 0]),
-            VMCommand::InstanceCardByTypeId => Ok([39, 0, 0, 0, 0]),
-            VMCommand::CallCardAction => Ok([40, 0, 0, 0, 0]),
-            VMCommand::RemoveCardByIndex => Ok([41, 0, 0, 0, 0]),
+            VMCommand::InstanceCardByTypeIndex => [38, 0, 0, 0, 0],
+            VMCommand::InstanceCardByTypeId => [39, 0, 0, 0, 0],
+            VMCommand::CallCardAction => [40, 0, 0, 0, 0],
+            VMCommand::RemoveCardByIndex => [41, 0, 0, 0, 0],
         }
     }
 }
@@ -454,7 +453,7 @@ mod tests {
     #[test_case(VMCommand::CallCardAction)]
     #[test_case(VMCommand::RemoveCardByIndex)]
     fn bytecode_to_instruction_equivalence(instruction: VMCommand) {
-        let bytecode = CommandByteCode::try_from(instruction).unwrap();
+        let bytecode = CommandByteCode::from(instruction);
         let decoded_instruction = VMCommand::try_from(bytecode).unwrap();
         pretty_assertions::assert_eq!(instruction, decoded_instruction);
     }
