@@ -83,7 +83,8 @@ impl VMInstruction {
                     .map_err(|_| ProgramError::InvalidAccountData)?;
 
                 //TODO: change this to actual Instructions and CardTypes accounts
-                let instructions = unsafe { InstructionRom::from_raw_parts(&rom.instructions) };
+                let instructions = InstructionRom::from_vm_commands(&rom.instructions);
+                let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
                 let card_types = unsafe { CardTypesRom::from_raw_parts(&rom.card_types) };
 
                 let mut vm = VM::init_vm(

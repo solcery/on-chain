@@ -435,6 +435,7 @@ mod tests {
             VMCommand::PushCardType,
             VMCommand::Halt,
         ];
+        let instructions = InstructionRom::from_vm_commands(&instructions);
         let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
         let card_types = vec![type1(), type2()];
@@ -457,6 +458,7 @@ mod tests {
             VMCommand::PushCardType,
             VMCommand::Halt,
         ];
+        let instructions = InstructionRom::from_vm_commands(&instructions);
         let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
         let card_types = vec![type1(), type2()];
@@ -487,6 +489,7 @@ mod tests {
             VMCommand::PushCardCountWithCardType,
             VMCommand::Halt,
         ];
+        let instructions = InstructionRom::from_vm_commands(&instructions);
         let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
         let card_types = vec![type1(), type2()];
@@ -518,6 +521,7 @@ mod tests {
             VMCommand::PushCardTypeAttrByTypeIndex { attr_index: 3 },
             VMCommand::Halt,
         ];
+        let instructions = InstructionRom::from_vm_commands(&instructions);
         let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
         let card_types = vec![type1(), type2()];
@@ -549,6 +553,7 @@ mod tests {
             VMCommand::PushCardTypeAttrByCardIndex { attr_index: 3 },
             VMCommand::Halt,
         ];
+        let instructions = InstructionRom::from_vm_commands(&instructions);
         let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
         let card_types = vec![type1(), type2()];
@@ -580,6 +585,7 @@ mod tests {
             VMCommand::PushCardAttr { attr_index: 3 },
             VMCommand::Halt,
         ];
+        let instructions = InstructionRom::from_vm_commands(&instructions);
         let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
         let card_types = vec![type1(), type2()];
@@ -612,6 +618,7 @@ mod tests {
             VMCommand::PopCardAttr { attr_index: 3 },
             VMCommand::Halt,
         ];
+        let instructions = InstructionRom::from_vm_commands(&instructions);
         let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
         let card_types = vec![type1(), type2()];
@@ -644,6 +651,7 @@ mod tests {
             VMCommand::InstanceCardByTypeIndex,
             VMCommand::Halt,
         ];
+        let instructions = InstructionRom::from_vm_commands(&instructions);
         let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
         let card_types = vec![type1(), type2()];
@@ -678,6 +686,7 @@ mod tests {
             VMCommand::InstanceCardByTypeId,
             VMCommand::Halt,
         ];
+        let instructions = InstructionRom::from_vm_commands(&instructions);
         let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
         let card_types = vec![type1(), type2()];
@@ -718,6 +727,7 @@ mod tests {
             VMCommand::Return,
             //}
         ];
+        let instructions = InstructionRom::from_vm_commands(&instructions);
         let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
         let card_types = vec![type1(), type2()];
@@ -751,6 +761,7 @@ mod tests {
             VMCommand::RemoveCardByIndex,
             VMCommand::Halt,
         ];
+        let instructions = InstructionRom::from_vm_commands(&instructions);
         let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
         let card_types = vec![type1(), type2()];
