@@ -1,9 +1,9 @@
 use crate::word::ConversionError;
 use crate::word::Word;
-use serde::{Deserialize, Serialize};
+use borsh::{BorshDeserialize, BorshSerialize};
 use std::convert::TryFrom;
 
-#[derive(Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
 pub struct Memory {
     stack: Vec<Word>,
     lcl: usize,
@@ -325,7 +325,7 @@ impl<'a> Memory {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
 pub enum Error {
     Halt,
     NotEnoughValues,

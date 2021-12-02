@@ -1,7 +1,7 @@
 use crate::word::Word;
-use serde::{Deserialize, Serialize};
+use borsh::{BorshDeserialize, BorshSerialize};
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
 pub struct Card {
     id: u32,
     card_type: u32,
@@ -43,7 +43,7 @@ impl Default for Card {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
 pub struct EntryPoint {
     address: u32,
     n_args: u32,
@@ -75,7 +75,7 @@ impl Default for EntryPoint {
     }
 }
 
-#[derive(Debug, Eq, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
 pub struct CardType {
     id: u32,
     attrs: Vec<Word>,

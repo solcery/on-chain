@@ -5,7 +5,7 @@ use crate::instruction_rom::InstructionRom;
 use crate::rom::CardTypesRom;
 use crate::vmcommand::VMCommand;
 use crate::word::Word;
-use serde::{Deserialize, Serialize};
+use borsh::{BorshDeserialize, BorshSerialize};
 use std::convert::TryFrom;
 use std::convert::TryInto;
 
@@ -23,7 +23,7 @@ pub use enums::SingleExecutionResult;
 mod error;
 pub use error::Error;
 
-#[derive(Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
 pub struct Sealed<T> {
     data: T,
 }
@@ -34,6 +34,7 @@ impl<T> Sealed<T> {
     }
 }
 
+#[derive(Debug)]
 pub struct VM<'a> {
     instructions: InstructionRom<'a>,
     card_types: CardTypesRom<'a>,

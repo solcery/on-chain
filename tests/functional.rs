@@ -1,7 +1,11 @@
+use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{instruction::Instruction, pubkey::Pubkey};
 use solana_program_test::{processor, tokio, ProgramTest};
 use solana_sdk::{
-    account::Account, instruction::AccountMeta, signature::Signer, signer::keypair::Keypair,
+    account::{Account, AccountSharedData},
+    instruction::AccountMeta,
+    signature::Signer,
+    signer::keypair::Keypair,
     transaction::Transaction,
 };
 
@@ -27,16 +31,21 @@ async fn initialize_dummy() {
     let engine_id = engine_keypair.try_pubkey().unwrap();
 
     let rom = generate_testing_rom();
-    let rom_account = Account::new_data_with_space(1_000, &rom, 1024, &engine_id).unwrap();
+    let rom = rom.try_to_vec().unwrap();
+    let mut rom_account = AccountSharedData::new(1_000, 1024, &engine_id);
+    rom_account.set_data(rom);
 
     let board = unsafe { Board::from_raw_parts(vec![], word_vec![], 0) };
+    let mut board = board.try_to_vec().unwrap();
+    board.extend(std::iter::repeat(0).take(24 - board.len()));
     // Actually board should be also owned by engine, however it is impossible to test it's
     // behavior under solana-program-test (because engine_keypair should be the payer)
-    let board_account = Account::new_data_with_space(1_000, &board, 1024, &program_id).unwrap();
+    let mut board_account = AccountSharedData::new(1_000, 1024, &program_id);
+    board_account.set_data(board);
 
     let mut program = ProgramTest::new("solcery_vm", program_id, processor!(process_instruction));
-    program.add_account(rom_id, rom_account);
-    program.add_account(board_id, board_account);
+    program.add_account(rom_id, Account::from(rom_account));
+    program.add_account(board_id, Account::from(board_account));
 
     let (mut banks_client, payer, recent_blockhash) = program.start().await;
 
@@ -48,7 +57,7 @@ async fn initialize_dummy() {
     instruction_bytes.extend_from_slice(&action_index_bytes);
 
     // args vector serialization
-    let arg_bytes = bincode::serialize(&Vec::<Word>::new()).unwrap();
+    let arg_bytes = Vec::<Word>::new().try_to_vec().unwrap();
     instruction_bytes.extend_from_slice(&arg_bytes);
 
     let mut transaction = Transaction::new_with_payer(
@@ -67,7 +76,8 @@ async fn initialize_dummy() {
     transaction.sign(&[&payer], recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
     let new_board_account = banks_client.get_account(board_id).await.unwrap().unwrap();
-    let new_board: Board = new_board_account.deserialize_data().unwrap();
+    let board_data = new_board_account.data;
+    let new_board: Board = BorshDeserialize::deserialize(&mut board_data.as_slice()).unwrap();
 
     // Composing expected result
     let dummy_card = unsafe { Card::from_raw_parts(0, 1, word_vec![]) };
@@ -88,17 +98,23 @@ async fn remove_dummy() {
     let engine_id = engine_keypair.try_pubkey().unwrap();
 
     let rom = generate_testing_rom();
-    let rom_account = Account::new_data_with_space(1_000, &rom, 1024, &engine_id).unwrap();
+    let rom = rom.try_to_vec().unwrap();
+    let mut rom_account = AccountSharedData::new(1_000, 1024, &engine_id);
+    rom_account.set_data(rom);
 
     let dummy_card = unsafe { Card::from_raw_parts(0, 1, word_vec![]) };
     let board = unsafe { Board::from_raw_parts(vec![dummy_card], word_vec![], 1) };
+    let mut board = board.try_to_vec().unwrap();
+    board.extend(std::iter::repeat(0).take(24 - board.len()));
+    board.len();
     // Actually board should be also owned by engine, however it is impossible to test it's
     // behavior under solana-program-test (because engine_keypair should be the payer)
-    let board_account = Account::new_data_with_space(1_000, &board, 1024, &program_id).unwrap();
+    let mut board_account = AccountSharedData::new(1_000, 1024, &program_id);
+    board_account.set_data(board);
 
     let mut program = ProgramTest::new("solcery_vm", program_id, processor!(process_instruction));
-    program.add_account(rom_id, rom_account);
-    program.add_account(board_id, board_account);
+    program.add_account(rom_id, Account::from(rom_account));
+    program.add_account(board_id, Account::from(board_account));
 
     let (mut banks_client, payer, recent_blockhash) = program.start().await;
 
@@ -110,7 +126,7 @@ async fn remove_dummy() {
     instruction_bytes.extend_from_slice(&action_index_bytes);
 
     // args vector serialization
-    let arg_bytes = bincode::serialize(&word_vec![0]).unwrap();
+    let arg_bytes = word_vec![0].try_to_vec().unwrap();
     instruction_bytes.extend_from_slice(&arg_bytes);
 
     let mut transaction = Transaction::new_with_payer(
@@ -129,7 +145,8 @@ async fn remove_dummy() {
     transaction.sign(&[&payer], recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
     let new_board_account = banks_client.get_account(board_id).await.unwrap().unwrap();
-    let new_board: Board = new_board_account.deserialize_data().unwrap();
+    let board_data = new_board_account.data;
+    let new_board: Board = BorshDeserialize::deserialize(&mut board_data.as_slice()).unwrap();
 
     // Composing expected result
     let expected_board = unsafe { Board::from_raw_parts(vec![], word_vec![], 1) };

@@ -1,11 +1,11 @@
 use crate::board::Board;
 use crate::card::{Card, CardType};
 use crate::vmcommand::VMCommand;
-use serde::{Deserialize, Serialize};
+use borsh::{BorshDeserialize, BorshSerialize};
 
 use thiserror::Error;
 
-#[derive(Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
 #[deprecated]
 pub struct Rom {
     pub card_types: Vec<CardType>,
@@ -81,7 +81,7 @@ impl Rom {
     }
 }
 
-#[derive(Error, Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Error, Debug, Clone, Copy, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
 pub enum Error {
     #[error("type index is out of bounds (index is {index}, but there are only {len} types)")]
     TypeIndexOutOfBounds { index: u32, len: u32 },

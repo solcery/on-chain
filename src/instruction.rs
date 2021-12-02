@@ -4,13 +4,12 @@ use crate::instruction_rom::InstructionRom;
 use crate::rom::{CardTypesRom, Rom};
 use crate::vm::{SingleExecutionResult, VM};
 use crate::word::Word;
-use bincode;
+use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
     program_error::ProgramError,
 };
-use std::convert::TryInto;
 
 // It is a temporary solution. Later we'll support running action in multiple executions
 const MAX_NUM_OF_VM_INSTRUCTION: usize = 1_000;
@@ -30,19 +29,18 @@ pub enum VMInstruction {
 
 impl VMInstruction {
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
-        let (tag, rest) = input
-            .split_first()
-            .ok_or(ProgramError::InvalidInstructionData)?;
+        let mut data = input;
+        let tag: u8 = BorshDeserialize::deserialize(&mut data).map_err(ProgramError::from)?;
 
         // TODO: More descriptive error variants
-        if rest.len() >= 8 {
-            if *tag == 0 {
-                let (cardtype_index_bytes, rest) = rest.split_at(4);
-                let (action_index_bytes, rest) = rest.split_at(4);
+        if data.len() >= 8 {
+            if tag == 0 {
+                let cardtype_index: u32 =
+                    BorshDeserialize::deserialize(&mut data).map_err(ProgramError::from)?;
+                let action_index: u32 =
+                    BorshDeserialize::deserialize(&mut data).map_err(ProgramError::from)?;
                 let args: Vec<Word> =
-                    bincode::deserialize(rest).map_err(|_| ProgramError::InvalidInstructionData)?;
-                let action_index = u32::from_le_bytes(action_index_bytes.try_into().unwrap());
-                let cardtype_index = u32::from_le_bytes(cardtype_index_bytes.try_into().unwrap());
+                    BorshDeserialize::deserialize(&mut data).map_err(ProgramError::from)?;
 
                 Ok(Self::ProcessAction {
                     cardtype_index,
@@ -71,16 +69,18 @@ impl VMInstruction {
                 }
 
                 let rom_account = next_account_info(account_info_iter)?;
-                let rom: Rom = rom_account
-                    .deserialize_data()
-                    .map_err(|_| ProgramError::InvalidAccountData)?;
+                let rom_data = rom_account.data.borrow();
+                let rom: Rom = BorshDeserialize::deserialize(&mut rom_data.as_ref())
+                    .map_err(ProgramError::from)?;
 
                 let board_account = next_account_info(account_info_iter)?;
+                let account_len = dbg!(board_account.data_len());
                 //Actually, here we should first transfer ownership of the board account to our
                 //program, so  we can modify it.
-                let mut board: Board = board_account
-                    .deserialize_data()
-                    .map_err(|_| ProgramError::InvalidAccountData)?;
+                let board_data = board_account.data.borrow();
+                let mut board: Board = BorshDeserialize::deserialize(&mut board_data.as_ref())
+                    .map_err(ProgramError::from)?;
+                drop(board_data);
 
                 //TODO: change this to actual Instructions and CardTypes accounts
                 let instructions = InstructionRom::from_vm_commands(&rom.instructions);
@@ -102,10 +102,18 @@ impl VMInstruction {
                         // As an optimization, we can use accounts, that store only the necessary
                         // amount of information. If this amount is exceeded, we should call
                         // SystemProgram::Allocate instruction, to change the size of the account.
-                        board_account
-                            .serialize_data(&board)
-                            .map_err(|_| ProgramError::AccountDataTooSmall)?;
-                        Ok(())
+                        let mut board_data = board_account.data.borrow_mut();
+                        let mut serialized = board.try_to_vec().map_err(ProgramError::from)?;
+
+                        if account_len >= serialized.len() {
+                            serialized
+                                .extend(std::iter::repeat(0).take(account_len - serialized.len()));
+                            board_data.copy_from_slice(&serialized);
+                            drop(board_data);
+                            Ok(())
+                        } else {
+                            unimplemented!();
+                        }
                     }
                     Ok(SingleExecutionResult::Unfinished) => {
                         Err(ProgramError::from(VMError::ComputationNotFinished))

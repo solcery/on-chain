@@ -1,7 +1,7 @@
 use super::memory::Error as InternalError;
-use serde::{Deserialize, Serialize};
+use borsh::{BorshDeserialize, BorshSerialize};
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
 pub struct Error {
     pub instruction: u32,
     pub error: InternalError,

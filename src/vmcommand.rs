@@ -1,9 +1,9 @@
 use crate::word::Word;
-use serde::{Deserialize, Serialize};
+use borsh::{BorshDeserialize, BorshSerialize};
 use std::convert::TryFrom;
 use std::convert::TryInto;
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
 pub enum VMCommand {
     /// Halts the virtual machine.
     /// This is the only way to stop the VM.

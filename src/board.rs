@@ -1,8 +1,10 @@
 use crate::card::Card;
 use crate::word::Word;
-use serde::{Deserialize, Serialize};
+use borsh::{BorshDeserialize, BorshSerialize};
 
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+pub const BOARD_ACCOUNT_SIZE: usize = 1024;
+
+#[derive(Debug, Clone, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
 pub struct Board {
     pub cards: Vec<Card>,
     pub attrs: Vec<Word>,
