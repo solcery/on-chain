@@ -68,13 +68,16 @@ impl VMInstruction {
                     return Err(ProgramError::MissingRequiredSignature);
                 }
 
+                // ROM deserialization took 2016 instructions
                 let rom_account = next_account_info(account_info_iter)?;
                 let rom_data = rom_account.data.borrow();
                 let rom: Rom = BorshDeserialize::deserialize(&mut rom_data.as_ref())
                     .map_err(ProgramError::from)?;
 
+                // Board deserialization takes 645 instructions
                 let board_account = next_account_info(account_info_iter)?;
-                let account_len = dbg!(board_account.data_len());
+                let account_len = board_account.data_len(); // We need this to later reconstruct account size
+
                 //Actually, here we should first transfer ownership of the board account to our
                 //program, so  we can modify it.
                 let board_data = board_account.data.borrow();
@@ -82,6 +85,7 @@ impl VMInstruction {
                     .map_err(ProgramError::from)?;
                 drop(board_data);
 
+                // Instruction conversion + VM initialization takes 1446 instructions
                 //TODO: change this to actual Instructions and CardTypes accounts
                 let instructions = InstructionRom::from_vm_commands(&rom.instructions);
                 let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
@@ -96,6 +100,8 @@ impl VMInstruction {
                     *action_index,
                 );
 
+                //VM execution takes 1868 instructions
+
                 match vm.execute(MAX_NUM_OF_VM_INSTRUCTION) {
                     Ok(SingleExecutionResult::Finished) => {
                         drop(vm);
@@ -106,10 +112,11 @@ impl VMInstruction {
                         let mut serialized = board.try_to_vec().map_err(ProgramError::from)?;
 
                         if account_len >= serialized.len() {
+                            // Accounts should have fixed size, thus here we extend the serialized
+                            // data to the previous size
                             serialized
                                 .extend(std::iter::repeat(0).take(account_len - serialized.len()));
                             board_data.copy_from_slice(&serialized);
-                            drop(board_data);
                             Ok(())
                         } else {
                             unimplemented!();
