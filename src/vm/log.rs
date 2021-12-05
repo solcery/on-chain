@@ -23,7 +23,7 @@ pub enum Event {
         cargtype_index: u32,
     },
     RemoveCard {
-        card_index: u32,
+        card_id: u32,
     },
     CardActionStarted {
         cardtype_index: u32,

@@ -160,7 +160,7 @@ fn generate_testing_rom() -> Rom {
         // EntryPoint {address: 6, n_args: 1}
         VMCommand::Function { n_locals: 0 }, // 6
         // Pushes index of the dummy (argument_0) to the stack
-        VMCommand::PushArgument { index: 0 }, // 7
+        VMCommand::LoadArgument { index: 0 }, // 7
         VMCommand::RemoveCardByIndex,         // 8
         VMCommand::ReturnVoid,                // 9
     ];

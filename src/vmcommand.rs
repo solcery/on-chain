@@ -46,22 +46,22 @@ pub enum VMCommand {
     // Data transfer
     ///Pushes external value on the stack
     PushConstant(Word),
-    PushBoardAttr {
+    LoadBoardAttr {
         index: u32,
     },
-    PopBoardAttr {
+    StoreBoardAttr {
         index: u32,
     },
-    PushLocal {
+    LoadLocal {
         index: u32,
     },
-    PopLocal {
+    StoreLocal {
         index: u32,
     },
-    PushArgument {
+    LoadArgument {
         index: u32,
     },
-    PopArgument {
+    StoreArgument {
         index: u32,
     },
 
@@ -90,22 +90,22 @@ pub enum VMCommand {
     PushCardCountWithCardType,
     /// Pushes `attr_index`-th attribute of the [CardType](crate::card::CardType), those index
     /// among [CardTypes](crate::card::CardType) is on the top of the stack
-    PushCardTypeAttrByTypeIndex {
+    LoadCardTypeAttrByTypeIndex {
         attr_index: u32,
     },
     /// Pushes `attr_index`-th attribute of the [CardType](crate::card::CardType) of the card,
     /// those index is on the top of the stack
-    PushCardTypeAttrByCardIndex {
+    LoadCardTypeAttrByCardIndex {
         attr_index: u32,
     },
     /// Pushes `attr_index`-th attribute of the [Card](crate::card::Card),
     /// those index is on the top of the stack
-    PushCardAttr {
+    LoadCardAttr {
         attr_index: u32,
     },
     /// Pops `attr_index`-th attribute of the [Card](crate::card::Card),
     /// those index is on the top of the stack
-    PopCardAttr {
+    StoreCardAttr {
         attr_index: u32,
     },
 
@@ -116,6 +116,7 @@ pub enum VMCommand {
     /// CardType index and action index should be placed on the stack
     CallCardAction,
     RemoveCardByIndex,
+    RemoveCardById,
 }
 
 impl Default for VMCommand {
@@ -161,40 +162,40 @@ impl TryFrom<CommandByteCode> for VMCommand {
                 }
             }
             18 => match word[1..].try_into() {
-                Ok(val) => Ok(Self::PushBoardAttr {
+                Ok(val) => Ok(Self::LoadBoardAttr {
                     index: u32::from_le_bytes(val),
                 }),
-                Err(_) => Err("PushBoardAttr argument corrupted."),
+                Err(_) => Err("LoadBoardAttr argument corrupted."),
             },
             19 => match word[1..].try_into() {
-                Ok(val) => Ok(Self::PopBoardAttr {
+                Ok(val) => Ok(Self::StoreBoardAttr {
                     index: u32::from_le_bytes(val),
                 }),
-                Err(_) => Err("PopBoardAttr argument corrupted."),
+                Err(_) => Err("StoreBoardAttr argument corrupted."),
             },
             20 => match word[1..].try_into() {
-                Ok(val) => Ok(Self::PushLocal {
+                Ok(val) => Ok(Self::LoadLocal {
                     index: u32::from_le_bytes(val),
                 }),
-                Err(_) => Err("PushLocal argument corrupted."),
+                Err(_) => Err("LoadLocal argument corrupted."),
             },
             21 => match word[1..].try_into() {
-                Ok(val) => Ok(Self::PopLocal {
+                Ok(val) => Ok(Self::StoreLocal {
                     index: u32::from_le_bytes(val),
                 }),
-                Err(_) => Err("PopLocal argument corrupted."),
+                Err(_) => Err("StoreLocal argument corrupted."),
             },
             22 => match word[1..].try_into() {
-                Ok(val) => Ok(Self::PushArgument {
+                Ok(val) => Ok(Self::LoadArgument {
                     index: u32::from_le_bytes(val),
                 }),
-                Err(_) => Err("PushArgument argument corrupted."),
+                Err(_) => Err("LoadArgument argument corrupted."),
             },
             23 => match word[1..].try_into() {
-                Ok(val) => Ok(Self::PopArgument {
+                Ok(val) => Ok(Self::StoreArgument {
                     index: u32::from_le_bytes(val),
                 }),
-                Err(_) => Err("PopArgument argument corrupted."),
+                Err(_) => Err("StoreArgument argument corrupted."),
             },
             24 => match word[1..].try_into() {
                 Ok(val) => Ok(Self::Goto(u32::from_le_bytes(val))),
@@ -229,33 +230,34 @@ impl TryFrom<CommandByteCode> for VMCommand {
             32 => Ok(Self::PushCardType),
             33 => Ok(Self::PushCardCountWithCardType),
             34 => match word[1..].try_into() {
-                Ok(val) => Ok(Self::PushCardTypeAttrByTypeIndex {
+                Ok(val) => Ok(Self::LoadCardTypeAttrByTypeIndex {
                     attr_index: u32::from_le_bytes(val),
                 }),
-                Err(_) => Err("PushCardTypeAttrByTypeIndex argument corrupted."),
+                Err(_) => Err("LoadCardTypeAttrByTypeIndex argument corrupted."),
             },
             35 => match word[1..].try_into() {
-                Ok(val) => Ok(Self::PushCardTypeAttrByCardIndex {
+                Ok(val) => Ok(Self::LoadCardTypeAttrByCardIndex {
                     attr_index: u32::from_le_bytes(val),
                 }),
-                Err(_) => Err("PushCardTypeAttrByCardIndex argument corrupted."),
+                Err(_) => Err("LoadCardTypeAttrByCardIndex argument corrupted."),
             },
             36 => match word[1..].try_into() {
-                Ok(val) => Ok(Self::PushCardAttr {
+                Ok(val) => Ok(Self::LoadCardAttr {
                     attr_index: u32::from_le_bytes(val),
                 }),
-                Err(_) => Err("PushCardAttr argument corrupted."),
+                Err(_) => Err("LoadCardAttr argument corrupted."),
             },
             37 => match word[1..].try_into() {
-                Ok(val) => Ok(Self::PopCardAttr {
+                Ok(val) => Ok(Self::StoreCardAttr {
                     attr_index: u32::from_le_bytes(val),
                 }),
-                Err(_) => Err("PopCardAttr argument corrupted."),
+                Err(_) => Err("StoreCardAttr argument corrupted."),
             },
             38 => Ok(Self::InstanceCardByTypeIndex),
             39 => Ok(Self::InstanceCardByTypeId),
             40 => Ok(Self::CallCardAction),
             41 => Ok(Self::RemoveCardByIndex),
+            42 => Ok(Self::RemoveCardById),
             _ => Err("Illegal instruction"),
         }
     }
@@ -290,37 +292,37 @@ impl From<VMCommand> for CommandByteCode {
                 Word::Boolean(false) => [17, 0, 0, 0, 0],
                 Word::Boolean(true) => [17, 1, 0, 0, 0],
             },
-            VMCommand::PushBoardAttr { index } => {
+            VMCommand::LoadBoardAttr { index } => {
                 let index_bytes = index.to_le_bytes();
                 let mut byte_code = [18, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&index_bytes);
                 byte_code
             }
-            VMCommand::PopBoardAttr { index } => {
+            VMCommand::StoreBoardAttr { index } => {
                 let index_bytes = index.to_le_bytes();
                 let mut byte_code = [19, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&index_bytes);
                 byte_code
             }
-            VMCommand::PushLocal { index } => {
+            VMCommand::LoadLocal { index } => {
                 let index_bytes = index.to_le_bytes();
                 let mut byte_code = [20, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&index_bytes);
                 byte_code
             }
-            VMCommand::PopLocal { index } => {
+            VMCommand::StoreLocal { index } => {
                 let index_bytes = index.to_le_bytes();
                 let mut byte_code = [21, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&index_bytes);
                 byte_code
             }
-            VMCommand::PushArgument { index } => {
+            VMCommand::LoadArgument { index } => {
                 let index_bytes = index.to_le_bytes();
                 let mut byte_code = [22, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&index_bytes);
                 byte_code
             }
-            VMCommand::PopArgument { index } => {
+            VMCommand::StoreArgument { index } => {
                 let index_bytes = index.to_le_bytes();
                 let mut byte_code = [23, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&index_bytes);
@@ -357,25 +359,25 @@ impl From<VMCommand> for CommandByteCode {
             VMCommand::PushTypeCount => [31, 0, 0, 0, 0],
             VMCommand::PushCardType => [32, 0, 0, 0, 0],
             VMCommand::PushCardCountWithCardType => [33, 0, 0, 0, 0],
-            VMCommand::PushCardTypeAttrByTypeIndex { attr_index } => {
+            VMCommand::LoadCardTypeAttrByTypeIndex { attr_index } => {
                 let attr_index_bytes = attr_index.to_le_bytes();
                 let mut byte_code = [34, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&attr_index_bytes);
                 byte_code
             }
-            VMCommand::PushCardTypeAttrByCardIndex { attr_index } => {
+            VMCommand::LoadCardTypeAttrByCardIndex { attr_index } => {
                 let attr_index_bytes = attr_index.to_le_bytes();
                 let mut byte_code = [35, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&attr_index_bytes);
                 byte_code
             }
-            VMCommand::PushCardAttr { attr_index } => {
+            VMCommand::LoadCardAttr { attr_index } => {
                 let attr_index_bytes = attr_index.to_le_bytes();
                 let mut byte_code = [36, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&attr_index_bytes);
                 byte_code
             }
-            VMCommand::PopCardAttr { attr_index } => {
+            VMCommand::StoreCardAttr { attr_index } => {
                 let attr_index_bytes = attr_index.to_le_bytes();
                 let mut byte_code = [37, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&attr_index_bytes);
@@ -385,6 +387,7 @@ impl From<VMCommand> for CommandByteCode {
             VMCommand::InstanceCardByTypeId => [39, 0, 0, 0, 0],
             VMCommand::CallCardAction => [40, 0, 0, 0, 0],
             VMCommand::RemoveCardByIndex => [41, 0, 0, 0, 0],
+            VMCommand::RemoveCardById => [42, 0, 0, 0, 0],
         }
     }
 }
@@ -415,18 +418,18 @@ mod tests {
     #[test_case(VMCommand::PushConstant(Word::Numeric(0)))]
     #[test_case(VMCommand::PushConstant(Word::Numeric(123)))]
     #[test_case(VMCommand::PushConstant(Word::Numeric(-124)))]
-    #[test_case(VMCommand::PushBoardAttr{index: 123})]
-    #[test_case(VMCommand::PushBoardAttr{index: 0})]
-    #[test_case(VMCommand::PopBoardAttr{index: 123})]
-    #[test_case(VMCommand::PopBoardAttr{index: 0})]
-    #[test_case(VMCommand::PushLocal{index: 123})]
-    #[test_case(VMCommand::PushLocal{index: 0})]
-    #[test_case(VMCommand::PopLocal{index: 123})]
-    #[test_case(VMCommand::PopLocal{index: 0})]
-    #[test_case(VMCommand::PushArgument{index: 123})]
-    #[test_case(VMCommand::PushArgument{index: 0})]
-    #[test_case(VMCommand::PopArgument{index: 123})]
-    #[test_case(VMCommand::PopArgument{index: 0})]
+    #[test_case(VMCommand::LoadBoardAttr{index: 123})]
+    #[test_case(VMCommand::LoadBoardAttr{index: 0})]
+    #[test_case(VMCommand::StoreBoardAttr{index: 123})]
+    #[test_case(VMCommand::StoreBoardAttr{index: 0})]
+    #[test_case(VMCommand::LoadLocal{index: 123})]
+    #[test_case(VMCommand::LoadLocal{index: 0})]
+    #[test_case(VMCommand::StoreLocal{index: 123})]
+    #[test_case(VMCommand::StoreLocal{index: 0})]
+    #[test_case(VMCommand::LoadArgument{index: 123})]
+    #[test_case(VMCommand::LoadArgument{index: 0})]
+    #[test_case(VMCommand::StoreArgument{index: 123})]
+    #[test_case(VMCommand::StoreArgument{index: 0})]
     #[test_case(VMCommand::Goto(0))]
     #[test_case(VMCommand::Goto(123))]
     #[test_case(VMCommand::IfGoto(0))]
@@ -441,18 +444,19 @@ mod tests {
     #[test_case(VMCommand::PushTypeCount)]
     #[test_case(VMCommand::PushCardCountWithCardType)]
     #[test_case(VMCommand::PushCardType)]
-    #[test_case(VMCommand::PushCardTypeAttrByTypeIndex { attr_index: 0 })]
-    #[test_case(VMCommand::PushCardTypeAttrByTypeIndex { attr_index: 123 })]
-    #[test_case(VMCommand::PushCardTypeAttrByCardIndex { attr_index: 0 })]
-    #[test_case(VMCommand::PushCardTypeAttrByCardIndex { attr_index: 123 })]
-    #[test_case(VMCommand::PushCardAttr { attr_index: 0 })]
-    #[test_case(VMCommand::PushCardAttr { attr_index: 123 })]
-    #[test_case(VMCommand::PopCardAttr { attr_index: 0 })]
-    #[test_case(VMCommand::PopCardAttr { attr_index: 123 })]
+    #[test_case(VMCommand::LoadCardTypeAttrByTypeIndex { attr_index: 0 })]
+    #[test_case(VMCommand::LoadCardTypeAttrByTypeIndex { attr_index: 123 })]
+    #[test_case(VMCommand::LoadCardTypeAttrByCardIndex { attr_index: 0 })]
+    #[test_case(VMCommand::LoadCardTypeAttrByCardIndex { attr_index: 123 })]
+    #[test_case(VMCommand::LoadCardAttr { attr_index: 0 })]
+    #[test_case(VMCommand::LoadCardAttr { attr_index: 123 })]
+    #[test_case(VMCommand::StoreCardAttr { attr_index: 0 })]
+    #[test_case(VMCommand::StoreCardAttr { attr_index: 123 })]
     #[test_case(VMCommand::InstanceCardByTypeIndex)]
     #[test_case(VMCommand::InstanceCardByTypeId)]
     #[test_case(VMCommand::CallCardAction)]
     #[test_case(VMCommand::RemoveCardByIndex)]
+    #[test_case(VMCommand::RemoveCardById)]
     fn bytecode_to_instruction_equivalence(instruction: VMCommand) {
         let bytecode = CommandByteCode::from(instruction);
         let decoded_instruction = VMCommand::try_from(bytecode).unwrap();

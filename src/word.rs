@@ -40,7 +40,7 @@ impl From<bool> for Word {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
 pub enum ConversionError {
     TypeMismatch,
-    NegativeAddress,
+    NegativeUnsignedValue,
 }
 
 impl TryFrom<Word> for i32 {
@@ -64,13 +64,26 @@ impl TryFrom<Word> for bool {
         }
     }
 }
+
 impl TryFrom<Word> for usize {
     type Error = ConversionError;
 
     fn try_from(value: Word) -> Result<Self, Self::Error> {
         match value {
             Word::Numeric(val) if val >= 0 => Ok(val as Self),
-            Word::Numeric(_) => Err(Self::Error::NegativeAddress),
+            Word::Numeric(_) => Err(Self::Error::NegativeUnsignedValue),
+            Word::Boolean(_) => Err(Self::Error::TypeMismatch),
+        }
+    }
+}
+
+impl TryFrom<Word> for u32 {
+    type Error = ConversionError;
+
+    fn try_from(value: Word) -> Result<Self, Self::Error> {
+        match value {
+            Word::Numeric(val) if val >= 0 => Ok(val as Self),
+            Word::Numeric(_) => Err(Self::Error::NegativeUnsignedValue),
             Word::Boolean(_) => Err(Self::Error::TypeMismatch),
         }
     }

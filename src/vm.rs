@@ -130,11 +130,11 @@ impl<'a> VM<'a> {
             VMCommand::And => self.memory.and(),
             VMCommand::Not => self.memory.not(),
             VMCommand::PushConstant(word) => self.memory.push_external(word),
-            VMCommand::PushBoardAttr { index } => {
+            VMCommand::LoadBoardAttr { index } => {
                 let attr = self.board.attrs[index as usize];
                 self.memory.push_external(attr)
             }
-            VMCommand::PopBoardAttr { index } => {
+            VMCommand::StoreBoardAttr { index } => {
                 let value = self.memory.pop_external()?;
                 self.log.push(Event::BoardChange {
                     attr_index: index,
@@ -144,10 +144,10 @@ impl<'a> VM<'a> {
                 self.board.attrs[index as usize] = value;
                 Ok(())
             }
-            VMCommand::PushLocal { index } => self.memory.push_local(index as usize),
-            VMCommand::PopLocal { index } => self.memory.pop_local(index as usize),
-            VMCommand::PushArgument { index } => self.memory.push_argument(index as usize),
-            VMCommand::PopArgument { index } => self.memory.pop_argument(index as usize),
+            VMCommand::LoadLocal { index } => self.memory.push_local(index as usize),
+            VMCommand::StoreLocal { index } => self.memory.pop_local(index as usize),
+            VMCommand::LoadArgument { index } => self.memory.push_argument(index as usize),
+            VMCommand::StoreArgument { index } => self.memory.pop_argument(index as usize),
             VMCommand::Goto(instruction) => self.memory.jmp(instruction as usize),
             VMCommand::IfGoto(instruction) => self.memory.ifjmp(instruction as usize),
             VMCommand::Call { address, n_args } => {
@@ -166,18 +166,19 @@ impl<'a> VM<'a> {
             }
             VMCommand::PushCardCountWithCardType => self.push_card_count_with_type(),
             VMCommand::PushCardType => self.push_card_type(),
-            VMCommand::PushCardTypeAttrByTypeIndex { attr_index } => {
+            VMCommand::LoadCardTypeAttrByTypeIndex { attr_index } => {
                 self.push_card_type_attr_by_type_index(attr_index)
             }
-            VMCommand::PushCardTypeAttrByCardIndex { attr_index } => {
+            VMCommand::LoadCardTypeAttrByCardIndex { attr_index } => {
                 self.push_card_type_attr_by_card_index(attr_index)
             }
-            VMCommand::PushCardAttr { attr_index } => self.push_card_attr(attr_index),
-            VMCommand::PopCardAttr { attr_index } => self.pop_card_attr(attr_index),
+            VMCommand::LoadCardAttr { attr_index } => self.push_card_attr(attr_index),
+            VMCommand::StoreCardAttr { attr_index } => self.pop_card_attr(attr_index),
             VMCommand::InstanceCardByTypeIndex => self.instantiate_card_by_type_index(),
             VMCommand::InstanceCardByTypeId => self.instantiate_card_by_type_id(),
             VMCommand::CallCardAction => self.call_card_action(),
             VMCommand::RemoveCardByIndex => self.remove_card_by_index(),
+            VMCommand::RemoveCardById => self.remove_card_by_id(),
             VMCommand::Halt => Err(InternalError::Halt),
         }
     }
@@ -352,11 +353,32 @@ impl<'a> VM<'a> {
         let card_index =
             usize::try_from(card_index_word).map_err(|_| InternalError::TypeMismatch)?;
 
-        self.board.cards.remove(card_index);
+        let card = self.board.cards.remove(card_index);
 
         self.log.push(Event::RemoveCard {
-            card_index: card_index as u32,
+            card_id: card.id() as u32,
         });
+        Ok(())
+    }
+
+    fn remove_card_by_id(&mut self) -> Result<(), InternalError> {
+        let card_id = self.memory.pop_external()?;
+        let card_id = u32::try_from(card_id).map_err(|_| InternalError::TypeMismatch)?;
+
+        let board = &mut self.board;
+        let log = &mut self.log;
+
+        board.cards.retain(|card| {
+            if card.id() == card_id {
+                log.push(Event::RemoveCard {
+                    card_id: card_id as u32,
+                });
+                true
+            } else {
+                false
+            }
+        });
+
         Ok(())
     }
 
@@ -519,7 +541,7 @@ mod tests {
     fn push_type_attr_by_type_index() {
         let instructions = vec![
             VMCommand::PushConstant(Word::Numeric(1)),
-            VMCommand::PushCardTypeAttrByTypeIndex { attr_index: 3 },
+            VMCommand::LoadCardTypeAttrByTypeIndex { attr_index: 3 },
             VMCommand::Halt,
         ];
         let instructions = InstructionRom::from_vm_commands(&instructions);
@@ -551,7 +573,7 @@ mod tests {
     fn push_type_attr_by_card_index() {
         let instructions = vec![
             VMCommand::PushConstant(Word::Numeric(1)),
-            VMCommand::PushCardTypeAttrByCardIndex { attr_index: 3 },
+            VMCommand::LoadCardTypeAttrByCardIndex { attr_index: 3 },
             VMCommand::Halt,
         ];
         let instructions = InstructionRom::from_vm_commands(&instructions);
@@ -583,7 +605,7 @@ mod tests {
     fn push_attr() {
         let instructions = vec![
             VMCommand::PushConstant(Word::Numeric(1)),
-            VMCommand::PushCardAttr { attr_index: 3 },
+            VMCommand::LoadCardAttr { attr_index: 3 },
             VMCommand::Halt,
         ];
         let instructions = InstructionRom::from_vm_commands(&instructions);
@@ -616,7 +638,7 @@ mod tests {
         let instructions = vec![
             VMCommand::PushConstant(Word::Numeric(42)),
             VMCommand::PushConstant(Word::Numeric(1)),
-            VMCommand::PopCardAttr { attr_index: 3 },
+            VMCommand::StoreCardAttr { attr_index: 3 },
             VMCommand::Halt,
         ];
         let instructions = InstructionRom::from_vm_commands(&instructions);

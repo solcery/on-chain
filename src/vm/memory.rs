@@ -330,7 +330,7 @@ pub enum Error {
     Halt,
     NotEnoughValues,
     TypeMismatch,
-    NegativeAddress,
+    NegativeUnsignedValue,
     LocalVarOutOfBounds,
     ArgumentOutOfBounds,
     NoSuchType,
@@ -340,7 +340,7 @@ impl From<ConversionError> for Error {
     fn from(err: ConversionError) -> Self {
         match err {
             ConversionError::TypeMismatch => Self::TypeMismatch,
-            ConversionError::NegativeAddress => Self::NegativeAddress,
+            ConversionError::NegativeUnsignedValue => Self::NegativeUnsignedValue,
         }
     }
 }
