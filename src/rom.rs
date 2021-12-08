@@ -1,17 +1,9 @@
-use crate::board::Board;
+
 use crate::card::{Card, CardType};
-use crate::vmcommand::VMCommand;
+
 use borsh::{BorshDeserialize, BorshSerialize};
 
 use thiserror::Error;
-
-#[derive(Debug, Clone, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
-#[deprecated]
-pub struct Rom {
-    pub card_types: Vec<CardType>,
-    pub instructions: Vec<VMCommand>,
-    initial_board_state: Board,
-}
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct CardTypesRom<'a> {
@@ -63,21 +55,6 @@ impl<'a> CardTypesRom<'a> {
     #[must_use]
     pub unsafe fn from_raw_parts(card_types: &'a [CardType]) -> Self {
         Self { card_types }
-    }
-}
-
-impl Rom {
-    #[must_use]
-    pub unsafe fn from_raw_parts(
-        instructions: Vec<VMCommand>,
-        card_types: Vec<CardType>,
-        initial_board_state: Board,
-    ) -> Self {
-        Self {
-            card_types,
-            instructions,
-            initial_board_state,
-        }
     }
 }
 

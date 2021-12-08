@@ -1,7 +1,8 @@
 use crate::board::Board;
+use crate::card::CardType;
 use crate::error::VMError;
 use crate::instruction_rom::InstructionRom;
-use crate::rom::{CardTypesRom, Rom};
+use crate::rom::{CardTypesRom};
 use crate::vm::{SingleExecutionResult, VM};
 use crate::word::Word;
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -10,6 +11,7 @@ use solana_program::{
     entrypoint::ProgramResult,
     program_error::ProgramError,
 };
+use std::convert::TryFrom;
 
 // It is a temporary solution. Later we'll support running action in multiple executions
 const MAX_NUM_OF_VM_INSTRUCTION: usize = 1_000;
@@ -18,8 +20,9 @@ pub enum VMInstruction {
     /// Accounts expected:
     ///
     /// 0. `[signer]` The account of the person performing the move
-    /// 1. `[]` ROM account
-    /// 2. `[writable]` Board account
+    /// 1. `[]` CardTypes account
+    /// 2. `[]` Instruction ROM account
+    /// 3. `[writable]` Board account
     ProcessAction {
         cardtype_index: u32,
         action_index: u32,
@@ -68,13 +71,19 @@ impl VMInstruction {
                     return Err(ProgramError::MissingRequiredSignature);
                 }
 
-                // ROM deserialization took 2016 instructions
-                let rom_account = next_account_info(account_info_iter)?;
-                let rom_data = rom_account.data.borrow();
-                let rom: Rom = BorshDeserialize::deserialize(&mut rom_data.as_ref())
-                    .map_err(ProgramError::from)?;
+                let card_types_account = next_account_info(account_info_iter)?;
+                let card_types_data = card_types_account.data.borrow();
+                let card_types: Vec<CardType> =
+                    BorshDeserialize::deserialize(&mut card_types_data.as_ref())
+                        .map_err(ProgramError::from)?;
+                // TODO: Refactor this!
+                let card_types = unsafe { CardTypesRom::from_raw_parts(&card_types) };
 
-                // Board deserialization takes 645 instructions
+                let instructions_account = next_account_info(account_info_iter)?;
+                let instructions_data = instructions_account.data.borrow();
+                let instructions = InstructionRom::try_from(instructions_data.as_ref()
+                    .map_err(|_| ProgramError::AccountDataTooSmall)?);
+
                 let board_account = next_account_info(account_info_iter)?;
                 let account_len = board_account.data_len(); // We need this to later reconstruct account size
 
@@ -85,12 +94,6 @@ impl VMInstruction {
                     .map_err(ProgramError::from)?;
                 drop(board_data);
 
-                // Instruction conversion + VM initialization takes 1446 instructions
-                //TODO: change this to actual Instructions and CardTypes accounts
-                let instructions = InstructionRom::from_vm_commands(&rom.instructions);
-                let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
-                let card_types = unsafe { CardTypesRom::from_raw_parts(&rom.card_types) };
-
                 let mut vm = VM::init_vm(
                     instructions,
                     card_types,
@@ -99,8 +102,6 @@ impl VMInstruction {
                     *cardtype_index,
                     *action_index,
                 );
-
-                //VM execution takes 1868 instructions
 
                 match vm.execute(MAX_NUM_OF_VM_INSTRUCTION) {
                     Ok(SingleExecutionResult::Finished) => {
