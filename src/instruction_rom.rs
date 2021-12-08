@@ -1,11 +1,23 @@
 use crate::vmcommand::{CommandByteCode, VMCommand};
 use bytemuck::cast_slice;
 use std::convert::TryFrom;
+use std::fmt;
 use std::mem;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Eq, PartialEq)]
 pub struct InstructionRom<'a> {
     instructions: &'a [CommandByteCode],
+}
+impl<'a> fmt::Debug for InstructionRom<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_list()
+            .entries(
+                self.instructions
+                    .iter()
+                    .map(|bytecode| VMCommand::try_from(*bytecode).map_err(|_| bytecode)),
+            )
+            .finish()
+    }
 }
 
 impl<'a> TryFrom<&'a [u8]> for InstructionRom<'a> {

@@ -2,7 +2,7 @@ use crate::board::Board;
 use crate::card::CardType;
 use crate::error::VMError;
 use crate::instruction_rom::InstructionRom;
-use crate::rom::{CardTypesRom};
+use crate::rom::CardTypesRom;
 use crate::vm::{SingleExecutionResult, VM};
 use crate::word::Word;
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -81,8 +81,8 @@ impl VMInstruction {
 
                 let instructions_account = next_account_info(account_info_iter)?;
                 let instructions_data = instructions_account.data.borrow();
-                let instructions = InstructionRom::try_from(instructions_data.as_ref()
-                    .map_err(|_| ProgramError::AccountDataTooSmall)?);
+                let instructions = InstructionRom::try_from(instructions_data.as_ref())
+                    .map_err(|_| ProgramError::AccountDataTooSmall)?;
 
                 let board_account = next_account_info(account_info_iter)?;
                 let account_len = board_account.data_len(); // We need this to later reconstruct account size

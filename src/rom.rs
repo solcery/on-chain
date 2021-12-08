@@ -1,4 +1,3 @@
-
 use crate::card::{Card, CardType};
 
 use borsh::{BorshDeserialize, BorshSerialize};
