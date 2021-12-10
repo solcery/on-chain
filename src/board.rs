@@ -4,6 +4,8 @@ use borsh::{BorshDeserialize, BorshSerialize};
 
 pub const BOARD_ACCOUNT_SIZE: usize = 1024;
 
+mod memory_region;
+
 #[derive(Debug, Clone, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
 pub struct Board {
     pub cards: Vec<Card>,
