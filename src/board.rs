@@ -5,11 +5,13 @@ use borsh::{BorshDeserialize, BorshSerialize};
 pub const BOARD_ACCOUNT_SIZE: usize = 1024;
 
 mod memory_region;
+pub use memory_region::MemoryRegion;
 
 #[derive(Debug, Clone, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
 pub struct Board {
     pub cards: Vec<Card>,
     pub attrs: Vec<Word>,
+    pub regions: Vec<MemoryRegion>,
     card_index: u32,
 }
 
@@ -26,6 +28,7 @@ impl Board {
             cards: Vec::<Card>::new(),
             attrs: Vec::<Word>::new(),
             card_index: 0,
+            regions: Vec::<MemoryRegion>::new(),
         }
     }
 
@@ -41,6 +44,7 @@ impl Board {
             cards,
             attrs,
             card_index,
+            regions: vec![],
         }
     }
 }
