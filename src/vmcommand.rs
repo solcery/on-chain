@@ -44,12 +44,16 @@ pub enum VMCommand {
     Not,
 
     // Data transfer
-    ///Pushes external value on the stack
+    /// Pushes external value on the stack
     PushConstant(Word),
-    LoadBoardAttr {
+    /// Reads player input from the InputTape
+    ReadPlayerInput,
+    LoadRegionAttr {
+        region_index: u32,
         index: u32,
     },
-    StoreBoardAttr {
+    StoreRegionAttr {
+        region_index: u32,
         index: u32,
     },
     LoadLocal {
@@ -81,11 +85,17 @@ pub enum VMCommand {
 
     // Interactions with cards
     /// Pushes total number of cards to the stack
-    PushCardCount,
+    PushCardCount {
+        region_index: u32,
+    },
     /// Pushes total number of card types to the stack
     PushTypeCount,
-    /// Pushes [CardType](crate::card::CardType) on the `i`-th card, where `i` is the topmost value on the stack
-    PushCardType,
+    /// Pushes [CardType](crate::card::CardType) of the `i`-th card in the region, where `i` is the topmost value on the stack
+    PushCardTypeByIndex {
+        region_index: u32,
+    },
+    /// Pushes [CardType](crate::card::CardType) of the card with `id = i`, where `i` is the topmost value on the stack
+    PushCardTypeById,
     /// Pushes total number of cards with [CardType](crate::card::CardType) popped from the stack
     PushCardCountWithCardType,
     /// Pushes `attr_index`-th attribute of the [CardType](crate::card::CardType), those index
@@ -96,27 +106,53 @@ pub enum VMCommand {
     /// Pushes `attr_index`-th attribute of the [CardType](crate::card::CardType) of the card,
     /// those index is on the top of the stack
     LoadCardTypeAttrByCardIndex {
+        region_index: u32,
+        attr_index: u32,
+    },
+    /// Pushes `attr_index`-th attribute of the [CardType](crate::card::CardType) of the card,
+    /// those id is on the top of the stack
+    LoadCardTypeAttrByCardId {
         attr_index: u32,
     },
     /// Pushes `attr_index`-th attribute of the [Card](crate::card::Card),
     /// those index is on the top of the stack
-    LoadCardAttr {
+    LoadCardAttrByCardIndex {
         attr_index: u32,
     },
     /// Pops `attr_index`-th attribute of the [Card](crate::card::Card),
     /// those index is on the top of the stack
-    StoreCardAttr {
+    StoreCardAttrByCardIndex {
+        attr_index: u32,
+    },
+    /// Pushes `attr_index`-th attribute of the [Card](crate::card::Card),
+    /// those id is on the top of the stack
+    LoadCardAttrByCardId {
+        attr_index: u32,
+    },
+    /// Pops `attr_index`-th attribute of the [Card](crate::card::Card),
+    /// those id is on the top of the stack
+    StoreCardAttrByCardId {
         attr_index: u32,
     },
 
-    /// Pops [CardType](crate::card::CardType) index from the stack and calls it's `action_id` action as a function
-    InstanceCardByTypeIndex,
-    /// Pops [CardType](crate::card::CardType) id from the stack and calls it's `action_id` action as a function
-    InstanceCardByTypeId,
+    /// Adds Card with [CardType](crate::card::CardType) index popped from the stack
+    InstanceCardByTypeIndex {
+        region_index: u32,
+    },
+    /// Adds Card with [CardType](crate::card::CardType) id popped from the stack
+    InstanceCardByTypeId {
+        region_index: u32,
+    },
     /// CardType index and action index should be placed on the stack
-    CallCardAction,
-    RemoveCardByIndex,
-    RemoveCardById,
+    CallCardAction {
+        region_index: u32,
+    },
+    RemoveCardByIndex {
+        region_index: u32,
+    },
+    RemoveCardById {
+        region_index: u32,
+    },
 }
 
 impl Default for VMCommand {
