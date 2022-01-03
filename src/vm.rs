@@ -130,18 +130,21 @@ impl<'a> VM<'a> {
             VMCommand::And => self.memory.and(),
             VMCommand::Not => self.memory.not(),
             VMCommand::PushConstant(word) => self.memory.push_external(word),
-            VMCommand::LoadBoardAttr { index } => {
-                let attr = self.board.attrs[index as usize];
+            VMCommand::LoadRegionAttr { region_index, attr_index } => {
+                todo!();
+                let attr = self.board.attrs[attr_index as usize];
                 self.memory.push_external(attr)
             }
-            VMCommand::StoreBoardAttr { index } => {
+            VMCommand::StoreRegionAttr { region_index, attr_index } => {
+                todo!();
                 let value = self.memory.pop_external()?;
-                self.log.push(Event::BoardChange {
-                    attr_index: index,
-                    previous_value: self.board.attrs[index as usize],
+                self.log.push(Event::RegionChange {
+                    region_index,
+                    attr_index: attr_index,
+                    previous_value: self.board.attrs[attr_index as usize],
                     new_value: value,
                 });
-                self.board.attrs[index as usize] = value;
+                self.board.attrs[attr_index as usize] = value;
                 Ok(())
             }
             VMCommand::LoadLocal { index } => self.memory.push_local(index as usize),
@@ -156,7 +159,8 @@ impl<'a> VM<'a> {
             VMCommand::Function { n_locals } => self.memory.function(n_locals as usize),
             VMCommand::Return => self.memory.fn_return(),
             VMCommand::ReturnVoid => self.memory.return_void(),
-            VMCommand::PushCardCount => {
+            VMCommand::PushCardCount{region_index} => {
+                todo!();
                 let len = self.board.cards.len();
                 self.memory.push_external(Word::Numeric(len as i32))
             }
@@ -165,25 +169,27 @@ impl<'a> VM<'a> {
                 self.memory.push_external(Word::Numeric(len as i32))
             }
             VMCommand::PushCardCountWithCardType => self.push_card_count_with_type(),
-            VMCommand::PushCardType => self.push_card_type(),
+            VMCommand::PushCardTypeByIndex {region_index} => self.push_card_type_by_index(region_index),
             VMCommand::LoadCardTypeAttrByTypeIndex { attr_index } => {
                 self.push_card_type_attr_by_type_index(attr_index)
             }
-            VMCommand::LoadCardTypeAttrByCardIndex { attr_index } => {
-                self.push_card_type_attr_by_card_index(attr_index)
+            VMCommand::LoadCardTypeAttrByCardIndex { region_index, attr_index } => {
+                self.push_card_type_attr_by_card_index(region_index, attr_index)
             }
-            VMCommand::LoadCardAttr { attr_index } => self.push_card_attr(attr_index),
-            VMCommand::StoreCardAttr { attr_index } => self.pop_card_attr(attr_index),
-            VMCommand::InstanceCardByTypeIndex => self.instantiate_card_by_type_index(),
-            VMCommand::InstanceCardByTypeId => self.instantiate_card_by_type_id(),
+            VMCommand::LoadCardAttrByCardIndex { region_index, attr_index } => self.push_card_attr_by_index(region_index, attr_index),
+            VMCommand::StoreCardAttrByCardIndex { region_index, attr_index } => self.pop_card_attr(region_index, attr_index),
+            VMCommand::InstanceCardByTypeIndex{region_index} => self.instantiate_card_by_type_index(region_index),
+            VMCommand::InstanceCardByTypeId{region_index} => self.instantiate_card_by_type_id(region_index),
             VMCommand::CallCardAction => self.call_card_action(),
-            VMCommand::RemoveCardByIndex => self.remove_card_by_index(),
+            VMCommand::RemoveCardByIndex{region_index} => self.remove_card_by_index(region_index),
             VMCommand::RemoveCardById => self.remove_card_by_id(),
             VMCommand::Halt => Err(InternalError::Halt),
+            _ => unimplemented!(),
         }
     }
 
-    fn push_card_type(&mut self) -> Result<(), InternalError> {
+    fn push_card_type_by_index(&mut self, region_index: u32) -> Result<(), InternalError> {
+        todo!();
         let index = self.memory.pop_external_no_pc_inc()?;
         match index {
             Word::Numeric(i) => {
@@ -228,7 +234,8 @@ impl<'a> VM<'a> {
         }
     }
 
-    fn push_card_type_attr_by_card_index(&mut self, attr_index: u32) -> Result<(), InternalError> {
+    fn push_card_type_attr_by_card_index(&mut self, region_index: u16,attr_index: u16) -> Result<(), InternalError> {
+        todo!();
         let card_index = self.memory.pop_external_no_pc_inc()?;
         match card_index {
             Word::Numeric(id) => {
@@ -247,7 +254,8 @@ impl<'a> VM<'a> {
         }
     }
 
-    fn push_card_attr(&mut self, attr_index: u32) -> Result<(), InternalError> {
+    fn push_card_attr_by_index(&mut self, region_index: u16, attr_index: u16) -> Result<(), InternalError> {
+        todo!();
         let card_index = self.memory.pop_external_no_pc_inc()?;
         match card_index {
             Word::Numeric(id) => {
@@ -263,7 +271,8 @@ impl<'a> VM<'a> {
         }
     }
 
-    fn pop_card_attr(&mut self, attr_index: u32) -> Result<(), InternalError> {
+    fn pop_card_attr(&mut self, region_index: u16, attr_index: u16) -> Result<(), InternalError> {
+        todo!();
         let card_index = self.memory.pop_external_no_pc_inc()?;
         match card_index {
             Word::Numeric(id) => {
@@ -271,6 +280,7 @@ impl<'a> VM<'a> {
                 let attr_value = self.memory.pop_external()?;
 
                 self.log.push(Event::CardChange {
+                    region_index,
                     card_index: id as u32,
                     attr_index,
                     previous_value: card.attrs[attr_index as usize],
@@ -284,7 +294,8 @@ impl<'a> VM<'a> {
         }
     }
 
-    fn instantiate_card_by_type_index(&mut self) -> Result<(), InternalError> {
+    fn instantiate_card_by_type_index(&mut self, region_index: u16) -> Result<(), InternalError> {
+        todo!();
         let index = self.memory.pop_external()?;
         match index {
             Word::Numeric(index) => {
@@ -305,7 +316,8 @@ impl<'a> VM<'a> {
         }
     }
 
-    fn instantiate_card_by_type_id(&mut self) -> Result<(), InternalError> {
+    fn instantiate_card_by_type_id(&mut self, region_index: u16) -> Result<(), InternalError> {
+        todo!();
         let index = self.memory.pop_external()?;
         match index {
             Word::Numeric(index) => {
@@ -348,7 +360,8 @@ impl<'a> VM<'a> {
         Ok(())
     }
 
-    fn remove_card_by_index(&mut self) -> Result<(), InternalError> {
+    fn remove_card_by_index(&mut self, region_index: u16) -> Result<(), InternalError> {
+        todo!();
         let card_index_word = self.memory.pop_external()?;
         let card_index =
             usize::try_from(card_index_word).map_err(|_| InternalError::TypeMismatch)?;

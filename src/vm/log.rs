@@ -3,14 +3,16 @@ use borsh::{BorshDeserialize, BorshSerialize};
 
 #[derive(Clone, Debug, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
 pub enum Event {
-    BoardChange {
-        attr_index: u32,
+    RegionChange {
+        region_index: u16,
+        attr_index: u16,
         previous_value: Word,
         new_value: Word,
     },
     CardChange {
+        region_index: u16,
         card_index: u32,
-        attr_index: u32,
+        attr_index: u16,
         previous_value: Word,
         new_value: Word,
     },
