@@ -48,6 +48,8 @@ pub enum VMCommand {
     PushConstant(Word),
     /// Reads player input from the InputTape
     ReadPlayerInput,
+    /// Reads random input from the RandomTape
+    ReadRandomInput,
     LoadRegionAttr {
         region_index: u16,
         attr_index: u16,
@@ -91,11 +93,11 @@ pub enum VMCommand {
     /// Pushes total number of card types to the stack
     PushTypeCount,
     /// Pushes [CardType](crate::card::CardType) of the `i`-th card in the region, where `i` is the topmost value on the stack
-    PushCardTypeByIndex {
+    PushCardTypeByCardIndex {
         region_index: u32,
     },
     /// Pushes [CardType](crate::card::CardType) of the card with `id = i`, where `i` is the topmost value on the stack
-    PushCardTypeById,
+    PushCardTypeByCardId,
     /// Pushes total number of cards with [CardType](crate::card::CardType) popped from the stack
     PushCardCountWithCardType,
     /// Pushes `attr_index`-th attribute of the [CardType](crate::card::CardType), those index
@@ -165,8 +167,8 @@ impl TryFrom<CommandByteCode> for VMCommand {
     //TODO: implement a dedicated error type
     type Error = &'static str;
     fn try_from(word: CommandByteCode) -> Result<Self, Self::Error> {
-        let discriminant = word[0];
-        match discriminant {
+        let (discriminant, args) = word.split_at(1);
+        match discriminant[0] {
             0 => Ok(Self::Halt),
             1 => Ok(Self::Add),
             2 => Ok(Self::Sub),
@@ -183,129 +185,123 @@ impl TryFrom<CommandByteCode> for VMCommand {
             13 => Ok(Self::And),
             14 => Ok(Self::Or),
             15 => Ok(Self::Not),
-            //16 => match word[1..].try_into() {
-                //Ok(val) => Ok(Self::PushConstant(Word::Numeric(i32::from_le_bytes(val)))),
-                //Err(_) => Err("PushConstant argument corrupted."),
-            //},
-            //17 => {
-                //let bool_data = word[1];
-                //match bool_data {
-                    //0 => Ok(Self::PushConstant(Word::Boolean(false))),
-                    //1 => Ok(Self::PushConstant(Word::Boolean(true))),
-                    //_ => Err("PushConstant argument corrupted."),
-                //}
-            //}
-            //18 => match word[1..].try_into() {
-                //Ok(val) => Ok(Self::LoadRegionAttr {
-                    //region_index: u16::from_le_bytes(val[0..2]),
-                    //index: u16::from_le_bytes(val[2..4]),
-                //}),
-                //Err(_) => Err("LoadBoardAttr argument corrupted."),
-            //},
-            //19 => match word[1..].try_into() {
-                //Ok(val) => Ok(Self::StoreBoardAttr {
-                    //index: u32::from_le_bytes(val),
-                //}),
-                //Err(_) => Err("StoreBoardAttr argument corrupted."),
-            //},
-            //20 => match word[1..].try_into() {
-                //Ok(val) => Ok(Self::LoadLocal {
-                    //index: u32::from_le_bytes(val),
-                //}),
-                //Err(_) => Err("LoadLocal argument corrupted."),
-            //},
-            //21 => match word[1..].try_into() {
-                //Ok(val) => Ok(Self::StoreLocal {
-                    //index: u32::from_le_bytes(val),
-                //}),
-                //Err(_) => Err("StoreLocal argument corrupted."),
-            //},
-            //22 => match word[1..].try_into() {
-                //Ok(val) => Ok(Self::LoadArgument {
-                    //index: u32::from_le_bytes(val),
-                //}),
-                //Err(_) => Err("LoadArgument argument corrupted."),
-            //},
-            //23 => match word[1..].try_into() {
-                //Ok(val) => Ok(Self::StoreArgument {
-                    //index: u32::from_le_bytes(val),
-                //}),
-                //Err(_) => Err("StoreArgument argument corrupted."),
-            //},
-            //24 => match word[1..].try_into() {
-                //Ok(val) => Ok(Self::Goto(u32::from_le_bytes(val))),
-                //Err(_) => Err("Goto argument corrupted."),
-            //},
-            //25 => match word[1..].try_into() {
-                //Ok(val) => Ok(Self::IfGoto(u32::from_le_bytes(val))),
-                //Err(_) => Err("IfGoto argument corrupted."),
-            //},
-            //26 => match word[1..].try_into() {
-                //Ok(val) => Ok(Self::Function {
-                    //n_locals: u32::from_le_bytes(val),
-                //}),
-                //Err(_) => Err("Function argument corrupted."),
-            //},
-            //27 => {
-                //// Actually, addresses are 24 bit wide, so the maximum number of instructions is
-                //// 2^16 (approx. 81MB total, so it is bigger than the maximum account size)
-                //let mut address_bytes = [0; 4];
-                //address_bytes[..3].clone_from_slice(&word[1..4]);
+            16 => Ok(Self::PushConstant(Word::Numeric(i32::from_le_bytes(
+                args.try_into().unwrap(),
+            )))),
+            17 => {
+                let bool_data = args[0];
+                match bool_data {
+                    0 => Ok(Self::PushConstant(Word::Boolean(false))),
+                    1 => Ok(Self::PushConstant(Word::Boolean(true))),
+                    _ => Err("PushConstant argument corrupted."),
+                }
+            }
+            18 => Ok(Self::ReadPlayerInput),
+            19 => Ok(Self::ReadRandomInput),
+            20 => {
+                let (region, attr) = args.split_at(2);
+                Ok(Self::LoadRegionAttr {
+                    region_index: u16::from_le_bytes(region.try_into().unwrap()),
+                    attr_index: u16::from_le_bytes(attr.try_into().unwrap()),
+                })
+            }
+            21 => {
+                let (region, attr) = args.split_at(2);
+                Ok(Self::StoreRegionAttr {
+                    region_index: u16::from_le_bytes(region.try_into().unwrap()),
+                    attr_index: u16::from_le_bytes(attr.try_into().unwrap()),
+                })
+            }
+            22 => Ok(Self::LoadLocal {
+                index: u32::from_le_bytes(args.try_into().unwrap()),
+            }),
+            23 => Ok(Self::StoreLocal {
+                index: u32::from_le_bytes(args.try_into().unwrap()),
+            }),
+            24 => Ok(Self::LoadArgument {
+                index: u32::from_le_bytes(args.try_into().unwrap()),
+            }),
+            25 => Ok(Self::StoreArgument {
+                index: u32::from_le_bytes(args.try_into().unwrap()),
+            }),
 
-                //Ok(Self::Call {
-                    //address: u32::from_le_bytes(address_bytes),
+            26 => Ok(Self::Goto(u32::from_le_bytes(args.try_into().unwrap()))),
+            27 => Ok(Self::IfGoto(u32::from_le_bytes(args.try_into().unwrap()))),
+            28 => Ok(Self::Function {
+                n_locals: u32::from_le_bytes(args.try_into().unwrap()),
+            }),
 
-                    //n_args: word[4],
-                //})
-            //}
-            //28 => Ok(Self::Return),
-            //29 => Ok(Self::ReturnVoid),
-            //30 => match word[1..].try_into() {
-                //Ok(val) => Ok(Self::PushCardCount {
-                    //region_index: u32::from_le_bytes(val),
-                //}),
-                //Err(_) => Err("Region index corrupted."),
-            //},
-            //31 => Ok(Self::PushTypeCount),
-            //30 => match word[1..].try_into() {
-                //Ok(val) => Ok(Self::PushCardTypeByIndex {
-                    //region_index: u32::from_le_bytes(val),
-                //}),
-                //Err(_) => Err("Region index corrupted."),
-            //},
-            //32 => Ok(Self::PushCardType),
-            //33 => Ok(Self::PushCardCountWithCardType),
-            //34 => match word[1..].try_into() {
-                //Ok(val) => Ok(Self::LoadCardTypeAttrByTypeIndex {
-                    //attr_index: u32::from_le_bytes(val),
-                //}),
-                //Err(_) => Err("LoadCardTypeAttrByTypeIndex argument corrupted."),
-            //},
-            //35 => match word[1..].try_into() {
-                //Ok(val) => Ok(Self::LoadCardTypeAttrByCardIndex {
-                    //attr_index: u32::from_le_bytes(val),
-                //}),
-                //Err(_) => Err("LoadCardTypeAttrByCardIndex argument corrupted."),
-            //},
-            //36 => match word[1..].try_into() {
-                //Ok(val) => Ok(Self::LoadCardAttr {
-                    //attr_index: u32::from_le_bytes(val),
-                //}),
-                //Err(_) => Err("LoadCardAttr argument corrupted."),
-            //},
-            //37 => match word[1..].try_into() {
-                //Ok(val) => Ok(Self::StoreCardAttr {
-                    //attr_index: u32::from_le_bytes(val),
-                //}),
-                //Err(_) => Err("StoreCardAttr argument corrupted."),
-            //},
-            //38 => Ok(Self::InstanceCardByTypeIndex),
-            //39 => Ok(Self::InstanceCardByTypeId),
-            //40 => Ok(Self::CallCardAction),
-            //41 => Ok(Self::RemoveCardByIndex),
-            //42 => Ok(Self::RemoveCardById),
-            _ => unimplemented!(),
-            //_ => Err("Illegal instruction"),
+            29 => {
+                // Actually, addresses are 24 bit wide, so the maximum number of instructions is
+                // 2^16 (approx. 81MB total, so it is bigger than the maximum account size)
+                let mut address_bytes = [0; 4];
+                address_bytes[..3].clone_from_slice(&word[1..4]);
+
+                Ok(Self::Call {
+                    address: u32::from_le_bytes(address_bytes),
+
+                    n_args: word[4],
+                })
+            }
+            30 => Ok(Self::Return),
+            31 => Ok(Self::ReturnVoid),
+            32 => Ok(Self::PushCardCount {
+                region_index: u32::from_le_bytes(args.try_into().unwrap()),
+            }),
+            33 => Ok(Self::PushTypeCount),
+            34 => match word[1..].try_into() {
+                Ok(val) => Ok(Self::PushCardTypeByCardIndex {
+                    region_index: u32::from_le_bytes(val),
+                }),
+                Err(_) => Err("Region index corrupted."),
+            },
+            35 => Ok(Self::PushCardTypeByCardId),
+            36 => Ok(Self::PushCardCountWithCardType),
+            37 => Ok(Self::LoadCardTypeAttrByTypeIndex {
+                attr_index: u32::from_le_bytes(args.try_into().unwrap()),
+            }),
+            38 => {
+                let (region, attr) = args.split_at(2);
+                Ok(Self::LoadCardTypeAttrByCardIndex {
+                    region_index: u16::from_le_bytes(region.try_into().unwrap()),
+                    attr_index: u16::from_le_bytes(attr.try_into().unwrap()),
+                })
+            }
+            39 => Ok(Self::LoadCardTypeAttrByCardId {
+                attr_index: u32::from_le_bytes(args.try_into().unwrap()),
+            }),
+            40 => {
+                let (region, attr) = args.split_at(2);
+                Ok(Self::LoadCardAttrByCardIndex {
+                    region_index: u16::from_le_bytes(region.try_into().unwrap()),
+                    attr_index: u16::from_le_bytes(attr.try_into().unwrap()),
+                })
+            }
+            41 => {
+                let (region, attr) = args.split_at(2);
+                Ok(Self::StoreCardAttrByCardIndex {
+                    region_index: u16::from_le_bytes(region.try_into().unwrap()),
+                    attr_index: u16::from_le_bytes(attr.try_into().unwrap()),
+                })
+            }
+            42 => Ok(Self::LoadCardAttrByCardId {
+                attr_index: u32::from_le_bytes(args.try_into().unwrap()),
+            }),
+            43 => Ok(Self::StoreCardAttrByCardId {
+                attr_index: u32::from_le_bytes(args.try_into().unwrap()),
+            }),
+            44 => Ok(Self::InstanceCardByTypeIndex {
+                region_index: u16::from_le_bytes(args[0..2].try_into().unwrap()),
+            }),
+            45 => Ok(Self::InstanceCardByTypeId {
+                region_index: u16::from_le_bytes(args[0..2].try_into().unwrap()),
+            }),
+            46 => Ok(Self::CallCardAction),
+            47 => Ok(Self::RemoveCardByIndex {
+                region_index: u16::from_le_bytes(args[0..2].try_into().unwrap()),
+            }),
+            48 => Ok(Self::RemoveCardById),
+            _ => Err("Illegal instruction"),
         }
     }
 }
@@ -329,191 +325,246 @@ impl From<VMCommand> for CommandByteCode {
             VMCommand::And => [13, 0, 0, 0, 0],
             VMCommand::Or => [14, 0, 0, 0, 0],
             VMCommand::Not => [15, 0, 0, 0, 0],
-            //VMCommand::PushConstant(word) => match word {
-                //Word::Numeric(val) => {
-                    //let val_bytes = val.to_le_bytes();
-                    //let mut byte_code = [16, 0, 0, 0, 0];
-                    //byte_code[1..].copy_from_slice(&val_bytes);
-                    //byte_code
-                //}
-                //Word::Boolean(false) => [17, 0, 0, 0, 0],
-                //Word::Boolean(true) => [17, 1, 0, 0, 0],
-            //},
-            //VMCommand::LoadRegionAttr { region_index, index } => {
-                //let region_index_bytes = region_index.to_le_bytes();
-                //let index_bytes = index.to_le_bytes();
-                //let mut byte_code = [18, 0, 0, 0, 0];
-                //byte_code[1..].copy_from_slice(&region_index_bytes);
-                //byte_code[3..].copy_from_slice(&index_bytes);
-                //byte_code
-            //}
-            //VMCommand::StoreBoardAttr { region_index, index } => {
-                //let region_index_bytes = region_index.to_le_bytes();
-                //let index_bytes = index.to_le_bytes();
-                //let mut byte_code = [19, 0, 0, 0, 0];
-                //byte_code[1..].copy_from_slice(&region_index_bytes);
-                //byte_code[3..].copy_from_slice(&index_bytes);
-                //byte_code
-            //}
-            //VMCommand::LoadLocal { index } => {
-                //let index_bytes = index.to_le_bytes();
-                //let mut byte_code = [20, 0, 0, 0, 0];
-                //byte_code[1..].copy_from_slice(&index_bytes);
-                //byte_code
-            //}
-            //VMCommand::StoreLocal { index } => {
-                //let index_bytes = index.to_le_bytes();
-                //let mut byte_code = [21, 0, 0, 0, 0];
-                //byte_code[1..].copy_from_slice(&index_bytes);
-                //byte_code
-            //}
-            //VMCommand::LoadArgument { index } => {
-                //let index_bytes = index.to_le_bytes();
-                //let mut byte_code = [22, 0, 0, 0, 0];
-                //byte_code[1..].copy_from_slice(&index_bytes);
-                //byte_code
-            //}
-            //VMCommand::StoreArgument { index } => {
-                //let index_bytes = index.to_le_bytes();
-                //let mut byte_code = [23, 0, 0, 0, 0];
-                //byte_code[1..].copy_from_slice(&index_bytes);
-                //byte_code
-            //}
-            //VMCommand::Goto(address) => {
-                //let address_bytes = address.to_le_bytes();
-                //let mut byte_code = [24, 0, 0, 0, 0];
-                //byte_code[1..].copy_from_slice(&address_bytes);
-                //byte_code
-            //}
-            //VMCommand::IfGoto(address) => {
-                //let address_bytes = address.to_le_bytes();
-                //let mut byte_code = [25, 0, 0, 0, 0];
-                //byte_code[1..].copy_from_slice(&address_bytes);
-                //byte_code
-            //}
-            //VMCommand::Function { n_locals } => {
-                //let n_locals_bytes = n_locals.to_le_bytes();
-                //let mut byte_code = [26, 0, 0, 0, 0];
-                //byte_code[1..].copy_from_slice(&n_locals_bytes);
-                //byte_code
-            //}
-            //VMCommand::Call { address, n_args } => {
-                //let address_bytes = address.to_le_bytes(); // [u8;4]
-                //let mut byte_code: [u8; 5] = [27, 0, 0, 0, 0];
-                //byte_code[1..4].copy_from_slice(&address_bytes[0..3]);
-                //byte_code[4] = n_args as u8;
-                //byte_code
-            //}
-            //VMCommand::Return => [28, 0, 0, 0, 0],
-            //VMCommand::ReturnVoid => [29, 0, 0, 0, 0],
-            //VMCommand::PushCardCount => [30, 0, 0, 0, 0],
-            //VMCommand::PushTypeCount => [31, 0, 0, 0, 0],
-            //VMCommand::PushCardTypeById => [32, 0, 0, 0, 0],
-            //VMCommand::PushCardCountWithCardType => [33, 0, 0, 0, 0],
-            //VMCommand::LoadCardTypeAttrByTypeIndex { attr_index } => {
-                //let attr_index_bytes = attr_index.to_le_bytes();
-                //let mut byte_code = [34, 0, 0, 0, 0];
-                //byte_code[1..].copy_from_slice(&attr_index_bytes);
-                //byte_code
-            //}
-            //VMCommand::LoadCardTypeAttrByCardIndex { region_index, attr_index } => {
-                //let region_index_bytes = attr_index.to_le_bytes();
-                //let attr_index_bytes = attr_index.to_le_bytes();
-                //let mut byte_code = [35, 0, 0, 0, 0];
-                //byte_code[1..].copy_from_slice(&region_index_bytes);
-                //byte_code[3..].copy_from_slice(&attr_index_bytes);
-                //byte_code
-            //}
-            //VMCommand::LoadCardAttrByCardIndex { attr_index } => {
-                //let attr_index_bytes = attr_index.to_le_bytes();
-                //let mut byte_code = [36, 0, 0, 0, 0];
-                //byte_code[1..].copy_from_slice(&attr_index_bytes);
-                //byte_code
-            //}
-            //VMCommand::StoreCardAttrByCardIndex { attr_index } => {
-                //let attr_index_bytes = attr_index.to_le_bytes();
-                //let mut byte_code = [37, 0, 0, 0, 0];
-                //byte_code[1..].copy_from_slice(&attr_index_bytes);
-                //byte_code
-            //}
-            //VMCommand::InstanceCardByTypeIndex => [38, 0, 0, 0, 0],
-            //VMCommand::InstanceCardByTypeId => [39, 0, 0, 0, 0],
-            //VMCommand::CallCardAction => [40, 0, 0, 0, 0],
-            //VMCommand::RemoveCardByIndex => [41, 0, 0, 0, 0],
-            //VMCommand::RemoveCardById => [42, 0, 0, 0, 0],
-            _ => todo!(),
+            VMCommand::PushConstant(word) => match word {
+                Word::Numeric(val) => {
+                    let val_bytes = val.to_le_bytes();
+                    let mut byte_code = [16, 0, 0, 0, 0];
+                    byte_code[1..].copy_from_slice(&val_bytes);
+                    byte_code
+                }
+                Word::Boolean(false) => [17, 0, 0, 0, 0],
+                Word::Boolean(true) => [17, 1, 0, 0, 0],
+            },
+            VMCommand::ReadPlayerInput => [18, 0, 0, 0, 0],
+            VMCommand::ReadRandomInput => [19, 0, 0, 0, 0],
+            VMCommand::LoadRegionAttr {
+                region_index,
+                attr_index,
+            } => {
+                let region_index_bytes = region_index.to_le_bytes();
+                let attr_index_bytes = attr_index.to_le_bytes();
+                let mut byte_code = [20, 0, 0, 0, 0];
+                byte_code[1..3].copy_from_slice(&region_index_bytes);
+                byte_code[3..].copy_from_slice(&attr_index_bytes);
+                byte_code
+            }
+            VMCommand::StoreRegionAttr {
+                region_index,
+                attr_index,
+            } => {
+                let region_index_bytes = region_index.to_le_bytes();
+                let attr_index_bytes = attr_index.to_le_bytes();
+                let mut byte_code = [21, 0, 0, 0, 0];
+                byte_code[1..3].copy_from_slice(&region_index_bytes);
+                byte_code[3..].copy_from_slice(&attr_index_bytes);
+                byte_code
+            }
+            VMCommand::LoadLocal { index } => {
+                let index_bytes = index.to_le_bytes();
+                let mut byte_code = [22, 0, 0, 0, 0];
+                byte_code[1..].copy_from_slice(&index_bytes);
+                byte_code
+            }
+            VMCommand::StoreLocal { index } => {
+                let index_bytes = index.to_le_bytes();
+                let mut byte_code = [23, 0, 0, 0, 0];
+                byte_code[1..].copy_from_slice(&index_bytes);
+                byte_code
+            }
+            VMCommand::LoadArgument { index } => {
+                let index_bytes = index.to_le_bytes();
+                let mut byte_code = [24, 0, 0, 0, 0];
+                byte_code[1..].copy_from_slice(&index_bytes);
+                byte_code
+            }
+            VMCommand::StoreArgument { index } => {
+                let index_bytes = index.to_le_bytes();
+                let mut byte_code = [25, 0, 0, 0, 0];
+                byte_code[1..].copy_from_slice(&index_bytes);
+                byte_code
+            }
+            VMCommand::Goto(address) => {
+                let address_bytes = address.to_le_bytes();
+                let mut byte_code = [26, 0, 0, 0, 0];
+                byte_code[1..].copy_from_slice(&address_bytes);
+                byte_code
+            }
+            VMCommand::IfGoto(address) => {
+                let address_bytes = address.to_le_bytes();
+                let mut byte_code = [27, 0, 0, 0, 0];
+                byte_code[1..].copy_from_slice(&address_bytes);
+                byte_code
+            }
+            VMCommand::Function { n_locals } => {
+                let n_locals_bytes = n_locals.to_le_bytes();
+                let mut byte_code = [28, 0, 0, 0, 0];
+                byte_code[1..].copy_from_slice(&n_locals_bytes);
+                byte_code
+            }
+            VMCommand::Call { address, n_args } => {
+                let address_bytes = address.to_le_bytes(); // [u8;4]
+                let mut byte_code: [u8; 5] = [29, 0, 0, 0, 0];
+                byte_code[1..4].copy_from_slice(&address_bytes[0..3]);
+                byte_code[4] = n_args as u8;
+                byte_code
+            }
+            VMCommand::Return => [30, 0, 0, 0, 0],
+            VMCommand::ReturnVoid => [31, 0, 0, 0, 0],
+            VMCommand::PushCardCount { region_index } => {
+                let region_index_bytes = region_index.to_le_bytes();
+                let mut byte_code: [u8; 5] = [32, 0, 0, 0, 0];
+                byte_code[1..].copy_from_slice(&region_index_bytes);
+                byte_code
+            }
+            VMCommand::PushTypeCount => [33, 0, 0, 0, 0],
+            VMCommand::PushCardTypeByCardIndex { region_index } => {
+                let region_index_bytes = region_index.to_le_bytes();
+                let mut byte_code: [u8; 5] = [34, 0, 0, 0, 0];
+                byte_code[1..].copy_from_slice(&region_index_bytes);
+                byte_code
+            }
+            VMCommand::PushCardTypeByCardId => [35, 0, 0, 0, 0],
+            VMCommand::PushCardCountWithCardType => [36, 0, 0, 0, 0],
+            VMCommand::LoadCardTypeAttrByTypeIndex { attr_index } => {
+                let attr_index_bytes = attr_index.to_le_bytes();
+                let mut byte_code = [37, 0, 0, 0, 0];
+                byte_code[1..].copy_from_slice(&attr_index_bytes);
+                byte_code
+            }
+            VMCommand::LoadCardTypeAttrByCardIndex {
+                region_index,
+                attr_index,
+            } => {
+                let region_index_bytes = region_index.to_le_bytes();
+                let attr_index_bytes = attr_index.to_le_bytes();
+                let mut byte_code = [38, 0, 0, 0, 0];
+                byte_code[1..3].copy_from_slice(&region_index_bytes);
+                byte_code[3..].copy_from_slice(&attr_index_bytes);
+                byte_code
+            }
+            VMCommand::LoadCardTypeAttrByCardId { attr_index } => {
+                let attr_index_bytes = attr_index.to_le_bytes();
+                let mut byte_code = [39, 0, 0, 0, 0];
+                byte_code[1..].copy_from_slice(&attr_index_bytes);
+                byte_code
+            }
+            VMCommand::LoadCardAttrByCardIndex {
+                region_index,
+                attr_index,
+            } => {
+                let region_index_bytes = region_index.to_le_bytes();
+                let attr_index_bytes = attr_index.to_le_bytes();
+                let mut byte_code = [40, 0, 0, 0, 0];
+                byte_code[1..3].copy_from_slice(&region_index_bytes);
+                byte_code[3..].copy_from_slice(&attr_index_bytes);
+                byte_code
+            }
+            VMCommand::StoreCardAttrByCardIndex {
+                region_index,
+                attr_index,
+            } => {
+                let region_index_bytes = region_index.to_le_bytes();
+                let attr_index_bytes = attr_index.to_le_bytes();
+                let mut byte_code = [41, 0, 0, 0, 0];
+                byte_code[1..3].copy_from_slice(&region_index_bytes);
+                byte_code[3..].copy_from_slice(&attr_index_bytes);
+                byte_code
+            }
+            VMCommand::LoadCardAttrByCardId { attr_index } => {
+                let attr_index_bytes = attr_index.to_le_bytes();
+                let mut byte_code = [42, 0, 0, 0, 0];
+                byte_code[1..].copy_from_slice(&attr_index_bytes);
+                byte_code
+            }
+            VMCommand::StoreCardAttrByCardId { attr_index } => {
+                let attr_index_bytes = attr_index.to_le_bytes();
+                let mut byte_code = [43, 0, 0, 0, 0];
+                byte_code[1..].copy_from_slice(&attr_index_bytes);
+                byte_code
+            }
+            VMCommand::InstanceCardByTypeIndex { region_index } => {
+                let region_index_bytes = region_index.to_le_bytes();
+                let mut byte_code = [44, 0, 0, 0, 0];
+                byte_code[1..3].copy_from_slice(&region_index_bytes);
+                byte_code
+            }
+            VMCommand::InstanceCardByTypeId { region_index } => {
+                let region_index_bytes = region_index.to_le_bytes();
+                let mut byte_code = [45, 0, 0, 0, 0];
+                byte_code[1..3].copy_from_slice(&region_index_bytes);
+                byte_code
+            }
+            VMCommand::CallCardAction => [46, 0, 0, 0, 0],
+            VMCommand::RemoveCardByIndex { region_index } => {
+                let region_index_bytes = region_index.to_le_bytes();
+                let mut byte_code = [47, 0, 0, 0, 0];
+                byte_code[1..3].copy_from_slice(&region_index_bytes);
+                byte_code
+            }
+            VMCommand::RemoveCardById => [48, 0, 0, 0, 0],
         }
     }
 }
 
-//#[cfg(test)]
-//mod tests {
-    //use super::*;
-    //use test_case::test_case;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test_case::test_case;
 
-    //#[test_case(VMCommand::Halt)]
-    //#[test_case(VMCommand::Add)]
-    //#[test_case(VMCommand::Sub)]
-    //#[test_case(VMCommand::Mul)]
-    //#[test_case(VMCommand::Div)]
-    //#[test_case(VMCommand::Rem)]
-    //#[test_case(VMCommand::Neg)]
-    //#[test_case(VMCommand::Inc)]
-    //#[test_case(VMCommand::Dec)]
-    //#[test_case(VMCommand::Abs)]
-    //#[test_case(VMCommand::Eq)]
-    //#[test_case(VMCommand::Gt)]
-    //#[test_case(VMCommand::Lt)]
-    //#[test_case(VMCommand::Or)]
-    //#[test_case(VMCommand::And)]
-    //#[test_case(VMCommand::Not)]
-    //#[test_case(VMCommand::PushConstant(Word::Boolean(true)))]
-    //#[test_case(VMCommand::PushConstant(Word::Boolean(false)))]
-    //#[test_case(VMCommand::PushConstant(Word::Numeric(0)))]
-    //#[test_case(VMCommand::PushConstant(Word::Numeric(123)))]
-    //#[test_case(VMCommand::PushConstant(Word::Numeric(-124)))]
-    //#[test_case(VMCommand::LoadBoardAttr{index: 123})]
-    //#[test_case(VMCommand::LoadBoardAttr{index: 0})]
-    //#[test_case(VMCommand::StoreBoardAttr{index: 123})]
-    //#[test_case(VMCommand::StoreBoardAttr{index: 0})]
-    //#[test_case(VMCommand::LoadLocal{index: 123})]
-    //#[test_case(VMCommand::LoadLocal{index: 0})]
-    //#[test_case(VMCommand::StoreLocal{index: 123})]
-    //#[test_case(VMCommand::StoreLocal{index: 0})]
-    //#[test_case(VMCommand::LoadArgument{index: 123})]
-    //#[test_case(VMCommand::LoadArgument{index: 0})]
-    //#[test_case(VMCommand::StoreArgument{index: 123})]
-    //#[test_case(VMCommand::StoreArgument{index: 0})]
-    //#[test_case(VMCommand::Goto(0))]
-    //#[test_case(VMCommand::Goto(123))]
-    //#[test_case(VMCommand::IfGoto(0))]
-    //#[test_case(VMCommand::IfGoto(123))]
-    //#[test_case(VMCommand::Call { address: 0, n_args:0 })]
-    //#[test_case(VMCommand::Call { address: 2, n_args: 123 })]
-    //#[test_case(VMCommand::Function { n_locals: 0 })]
-    //#[test_case(VMCommand::Function { n_locals: 123 })]
-    //#[test_case(VMCommand::Return)]
-    //#[test_case(VMCommand::ReturnVoid)]
-    //#[test_case(VMCommand::PushCardCount)]
-    //#[test_case(VMCommand::PushTypeCount)]
-    //#[test_case(VMCommand::PushCardCountWithCardType)]
-    //#[test_case(VMCommand::PushCardType)]
-    //#[test_case(VMCommand::LoadCardTypeAttrByTypeIndex { attr_index: 0 })]
-    //#[test_case(VMCommand::LoadCardTypeAttrByTypeIndex { attr_index: 123 })]
-    //#[test_case(VMCommand::LoadCardTypeAttrByCardIndex { attr_index: 0 })]
-    //#[test_case(VMCommand::LoadCardTypeAttrByCardIndex { attr_index: 123 })]
-    //#[test_case(VMCommand::LoadCardAttr { attr_index: 0 })]
-    //#[test_case(VMCommand::LoadCardAttr { attr_index: 123 })]
-    //#[test_case(VMCommand::StoreCardAttr { attr_index: 0 })]
-    //#[test_case(VMCommand::StoreCardAttr { attr_index: 123 })]
-    //#[test_case(VMCommand::InstanceCardByTypeIndex)]
-    //#[test_case(VMCommand::InstanceCardByTypeId)]
-    //#[test_case(VMCommand::CallCardAction)]
-    //#[test_case(VMCommand::RemoveCardByIndex)]
-    //#[test_case(VMCommand::RemoveCardById)]
-    //fn bytecode_to_instruction_equivalence(instruction: VMCommand) {
-        //let bytecode = CommandByteCode::from(instruction);
-        //let decoded_instruction = VMCommand::try_from(bytecode).unwrap();
-        //pretty_assertions::assert_eq!(instruction, decoded_instruction);
-    //}
-//}
+    #[test_case(VMCommand::Halt)]
+    #[test_case(VMCommand::Add)]
+    #[test_case(VMCommand::Sub)]
+    #[test_case(VMCommand::Mul)]
+    #[test_case(VMCommand::Div)]
+    #[test_case(VMCommand::Rem)]
+    #[test_case(VMCommand::Neg)]
+    #[test_case(VMCommand::Inc)]
+    #[test_case(VMCommand::Dec)]
+    #[test_case(VMCommand::Abs)]
+    #[test_case(VMCommand::Eq)]
+    #[test_case(VMCommand::Gt)]
+    #[test_case(VMCommand::Lt)]
+    #[test_case(VMCommand::Or)]
+    #[test_case(VMCommand::And)]
+    #[test_case(VMCommand::Not)]
+    #[test_case(VMCommand::PushConstant(Word::Boolean(true)))]
+    #[test_case(VMCommand::PushConstant(Word::Boolean(false)))]
+    #[test_case(VMCommand::PushConstant(Word::Numeric(123)))]
+    #[test_case(VMCommand::PushConstant(Word::Numeric(-124)))]
+    #[test_case(VMCommand::ReadPlayerInput)]
+    #[test_case(VMCommand::ReadRandomInput)]
+    #[test_case(VMCommand::LoadRegionAttr{region_index: 123, attr_index: 15})]
+    #[test_case(VMCommand::StoreRegionAttr{region_index: 123, attr_index: 15})]
+    #[test_case(VMCommand::LoadLocal{index: 123})]
+    #[test_case(VMCommand::StoreLocal{index: 123})]
+    #[test_case(VMCommand::LoadArgument{index: 123})]
+    #[test_case(VMCommand::StoreArgument{index: 123})]
+    #[test_case(VMCommand::Goto(123))]
+    #[test_case(VMCommand::IfGoto(123))]
+    #[test_case(VMCommand::Function { n_locals: 123 })]
+    #[test_case(VMCommand::Call { address: 2, n_args: 123 })]
+    #[test_case(VMCommand::Return)]
+    #[test_case(VMCommand::ReturnVoid)]
+    #[test_case(VMCommand::PushCardCount{region_index: 123})]
+    #[test_case(VMCommand::PushTypeCount)]
+    #[test_case(VMCommand::PushCardTypeByCardIndex { region_index: 123 })]
+    #[test_case(VMCommand::PushCardTypeByCardId)]
+    #[test_case(VMCommand::PushCardCountWithCardType)]
+    #[test_case(VMCommand::LoadCardTypeAttrByTypeIndex { attr_index: 123 })]
+    #[test_case(VMCommand::LoadCardTypeAttrByCardIndex { region_index: 15, attr_index: 123 })]
+    #[test_case(VMCommand::LoadCardTypeAttrByCardId { attr_index: 123 })]
+    #[test_case(VMCommand::LoadCardAttrByCardIndex { region_index: 15, attr_index: 123 })]
+    #[test_case(VMCommand::StoreCardAttrByCardIndex { region_index: 15, attr_index: 123 })]
+    #[test_case(VMCommand::LoadCardAttrByCardId { attr_index: 123 })]
+    #[test_case(VMCommand::StoreCardAttrByCardId { attr_index: 123 })]
+    #[test_case(VMCommand::InstanceCardByTypeIndex{ region_index: 121 })]
+    #[test_case(VMCommand::InstanceCardByTypeId{ region_index: 121 })]
+    #[test_case(VMCommand::CallCardAction)]
+    #[test_case(VMCommand::RemoveCardByIndex {region_index: 13})]
+    #[test_case(VMCommand::RemoveCardById)]
+    fn bytecode_to_instruction_equivalence(instruction: VMCommand) {
+        let bytecode = CommandByteCode::from(instruction);
+        let decoded_instruction = VMCommand::try_from(bytecode).unwrap();
+        pretty_assertions::assert_eq!(instruction, decoded_instruction);
+    }
+}
