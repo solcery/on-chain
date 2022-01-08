@@ -9,7 +9,9 @@ pub use memory_region::MemoryRegion;
 
 #[derive(Debug, Clone, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
 pub struct Board {
+    #[deprecated]
     pub cards: Vec<Card>,
+    #[deprecated]
     pub attrs: Vec<Word>,
     pub regions: Vec<MemoryRegion>,
     card_index: u32,
@@ -39,12 +41,12 @@ impl Board {
     }
 
     #[must_use]
-    pub unsafe fn from_raw_parts(cards: Vec<Card>, attrs: Vec<Word>, card_index: u32) -> Self {
+    pub unsafe fn from_raw_parts(regions: Vec<MemoryRegion>, card_index: u32) -> Self {
         Self {
-            cards,
-            attrs,
+            cards: vec![],
+            attrs: vec![],
+            regions,
             card_index,
-            regions: vec![],
         }
     }
 }

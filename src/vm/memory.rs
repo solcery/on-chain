@@ -2,6 +2,7 @@ use crate::word::ConversionError;
 use crate::word::Word;
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::convert::TryFrom;
+use thiserror::Error;
 
 #[derive(Debug, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
 pub struct Memory {
@@ -325,15 +326,26 @@ impl<'a> Memory {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
+#[derive(Error, Copy, Clone, Debug, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
 pub enum Error {
+    #[error("VM halted")]
     Halt,
+    #[error("Not enough values on the stack")]
     NotEnoughValues,
+    #[error("Type mismatch")]
     TypeMismatch,
+    #[error("Attempted to convert negative value to unsigned")]
     NegativeUnsignedValue,
+    #[error("Attempted to access non-existent local variable")]
     LocalVarOutOfBounds,
+    #[error("Attempted to access non-existent argument")]
     ArgumentOutOfBounds,
+    #[error("CardType index is out of bounds")]
     NoSuchType,
+    #[error("Acsess violation: attempted to access not-readable memory region")]
+    AccessViolation,
+    #[error("MemoryRegion index is out of bounds")]
+    NoSuchRegion,
 }
 
 impl From<ConversionError> for Error {
