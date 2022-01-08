@@ -99,7 +99,9 @@ pub enum VMCommand {
     /// Pushes [CardType](crate::card::CardType) of the card with `id = i`, where `i` is the topmost value on the stack
     PushCardTypeByCardId,
     /// Pushes total number of cards with [CardType](crate::card::CardType) popped from the stack
-    PushCardCountWithCardType,
+    PushCardCountWithCardType {
+        region_index: u32,
+    },
     /// Pushes `attr_index`-th attribute of the [CardType](crate::card::CardType), those index
     /// among [CardTypes](crate::card::CardType) is on the top of the stack
     LoadCardTypeAttrByTypeIndex {
@@ -249,14 +251,13 @@ impl TryFrom<CommandByteCode> for VMCommand {
                 region_index: u32::from_le_bytes(args.try_into().unwrap()),
             }),
             33 => Ok(Self::PushTypeCount),
-            34 => match word[1..].try_into() {
-                Ok(val) => Ok(Self::PushCardTypeByCardIndex {
-                    region_index: u32::from_le_bytes(val),
-                }),
-                Err(_) => Err("Region index corrupted."),
-            },
+            34 => Ok(Self::PushCardTypeByCardIndex {
+                region_index: u32::from_le_bytes(args.try_into().unwrap()),
+            }),
             35 => Ok(Self::PushCardTypeByCardId),
-            36 => Ok(Self::PushCardCountWithCardType),
+            36 => Ok(Self::PushCardCountWithCardType {
+                region_index: u32::from_le_bytes(args.try_into().unwrap()),
+            }),
             37 => Ok(Self::LoadCardTypeAttrByTypeIndex {
                 attr_index: u32::from_le_bytes(args.try_into().unwrap()),
             }),
@@ -424,7 +425,12 @@ impl From<VMCommand> for CommandByteCode {
                 byte_code
             }
             VMCommand::PushCardTypeByCardId => [35, 0, 0, 0, 0],
-            VMCommand::PushCardCountWithCardType => [36, 0, 0, 0, 0],
+            VMCommand::PushCardCountWithCardType { region_index } => {
+                let region_index_bytes = region_index.to_le_bytes();
+                let mut byte_code: [u8; 5] = [36, 0, 0, 0, 0];
+                byte_code[1..].copy_from_slice(&region_index_bytes);
+                byte_code
+            }
             VMCommand::LoadCardTypeAttrByTypeIndex { attr_index } => {
                 let attr_index_bytes = attr_index.to_le_bytes();
                 let mut byte_code = [37, 0, 0, 0, 0];
