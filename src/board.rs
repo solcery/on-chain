@@ -20,6 +20,8 @@ pub trait Board {
         region_index: usize,
         player_id: u32,
     ) -> Result<&mut MemoryRegion, Error>;
+    #[must_use]
+    fn region_count(&self) -> usize;
 }
 
 #[derive(Error, Copy, Clone, Debug, Eq, PartialEq, BorshDeserialize, BorshSerialize)]

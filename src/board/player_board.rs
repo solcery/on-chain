@@ -60,4 +60,7 @@ impl Board for PlayerBoard {
             })
         }
     }
+    fn region_count(&self) -> usize {
+        self.regions.len()
+    }
 }

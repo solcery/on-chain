@@ -55,6 +55,9 @@ impl Board for VerificationBoard {
             })
         }
     }
+    fn region_count(&self) -> usize {
+        self.regions.len()
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
