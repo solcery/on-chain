@@ -147,17 +147,21 @@ impl<'a, Brd: Board> VM<'a, Brd> {
                 region_index,
                 attr_index,
             } => {
-                // TODO: Check access violation
-                todo!()
-                //let value = self.memory.pop_external()?;
-                //self.log.push(Event::RegionChange {
-                //region_index,
-                //attr_index: attr_index,
-                //previous_value: self.board.attrs[attr_index as usize],
-                //new_value: value,
-                //});
-                //self.board.regions[region_index as usize].attrs[attr_index as usize] = value;
-                //Ok(())
+                // TODO: Error handing
+                let value = self.memory.pop_external()?;
+                match self.board.memory_region(region_index as usize, 0) {
+                    Ok(region) => {
+                        self.log.push(Event::RegionChange {
+                            region_index,
+                            attr_index: attr_index,
+                            previous_value: region.attrs[attr_index as usize],
+                            new_value: value,
+                        });
+                        region.attrs[attr_index as usize] = value;
+                        Ok(())
+                    }
+                    Err(board_error) => todo!(),
+                }
             }
             VMCommand::LoadLocal { index } => self.memory.push_local(index as usize),
             VMCommand::StoreLocal { index } => self.memory.pop_local(index as usize),
@@ -172,10 +176,14 @@ impl<'a, Brd: Board> VM<'a, Brd> {
             VMCommand::Return => self.memory.fn_return(),
             VMCommand::ReturnVoid => self.memory.return_void(),
             VMCommand::PushCardCount { region_index } => {
-                // TODO: Check access violation
-                todo!()
-                //let len = self.board.regions[region_index as usize].cards.len();
-                //self.memory.push_external(Word::Numeric(len as i32))
+                // TODO: Error handing
+                match self.board.memory_region(region_index as usize, 0) {
+                    Ok(region) => {
+                        let len = region.cards.len();
+                        self.memory.push_external(Word::Numeric(len as i32))
+                    }
+                    Err(board_error) => todo!(),
+                }
             }
             VMCommand::PushTypeCount => {
                 let len = self.card_types.card_type_count();
@@ -224,53 +232,59 @@ impl<'a, Brd: Board> VM<'a, Brd> {
     }
 
     fn push_card_type_by_index(&mut self, region_index: u32) -> Result<(), InternalError> {
-        // TODO: Check access violation
-        todo!()
-        //let index = self.memory.pop_external_no_pc_inc()?;
-        //match index {
-        //Word::Numeric(i) => {
-        //let card_type =
-        //self.board.regions[region_index as usize].cards[i as usize].card_type();
-        //let word = Word::Numeric(card_type as i32);
-        //self.memory.push_external(word)
-        //}
-        //Word::Boolean(_) => Err(InternalError::TypeMismatch),
-        //}
+        let index = self.memory.pop_external_no_pc_inc()?;
+        match index {
+            Word::Numeric(i) => {
+                match self.board.memory_region(region_index as usize, 0) {
+                    Ok(region) => {
+                        let card_type = region.cards[i as usize].card_type();
+                        //TODO: Error handing for Index out of Bounds
+                        let word = Word::Numeric(card_type as i32);
+
+                        self.memory.push_external(word)
+                    }
+                    Err(board_error) => todo!(),
+                }
+            }
+            Word::Boolean(_) => Err(InternalError::TypeMismatch),
+        }
     }
 
     fn push_card_count_with_type(&mut self, region_index: u32) -> Result<(), InternalError> {
-        todo!()
-        //let card_type = self.memory.pop_external_no_pc_inc()?;
-        //match card_type {
-        //Word::Numeric(id) => {
-        //// Word::Numeric contains i32, but card_type is u32, so convert is needed
-        //let count = self
-        //.board
-        //.cards
-        //.iter()
-        //.filter(|card| card.card_type() == id as u32)
-        //.count();
+        let card_type = self.memory.pop_external_no_pc_inc()?;
+        match card_type {
+            Word::Numeric(id) => {
+                match self.board.memory_region(region_index as usize, 0) {
+                    Ok(region) => {
+                        // Word::Numeric contains i32, but card_type is u32, so convert is needed
+                        let count = region
+                            .cards
+                            .iter()
+                            .filter(|card| card.card_type() == id as u32)
+                            .count();
 
-        //let word = Word::Numeric(count as i32);
-        //self.memory.push_external(word)
-        //}
-        //Word::Boolean(_) => Err(InternalError::TypeMismatch),
-        //}
+                        let word = Word::Numeric(count as i32);
+                        self.memory.push_external(word)
+                    }
+                    Err(board_error) => todo!(),
+                }
+            }
+            Word::Boolean(_) => Err(InternalError::TypeMismatch),
+        }
     }
 
     fn push_card_type_attr_by_type_index(&mut self, attr_index: u32) -> Result<(), InternalError> {
-        todo!()
-        //let type_index = self.memory.pop_external_no_pc_inc()?;
-        //match type_index {
-        //Word::Numeric(id) => {
-        //let card_type = self.card_types.card_type_by_type_index(id as usize);
-        //let attr_value = card_type.attr_by_index(attr_index as usize);
+        let type_index = self.memory.pop_external_no_pc_inc()?;
+        match type_index {
+            Word::Numeric(id) => {
+                let card_type = self.card_types.card_type_by_type_index(id as usize);
+                let attr_value = card_type.attr_by_index(attr_index as usize);
 
-        //let word = attr_value;
-        //self.memory.push_external(word)
-        //}
-        //Word::Boolean(_) => Err(InternalError::TypeMismatch),
-        //}
+                let word = attr_value;
+                self.memory.push_external(word)
+            }
+            Word::Boolean(_) => Err(InternalError::TypeMismatch),
+        }
     }
 
     fn push_card_type_attr_by_card_index(
@@ -278,23 +292,28 @@ impl<'a, Brd: Board> VM<'a, Brd> {
         region_index: u16,
         attr_index: u16,
     ) -> Result<(), InternalError> {
-        todo!()
-        //let card_index = self.memory.pop_external_no_pc_inc()?;
-        //match card_index {
-        //Word::Numeric(id) => {
-        //let card = &self.board.cards[id as usize];
-        //let card_type_id = card.card_type();
-        //let card_type = self
-        //.card_types
-        //.card_type_by_type_id(card_type_id)
-        //.ok_or(InternalError::NoSuchType)?;
-        //let attr_value = card_type.attr_by_index(attr_index as usize);
+        let card_index = self.memory.pop_external_no_pc_inc()?;
+        match card_index {
+            Word::Numeric(id) => {
+                match self.board.memory_region(region_index as usize, 0) {
+                    Ok(region) => {
+                        let card = &region.cards[id as usize];
+                        //TODO: Error handing for Index out of Bounds
+                        let card_type_id = card.card_type();
+                        let card_type = self
+                            .card_types
+                            .card_type_by_type_id(card_type_id)
+                            .ok_or(InternalError::NoSuchType)?;
+                        let attr_value = card_type.attr_by_index(attr_index as usize);
 
-        //let word = attr_value;
-        //self.memory.push_external(word)
-        //}
-        //Word::Boolean(_) => Err(InternalError::TypeMismatch),
-        //}
+                        let word = attr_value;
+                        self.memory.push_external(word)
+                    }
+                    Err(board_error) => todo!(),
+                }
+            }
+            Word::Boolean(_) => Err(InternalError::TypeMismatch),
+        }
     }
 
     fn push_card_attr_by_index(
@@ -302,87 +321,101 @@ impl<'a, Brd: Board> VM<'a, Brd> {
         region_index: u16,
         attr_index: u16,
     ) -> Result<(), InternalError> {
-        todo!()
-        //let card_index = self.memory.pop_external_no_pc_inc()?;
-        //match card_index {
-        //Word::Numeric(id) => {
-        //let card = &self.board.cards[id as usize];
-        //let attr_value = card.attrs[attr_index as usize];
+        let card_index = self.memory.pop_external_no_pc_inc()?;
+        match card_index {
+            Word::Numeric(id) => match self.board.memory_region(region_index as usize, 0) {
+                Ok(region) => {
+                    let card = &region.cards[id as usize];
+                    let attr_value = card.attrs[attr_index as usize];
 
-        //let word = attr_value;
-        //self.memory.push_external(word)
-        //}
-        //Word::Boolean(_) => {
-        //panic!("Type mismath: bool can not be interpreted as index.");
-        //}
-        //}
+                    let word = attr_value;
+                    self.memory.push_external(word)
+                }
+                Err(board_error) => todo!(),
+            },
+            Word::Boolean(_) => Err(InternalError::TypeMismatch),
+        }
     }
 
     fn pop_card_attr(&mut self, region_index: u16, attr_index: u16) -> Result<(), InternalError> {
-        todo!()
-        //let card_index = self.memory.pop_external_no_pc_inc()?;
-        //match card_index {
-        //Word::Numeric(id) => {
-        //let card = &mut self.board.cards[id as usize];
-        //let attr_value = self.memory.pop_external()?;
+        let card_index = self.memory.pop_external_no_pc_inc()?;
+        match card_index {
+            Word::Numeric(id) => match self.board.memory_region(region_index as usize, 0) {
+                Ok(region) => {
+                    let card = &mut region.cards[id as usize];
+                    let attr_value = self.memory.pop_external()?;
 
-        //self.log.push(Event::CardChange {
-        //region_index,
-        //card_index: id as u32,
-        //attr_index,
-        //previous_value: card.attrs[attr_index as usize],
-        //new_value: attr_value,
-        //});
+                    self.log.push(Event::CardChange {
+                        region_index,
+                        card_index: id as u32,
+                        attr_index,
+                        previous_value: card.attrs[attr_index as usize],
+                        new_value: attr_value,
+                    });
 
-        //card.attrs[attr_index as usize] = attr_value;
-        //Ok(())
-        //}
-        //Word::Boolean(_) => Err(InternalError::TypeMismatch),
-        //}
+                    card.attrs[attr_index as usize] = attr_value;
+                    Ok(())
+                }
+                Err(board_error) => todo!(),
+            },
+            Word::Boolean(_) => Err(InternalError::TypeMismatch),
+        }
     }
 
     fn instantiate_card_by_type_index(&mut self, region_index: u16) -> Result<(), InternalError> {
-        todo!()
-        //let index = self.memory.pop_external()?;
-        //match index {
-        //Word::Numeric(index) => {
-        //let id = index.try_into().unwrap();
-        //let card = self
-        //.card_types
-        //.instance_card_by_type_index(id, self.board.generate_card_id())
-        //.unwrap();
-        //self.board.cards.push(card);
+        let index = self.memory.pop_external()?;
+        match index {
+            Word::Numeric(index) => {
+                let new_card_id = self.board.generate_card_id();
 
-        //self.log.push(Event::AddCardByIndex {
-        //card_index: (self.board.cards.len() - 1) as u32,
-        //cargtype_index: id as u32,
-        //});
-        //Ok(())
-        //}
-        //Word::Boolean(_) => Err(InternalError::TypeMismatch),
-        //}
+                match self.board.memory_region(region_index as usize, 0) {
+                    Ok(region) => {
+                        let id = index.try_into().unwrap();
+                        let card = self
+                            .card_types
+                            .instance_card_by_type_index(id, new_card_id)
+                            .unwrap();
+                        region.cards.push(card);
+
+                        self.log.push(Event::AddCardByIndex {
+                            card_index: (region.cards.len() - 1) as u32,
+                            cardtype_index: id as u32,
+                        });
+                        Ok(())
+                    }
+                    Err(board_error) => todo!(),
+                }
+            }
+            Word::Boolean(_) => Err(InternalError::TypeMismatch),
+        }
     }
 
     fn instantiate_card_by_type_id(&mut self, region_index: u16) -> Result<(), InternalError> {
-        todo!()
-        //let index = self.memory.pop_external()?;
-        //match index {
-        //Word::Numeric(index) => {
-        //let id = index.try_into().unwrap();
-        //let card = self
-        //.card_types
-        //.instance_card_by_type_id(id, self.board.generate_card_id())
-        //.unwrap();
-        //self.board.cards.push(card);
+        let index = self.memory.pop_external()?;
+        match index {
+            Word::Numeric(index) => {
+                let new_card_id = self.board.generate_card_id();
 
-        //self.log.push(Event::AddCardById {
-        //card_index: (self.board.cards.len() - 1) as u32,
-        //cargtype_id: id as u32,
-        //});
-        //Ok(())
-        //}
-        //Word::Boolean(_) => Err(InternalError::TypeMismatch),
-        //}
+                match self.board.memory_region(region_index as usize, 0) {
+                    Ok(region) => {
+                        let id = index.try_into().unwrap();
+                        let card = self
+                            .card_types
+                            .instance_card_by_type_id(id, new_card_id)
+                            .unwrap();
+                        region.cards.push(card);
+
+                        self.log.push(Event::AddCardById {
+                            card_index: (region.cards.len() - 1) as u32,
+                            cardtype_id: id as u32,
+                        });
+                        Ok(())
+                    }
+                    Err(board_error) => todo!(),
+                }
+            }
+            Word::Boolean(_) => Err(InternalError::TypeMismatch),
+        }
     }
 
     fn call_card_action(&mut self) -> Result<(), InternalError> {
@@ -408,39 +441,45 @@ impl<'a, Brd: Board> VM<'a, Brd> {
     }
 
     fn remove_card_by_index(&mut self, region_index: u16) -> Result<(), InternalError> {
-        todo!()
-        //let card_index_word = self.memory.pop_external()?;
-        //let card_index =
-        //usize::try_from(card_index_word).map_err(|_| InternalError::TypeMismatch)?;
+        match self.board.memory_region(region_index as usize, 0) {
+            Ok(region) => {
+                let card_index_word = self.memory.pop_external()?;
+                let card_index =
+                    usize::try_from(card_index_word).map_err(|_| InternalError::TypeMismatch)?;
 
-        //let card = self.board.cards.remove(card_index);
+                let card = region.cards.remove(card_index);
 
-        //self.log.push(Event::RemoveCard {
-        //card_id: card.id() as u32,
-        //});
-        //Ok(())
+                self.log.push(Event::RemoveCard {
+                    card_id: card.id() as u32,
+                });
+                Ok(())
+            }
+            Err(board_error) => todo!(),
+        }
     }
 
     fn remove_card_by_id(&mut self) -> Result<(), InternalError> {
-        todo!()
-        //let card_id = self.memory.pop_external()?;
-        //let card_id = u32::try_from(card_id).map_err(|_| InternalError::TypeMismatch)?;
+        //TODO: implement a way to know, if removal was successful or not
+        let card_id = self.memory.pop_external()?;
+        let card_id = u32::try_from(card_id).map_err(|_| InternalError::TypeMismatch)?;
 
-        //let board = &mut self.board;
-        //let log = &mut self.log;
+        let log = &mut self.log;
 
-        //board.cards.retain(|card| {
-        //if card.id() == card_id {
-        //log.push(Event::RemoveCard {
-        //card_id: card_id as u32,
-        //});
-        //true
-        //} else {
-        //false
-        //}
-        //});
-
-        //Ok(())
+        for region_index in 0..self.board.region_count() {
+            if let Ok(region) = self.board.memory_region(region_index as usize, 0) {
+                region.cards.retain(|card| {
+                    if card.id() == card_id {
+                        log.push(Event::RemoveCard {
+                            card_id: card_id as u32,
+                        });
+                        true
+                    } else {
+                        false
+                    }
+                });
+            }
+        }
+        Ok(())
     }
 
     #[cfg(test)]

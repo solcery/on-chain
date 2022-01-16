@@ -18,11 +18,11 @@ pub enum Event {
     },
     AddCardById {
         card_index: u32,
-        cargtype_id: u32,
+        cardtype_id: u32,
     },
     AddCardByIndex {
         card_index: u32,
-        cargtype_index: u32,
+        cardtype_index: u32,
     },
     RemoveCard {
         card_id: u32,
