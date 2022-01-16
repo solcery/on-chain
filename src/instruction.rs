@@ -1,4 +1,4 @@
-use crate::board::Board;
+use crate::board::VerificationBoard;
 use crate::card::CardType;
 use crate::error::VMError;
 use crate::instruction_rom::InstructionRom;
@@ -90,8 +90,9 @@ impl VMInstruction {
                 //Actually, here we should first transfer ownership of the board account to our
                 //program, so  we can modify it.
                 let board_data = board_account.data.borrow();
-                let mut board: Board = BorshDeserialize::deserialize(&mut board_data.as_ref())
-                    .map_err(ProgramError::from)?;
+                let mut board: VerificationBoard =
+                    BorshDeserialize::deserialize(&mut board_data.as_ref())
+                        .map_err(ProgramError::from)?;
                 drop(board_data);
 
                 let mut vm = VM::init_vm(
