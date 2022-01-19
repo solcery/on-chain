@@ -328,8 +328,6 @@ impl<'a> Memory {
 
 #[derive(Error, Copy, Clone, Debug, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
 pub enum Error {
-    #[error("VM halted")]
-    Halt,
     #[error("Not enough values on the stack")]
     NotEnoughValues,
     #[error("Type mismatch")]
@@ -340,12 +338,6 @@ pub enum Error {
     LocalVarOutOfBounds,
     #[error("Attempted to access non-existent argument")]
     ArgumentOutOfBounds,
-    #[error("CardType index is out of bounds")]
-    NoSuchType,
-    #[error("Acsess violation: attempted to access not-readable memory region")]
-    AccessViolation,
-    #[error("MemoryRegion index is out of bounds")]
-    NoSuchRegion,
 }
 
 impl From<ConversionError> for Error {

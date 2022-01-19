@@ -13,7 +13,6 @@ mod verification_board;
 pub use verification_board::VerificationBoard;
 
 pub trait Board {
-    // TODO: Error struct
     fn generate_card_id(&mut self) -> u32;
     fn memory_region(&mut self, region_index: usize) -> Result<&mut MemoryRegion, Error>;
     #[must_use]
