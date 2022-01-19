@@ -15,13 +15,11 @@ pub use verification_board::VerificationBoard;
 pub trait Board {
     // TODO: Error struct
     fn generate_card_id(&mut self) -> u32;
-    fn memory_region(
-        &mut self,
-        region_index: usize,
-        player_id: u32,
-    ) -> Result<&mut MemoryRegion, Error>;
+    fn memory_region(&mut self, region_index: usize) -> Result<&mut MemoryRegion, Error>;
     #[must_use]
     fn region_count(&self) -> usize;
+    #[must_use]
+    fn owner(&self) -> u32;
 }
 
 #[derive(Error, Copy, Clone, Debug, Eq, PartialEq, BorshDeserialize, BorshSerialize)]

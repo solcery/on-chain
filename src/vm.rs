@@ -135,7 +135,7 @@ impl<'a, Brd: Board> VM<'a, Brd> {
                 attr_index,
             } => {
                 // TODO: Error handing
-                match self.board.memory_region(region_index as usize, 0) {
+                match self.board.memory_region(region_index as usize) {
                     Ok(region) => {
                         let attr = region.attrs[attr_index as usize];
                         self.memory.push_external(attr)
@@ -149,7 +149,7 @@ impl<'a, Brd: Board> VM<'a, Brd> {
             } => {
                 // TODO: Error handing
                 let value = self.memory.pop_external()?;
-                match self.board.memory_region(region_index as usize, 0) {
+                match self.board.memory_region(region_index as usize) {
                     Ok(region) => {
                         self.log.push(Event::RegionChange {
                             region_index,
@@ -177,7 +177,7 @@ impl<'a, Brd: Board> VM<'a, Brd> {
             VMCommand::ReturnVoid => self.memory.return_void(),
             VMCommand::PushCardCount { region_index } => {
                 // TODO: Error handing
-                match self.board.memory_region(region_index as usize, 0) {
+                match self.board.memory_region(region_index as usize) {
                     Ok(region) => {
                         let len = region.cards.len();
                         self.memory.push_external(Word::Numeric(len as i32))
@@ -235,7 +235,7 @@ impl<'a, Brd: Board> VM<'a, Brd> {
         let index = self.memory.pop_external_no_pc_inc()?;
         match index {
             Word::Numeric(i) => {
-                match self.board.memory_region(region_index as usize, 0) {
+                match self.board.memory_region(region_index as usize) {
                     Ok(region) => {
                         let card_type = region.cards[i as usize].card_type();
                         //TODO: Error handing for Index out of Bounds
@@ -254,7 +254,7 @@ impl<'a, Brd: Board> VM<'a, Brd> {
         let card_type = self.memory.pop_external_no_pc_inc()?;
         match card_type {
             Word::Numeric(id) => {
-                match self.board.memory_region(region_index as usize, 0) {
+                match self.board.memory_region(region_index as usize) {
                     Ok(region) => {
                         // Word::Numeric contains i32, but card_type is u32, so convert is needed
                         let count = region
@@ -295,7 +295,7 @@ impl<'a, Brd: Board> VM<'a, Brd> {
         let card_index = self.memory.pop_external_no_pc_inc()?;
         match card_index {
             Word::Numeric(id) => {
-                match self.board.memory_region(region_index as usize, 0) {
+                match self.board.memory_region(region_index as usize) {
                     Ok(region) => {
                         let card = &region.cards[id as usize];
                         //TODO: Error handing for Index out of Bounds
@@ -323,7 +323,7 @@ impl<'a, Brd: Board> VM<'a, Brd> {
     ) -> Result<(), InternalError> {
         let card_index = self.memory.pop_external_no_pc_inc()?;
         match card_index {
-            Word::Numeric(id) => match self.board.memory_region(region_index as usize, 0) {
+            Word::Numeric(id) => match self.board.memory_region(region_index as usize) {
                 Ok(region) => {
                     let card = &region.cards[id as usize];
                     let attr_value = card.attrs[attr_index as usize];
@@ -340,7 +340,7 @@ impl<'a, Brd: Board> VM<'a, Brd> {
     fn pop_card_attr(&mut self, region_index: u16, attr_index: u16) -> Result<(), InternalError> {
         let card_index = self.memory.pop_external_no_pc_inc()?;
         match card_index {
-            Word::Numeric(id) => match self.board.memory_region(region_index as usize, 0) {
+            Word::Numeric(id) => match self.board.memory_region(region_index as usize) {
                 Ok(region) => {
                     let card = &mut region.cards[id as usize];
                     let attr_value = self.memory.pop_external()?;
@@ -368,7 +368,7 @@ impl<'a, Brd: Board> VM<'a, Brd> {
             Word::Numeric(index) => {
                 let new_card_id = self.board.generate_card_id();
 
-                match self.board.memory_region(region_index as usize, 0) {
+                match self.board.memory_region(region_index as usize) {
                     Ok(region) => {
                         let id = index.try_into().unwrap();
                         let card = self
@@ -396,7 +396,7 @@ impl<'a, Brd: Board> VM<'a, Brd> {
             Word::Numeric(index) => {
                 let new_card_id = self.board.generate_card_id();
 
-                match self.board.memory_region(region_index as usize, 0) {
+                match self.board.memory_region(region_index as usize) {
                     Ok(region) => {
                         let id = index.try_into().unwrap();
                         let card = self
@@ -441,7 +441,7 @@ impl<'a, Brd: Board> VM<'a, Brd> {
     }
 
     fn remove_card_by_index(&mut self, region_index: u16) -> Result<(), InternalError> {
-        match self.board.memory_region(region_index as usize, 0) {
+        match self.board.memory_region(region_index as usize) {
             Ok(region) => {
                 let card_index_word = self.memory.pop_external()?;
                 let card_index =
@@ -466,7 +466,7 @@ impl<'a, Brd: Board> VM<'a, Brd> {
         let log = &mut self.log;
 
         for region_index in 0..self.board.region_count() {
-            if let Ok(region) = self.board.memory_region(region_index as usize, 0) {
+            if let Ok(region) = self.board.memory_region(region_index as usize) {
                 region.cards.retain(|card| {
                     if card.id() == card_id {
                         log.push(Event::RemoveCard {

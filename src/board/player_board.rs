@@ -40,17 +40,13 @@ impl Board for PlayerBoard {
         id
     }
 
-    fn memory_region(
-        &mut self,
-        region_index: usize,
-        player_id: u32,
-    ) -> Result<&mut MemoryRegion, Error> {
+    fn memory_region(&mut self, region_index: usize) -> Result<&mut MemoryRegion, Error> {
         // TODO: Create struct for unowned memory region
         if region_index < self.regions.len() {
             match &mut self.regions[region_index] {
                 Some(memory_region) => Ok(memory_region),
                 None => Err(Error::AccessViolation {
-                    player_id,
+                    player_id: self.player_id,
                     region_index: region_index as u32,
                 }),
             }
@@ -62,5 +58,8 @@ impl Board for PlayerBoard {
     }
     fn region_count(&self) -> usize {
         self.regions.len()
+    }
+    fn owner(&self) -> u32 {
+        self.player_id
     }
 }
