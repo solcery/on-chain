@@ -14,8 +14,8 @@ impl PlayerBoard {
     #[must_use]
     pub fn new(player_id: u32) -> Self {
         Self {
-            card_index: 0,
             regions: vec![],
+            card_index: 0,
             player_id,
         }
     }
@@ -55,9 +55,6 @@ impl Board for PlayerBoard {
                 index: region_index as u32,
             })
         }
-    }
-    fn region_count(&self) -> usize {
-        self.regions.len()
     }
     fn owner(&self) -> u32 {
         self.player_id

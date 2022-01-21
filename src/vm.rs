@@ -507,19 +507,17 @@ impl<'a, Brd: Board> VM<'a, Brd> {
 
         let log = &mut self.log;
 
-        for region_index in 0..self.board.region_count() {
-            if let Ok(region) = self.board.memory_region(region_index as usize) {
-                region.cards.retain(|card| {
-                    if card.id() == card_id {
-                        log.push(Event::RemoveCard {
-                            card_id: card_id as u32,
-                        });
-                        true
-                    } else {
-                        false
-                    }
-                });
-            }
+        for region in self.board.iter_mut() {
+            region.cards.retain(|card| {
+                if card.id() == card_id {
+                    log.push(Event::RemoveCard {
+                        card_id: card_id as u32,
+                    });
+                    true
+                } else {
+                    false
+                }
+            });
         }
         Ok(())
     }

@@ -71,9 +71,6 @@ impl Board for VerificationBoard {
             })
         }
     }
-    fn region_count(&self) -> usize {
-        self.regions.len()
-    }
 
     fn owner(&self) -> u32 {
         self.player_id
