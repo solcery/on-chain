@@ -1,0 +1,21 @@
+[package]
+name = "solcery-engine"
+version = "0.1.0"
+license = "Apache-2.0"
+homepage = "https://solcery.xyz/"
+edition = "2018"
+
+[features]
+no-entrypoint = []
+
+[dependencies]
+solana-program = "1.7.8"
+solcery-crud = { path = "../crud" }
+solcery-template= { path = "../template" }
+solcery-object = { path = "../object" }
+solcery-storage = { path = "../storage" }
+solcery-project = { path = "../project" }
+
+[lib]
+name = "solcery_engine"
+crate-type = ["cdylib", "lib"]

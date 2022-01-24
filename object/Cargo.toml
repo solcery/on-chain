@@ -1,0 +1,22 @@
+[package]
+name = "solcery-object"
+version = "0.1.0"
+license = "Apache-2.0"
+homepage = "https://solcery.xyz/"
+edition = "2018"
+
+[features]
+no-entrypoint = []
+
+[dependencies]
+solana-program = "1.7.8"
+thiserror = "1.0.24"
+borsh = "0.9.1"
+borsh-derive = "0.9.0"
+solcery-crud = { path = "../crud" }
+solcery-storage = { path = "../storage" }
+solcery-project = { path = "../project" }
+
+[lib]
+name = "solcery_object"
+crate-type = ["cdylib", "lib"]

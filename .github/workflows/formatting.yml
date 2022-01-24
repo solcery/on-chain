@@ -1,0 +1,41 @@
+name: Lints and formatting
+
+on: [push, pull_request]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  formatting:
+    strategy:
+      fail-fast: false
+      matrix:
+        crate: [crud, engine, game, object, project, storage, template, vm]
+    name: Formatting
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ matrix.crate }}
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          default: true
+          components: rustfmt
+
+      - name: Run cargo fmt for ${{ matrix.crate }}
+        run: cargo fmt --all -- --check
+
+      #- name: Run cargo clippy
+        #uses: actions-rs/cargo@v1
+        #continue-on-error: true  # WARNING: only for this example, remove it!
+        #with:
+          #command: clippy
+          #args: -- -D warnings
