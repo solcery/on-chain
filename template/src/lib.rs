@@ -31,8 +31,6 @@ pub enum SolceryNestedType {
     SLink { template: Pubkey },
 }
 
-
-
 #[derive(Debug, BorshSerialize, BorshDeserialize, BorshSchema, PartialEq)]
 pub struct TemplateData {
     pub id: u32,

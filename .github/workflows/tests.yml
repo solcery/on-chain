@@ -11,14 +11,7 @@ on:
 jobs:
   native:
     name: Native Unit Tests
-    strategy:
-      fail-fast: false
-      matrix:
-        crate: [crud, engine, game, object, project, storage, template, vm]
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ${{ matrix.crate }}
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
@@ -32,10 +25,10 @@ jobs:
           toolchain: stable
           default: true
 
-      - name: Build tests for ${{ matrix.crate }}
+      - name: Build tests
         run: cargo test --no-run
 
-      - name: Run tests for ${{ matrix.crate }}
+      - name: Run tests
         run: cargo test --no-fail-fast
   #onchain:
     #name: On-chain Unit Tests

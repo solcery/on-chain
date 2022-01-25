@@ -7,15 +7,8 @@ env:
 
 jobs:
   formatting:
-    strategy:
-      fail-fast: false
-      matrix:
-        crate: [crud, engine, game, object, project, storage, template, vm]
     name: Formatting
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ${{ matrix.crate }}
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
@@ -30,7 +23,7 @@ jobs:
           default: true
           components: rustfmt
 
-      - name: Run cargo fmt for ${{ matrix.crate }}
+      - name: Run cargo fmt
         run: cargo fmt --all -- --check
 
       #- name: Run cargo clippy
