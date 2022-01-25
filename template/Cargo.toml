@@ -3,10 +3,7 @@ name = "solcery-template"
 version = "0.1.0"
 license = "Apache-2.0"
 homepage = "https://solcery.xyz/"
-edition = "2018"
-
-[features]
-no-entrypoint = []
+edition = "2021"
 
 [dependencies]
 solana-program = "1.7.8"
@@ -18,7 +15,3 @@ num-traits = "0.2"
 solcery-crud = { path = "../crud" }
 solcery-project = { path = "../project" }
 solcery-storage = { path = "../storage" }
-
-[lib]
-name = "solcery_template"
-crate-type = ["cdylib", "lib"]
