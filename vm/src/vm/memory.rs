@@ -1,6 +1,5 @@
-use crate::word::ConversionError;
-use crate::word::Word;
 use borsh::{BorshDeserialize, BorshSerialize};
+use solcery_data_types::word::{ConversionError, Word};
 use std::convert::TryFrom;
 
 #[derive(Debug, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
@@ -348,7 +347,7 @@ impl From<ConversionError> for Error {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::word_vec;
+    use solcery_data_types::word_vec;
 
     mod correct_operation {
         use super::*;

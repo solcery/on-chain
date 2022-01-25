@@ -2571,6 +2571,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "solcery-data-types"
+version = "0.1.0"
+dependencies = [
+ "borsh",
+ "bytemuck",
+ "pretty_assertions",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "test-case",
+ "thiserror",
+]
+
+[[package]]
 name = "solcery-engine"
 version = "0.1.0"
 dependencies = [
@@ -2655,6 +2669,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
+ "solcery-data-types",
  "test-case",
  "thiserror",
 ]

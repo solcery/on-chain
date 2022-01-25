@@ -46,10 +46,10 @@ pub enum VMCommand {
     // Data transfer
     ///Pushes external value on the stack
     PushConstant(Word),
-    LoadBoardAttr {
+    LoadGameStateAttr {
         index: u32,
     },
-    StoreBoardAttr {
+    StoreGameStateAttr {
         index: u32,
     },
     LoadLocal {
@@ -81,42 +81,42 @@ pub enum VMCommand {
 
     // Interactions with cards
     /// Pushes total number of cards to the stack
-    PushCardCount,
+    PushObjectCount,
     /// Pushes total number of card types to the stack
     PushTypeCount,
-    /// Pushes [CardType](crate::card::CardType) on the `i`-th card, where `i` is the topmost value on the stack
-    PushCardType,
-    /// Pushes total number of cards with [CardType](crate::card::CardType) popped from the stack
-    PushCardCountWithCardType,
-    /// Pushes `attr_index`-th attribute of the [CardType](crate::card::CardType), those index
-    /// among [CardTypes](crate::card::CardType) is on the top of the stack
-    LoadCardTypeAttrByTypeIndex {
+    /// Pushes [ObjectType](crate::card::ObjectType) on the `i`-th card, where `i` is the topmost value on the stack
+    PushObjectType,
+    /// Pushes total number of cards with [ObjectType](crate::card::ObjectType) popped from the stack
+    PushObjectCountWithObjectType,
+    /// Pushes `attr_index`-th attribute of the [ObjectType](crate::card::ObjectType), those index
+    /// among [ObjectTypes](crate::card::ObjectType) is on the top of the stack
+    LoadObjectTypeAttrByTypeIndex {
         attr_index: u32,
     },
-    /// Pushes `attr_index`-th attribute of the [CardType](crate::card::CardType) of the card,
+    /// Pushes `attr_index`-th attribute of the [ObjectType](crate::card::ObjectType) of the card,
     /// those index is on the top of the stack
-    LoadCardTypeAttrByCardIndex {
+    LoadObjectTypeAttrByObjectIndex {
         attr_index: u32,
     },
-    /// Pushes `attr_index`-th attribute of the [Card](crate::card::Card),
+    /// Pushes `attr_index`-th attribute of the [Object](crate::card::Object),
     /// those index is on the top of the stack
-    LoadCardAttr {
+    LoadObjectAttr {
         attr_index: u32,
     },
-    /// Pops `attr_index`-th attribute of the [Card](crate::card::Card),
+    /// Pops `attr_index`-th attribute of the [Object](crate::card::Object),
     /// those index is on the top of the stack
-    StoreCardAttr {
+    StoreObjectAttr {
         attr_index: u32,
     },
 
-    /// Pops [CardType](crate::card::CardType) index from the stack and calls it's `action_id` action as a function
-    InstanceCardByTypeIndex,
-    /// Pops [CardType](crate::card::CardType) id from the stack and calls it's `action_id` action as a function
-    InstanceCardByTypeId,
-    /// CardType index and action index should be placed on the stack
-    CallCardAction,
-    RemoveCardByIndex,
-    RemoveCardById,
+    /// Pops [ObjectType](crate::card::ObjectType) index from the stack and calls it's `action_id` action as a function
+    InstanceObjectByTypeIndex,
+    /// Pops [ObjectType](crate::card::ObjectType) id from the stack and calls it's `action_id` action as a function
+    InstanceObjectByTypeId,
+    /// ObjectType index and action index should be placed on the stack
+    CallObjectAction,
+    RemoveObjectByIndex,
+    RemoveObjectById,
 }
 
 impl Default for VMCommand {
@@ -162,16 +162,16 @@ impl TryFrom<CommandByteCode> for VMCommand {
                 }
             }
             18 => match word[1..].try_into() {
-                Ok(val) => Ok(Self::LoadBoardAttr {
+                Ok(val) => Ok(Self::LoadGameStateAttr {
                     index: u32::from_le_bytes(val),
                 }),
-                Err(_) => Err("LoadBoardAttr argument corrupted."),
+                Err(_) => Err("LoadGameStateAttr argument corrupted."),
             },
             19 => match word[1..].try_into() {
-                Ok(val) => Ok(Self::StoreBoardAttr {
+                Ok(val) => Ok(Self::StoreGameStateAttr {
                     index: u32::from_le_bytes(val),
                 }),
-                Err(_) => Err("StoreBoardAttr argument corrupted."),
+                Err(_) => Err("StoreGameStateAttr argument corrupted."),
             },
             20 => match word[1..].try_into() {
                 Ok(val) => Ok(Self::LoadLocal {
@@ -225,39 +225,39 @@ impl TryFrom<CommandByteCode> for VMCommand {
             }
             28 => Ok(Self::Return),
             29 => Ok(Self::ReturnVoid),
-            30 => Ok(Self::PushCardCount),
+            30 => Ok(Self::PushObjectCount),
             31 => Ok(Self::PushTypeCount),
-            32 => Ok(Self::PushCardType),
-            33 => Ok(Self::PushCardCountWithCardType),
+            32 => Ok(Self::PushObjectType),
+            33 => Ok(Self::PushObjectCountWithObjectType),
             34 => match word[1..].try_into() {
-                Ok(val) => Ok(Self::LoadCardTypeAttrByTypeIndex {
+                Ok(val) => Ok(Self::LoadObjectTypeAttrByTypeIndex {
                     attr_index: u32::from_le_bytes(val),
                 }),
-                Err(_) => Err("LoadCardTypeAttrByTypeIndex argument corrupted."),
+                Err(_) => Err("LoadObjectTypeAttrByTypeIndex argument corrupted."),
             },
             35 => match word[1..].try_into() {
-                Ok(val) => Ok(Self::LoadCardTypeAttrByCardIndex {
+                Ok(val) => Ok(Self::LoadObjectTypeAttrByObjectIndex {
                     attr_index: u32::from_le_bytes(val),
                 }),
-                Err(_) => Err("LoadCardTypeAttrByCardIndex argument corrupted."),
+                Err(_) => Err("LoadObjectTypeAttrByObjectIndex argument corrupted."),
             },
             36 => match word[1..].try_into() {
-                Ok(val) => Ok(Self::LoadCardAttr {
+                Ok(val) => Ok(Self::LoadObjectAttr {
                     attr_index: u32::from_le_bytes(val),
                 }),
-                Err(_) => Err("LoadCardAttr argument corrupted."),
+                Err(_) => Err("LoadObjectAttr argument corrupted."),
             },
             37 => match word[1..].try_into() {
-                Ok(val) => Ok(Self::StoreCardAttr {
+                Ok(val) => Ok(Self::StoreObjectAttr {
                     attr_index: u32::from_le_bytes(val),
                 }),
-                Err(_) => Err("StoreCardAttr argument corrupted."),
+                Err(_) => Err("StoreObjectAttr argument corrupted."),
             },
-            38 => Ok(Self::InstanceCardByTypeIndex),
-            39 => Ok(Self::InstanceCardByTypeId),
-            40 => Ok(Self::CallCardAction),
-            41 => Ok(Self::RemoveCardByIndex),
-            42 => Ok(Self::RemoveCardById),
+            38 => Ok(Self::InstanceObjectByTypeIndex),
+            39 => Ok(Self::InstanceObjectByTypeId),
+            40 => Ok(Self::CallObjectAction),
+            41 => Ok(Self::RemoveObjectByIndex),
+            42 => Ok(Self::RemoveObjectById),
             _ => Err("Illegal instruction"),
         }
     }
@@ -292,13 +292,13 @@ impl From<VMCommand> for CommandByteCode {
                 Word::Boolean(false) => [17, 0, 0, 0, 0],
                 Word::Boolean(true) => [17, 1, 0, 0, 0],
             },
-            VMCommand::LoadBoardAttr { index } => {
+            VMCommand::LoadGameStateAttr { index } => {
                 let index_bytes = index.to_le_bytes();
                 let mut byte_code = [18, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&index_bytes);
                 byte_code
             }
-            VMCommand::StoreBoardAttr { index } => {
+            VMCommand::StoreGameStateAttr { index } => {
                 let index_bytes = index.to_le_bytes();
                 let mut byte_code = [19, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&index_bytes);
@@ -355,39 +355,39 @@ impl From<VMCommand> for CommandByteCode {
             }
             VMCommand::Return => [28, 0, 0, 0, 0],
             VMCommand::ReturnVoid => [29, 0, 0, 0, 0],
-            VMCommand::PushCardCount => [30, 0, 0, 0, 0],
+            VMCommand::PushObjectCount => [30, 0, 0, 0, 0],
             VMCommand::PushTypeCount => [31, 0, 0, 0, 0],
-            VMCommand::PushCardType => [32, 0, 0, 0, 0],
-            VMCommand::PushCardCountWithCardType => [33, 0, 0, 0, 0],
-            VMCommand::LoadCardTypeAttrByTypeIndex { attr_index } => {
+            VMCommand::PushObjectType => [32, 0, 0, 0, 0],
+            VMCommand::PushObjectCountWithObjectType => [33, 0, 0, 0, 0],
+            VMCommand::LoadObjectTypeAttrByTypeIndex { attr_index } => {
                 let attr_index_bytes = attr_index.to_le_bytes();
                 let mut byte_code = [34, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&attr_index_bytes);
                 byte_code
             }
-            VMCommand::LoadCardTypeAttrByCardIndex { attr_index } => {
+            VMCommand::LoadObjectTypeAttrByObjectIndex { attr_index } => {
                 let attr_index_bytes = attr_index.to_le_bytes();
                 let mut byte_code = [35, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&attr_index_bytes);
                 byte_code
             }
-            VMCommand::LoadCardAttr { attr_index } => {
+            VMCommand::LoadObjectAttr { attr_index } => {
                 let attr_index_bytes = attr_index.to_le_bytes();
                 let mut byte_code = [36, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&attr_index_bytes);
                 byte_code
             }
-            VMCommand::StoreCardAttr { attr_index } => {
+            VMCommand::StoreObjectAttr { attr_index } => {
                 let attr_index_bytes = attr_index.to_le_bytes();
                 let mut byte_code = [37, 0, 0, 0, 0];
                 byte_code[1..].copy_from_slice(&attr_index_bytes);
                 byte_code
             }
-            VMCommand::InstanceCardByTypeIndex => [38, 0, 0, 0, 0],
-            VMCommand::InstanceCardByTypeId => [39, 0, 0, 0, 0],
-            VMCommand::CallCardAction => [40, 0, 0, 0, 0],
-            VMCommand::RemoveCardByIndex => [41, 0, 0, 0, 0],
-            VMCommand::RemoveCardById => [42, 0, 0, 0, 0],
+            VMCommand::InstanceObjectByTypeIndex => [38, 0, 0, 0, 0],
+            VMCommand::InstanceObjectByTypeId => [39, 0, 0, 0, 0],
+            VMCommand::CallObjectAction => [40, 0, 0, 0, 0],
+            VMCommand::RemoveObjectByIndex => [41, 0, 0, 0, 0],
+            VMCommand::RemoveObjectById => [42, 0, 0, 0, 0],
         }
     }
 }
@@ -418,10 +418,10 @@ mod tests {
     #[test_case(VMCommand::PushConstant(Word::Numeric(0)))]
     #[test_case(VMCommand::PushConstant(Word::Numeric(123)))]
     #[test_case(VMCommand::PushConstant(Word::Numeric(-124)))]
-    #[test_case(VMCommand::LoadBoardAttr{index: 123})]
-    #[test_case(VMCommand::LoadBoardAttr{index: 0})]
-    #[test_case(VMCommand::StoreBoardAttr{index: 123})]
-    #[test_case(VMCommand::StoreBoardAttr{index: 0})]
+    #[test_case(VMCommand::LoadGameStateAttr{index: 123})]
+    #[test_case(VMCommand::LoadGameStateAttr{index: 0})]
+    #[test_case(VMCommand::StoreGameStateAttr{index: 123})]
+    #[test_case(VMCommand::StoreGameStateAttr{index: 0})]
     #[test_case(VMCommand::LoadLocal{index: 123})]
     #[test_case(VMCommand::LoadLocal{index: 0})]
     #[test_case(VMCommand::StoreLocal{index: 123})]
@@ -440,23 +440,23 @@ mod tests {
     #[test_case(VMCommand::Function { n_locals: 123 })]
     #[test_case(VMCommand::Return)]
     #[test_case(VMCommand::ReturnVoid)]
-    #[test_case(VMCommand::PushCardCount)]
+    #[test_case(VMCommand::PushObjectCount)]
     #[test_case(VMCommand::PushTypeCount)]
-    #[test_case(VMCommand::PushCardCountWithCardType)]
-    #[test_case(VMCommand::PushCardType)]
-    #[test_case(VMCommand::LoadCardTypeAttrByTypeIndex { attr_index: 0 })]
-    #[test_case(VMCommand::LoadCardTypeAttrByTypeIndex { attr_index: 123 })]
-    #[test_case(VMCommand::LoadCardTypeAttrByCardIndex { attr_index: 0 })]
-    #[test_case(VMCommand::LoadCardTypeAttrByCardIndex { attr_index: 123 })]
-    #[test_case(VMCommand::LoadCardAttr { attr_index: 0 })]
-    #[test_case(VMCommand::LoadCardAttr { attr_index: 123 })]
-    #[test_case(VMCommand::StoreCardAttr { attr_index: 0 })]
-    #[test_case(VMCommand::StoreCardAttr { attr_index: 123 })]
-    #[test_case(VMCommand::InstanceCardByTypeIndex)]
-    #[test_case(VMCommand::InstanceCardByTypeId)]
-    #[test_case(VMCommand::CallCardAction)]
-    #[test_case(VMCommand::RemoveCardByIndex)]
-    #[test_case(VMCommand::RemoveCardById)]
+    #[test_case(VMCommand::PushObjectCountWithObjectType)]
+    #[test_case(VMCommand::PushObjectType)]
+    #[test_case(VMCommand::LoadObjectTypeAttrByTypeIndex { attr_index: 0 })]
+    #[test_case(VMCommand::LoadObjectTypeAttrByTypeIndex { attr_index: 123 })]
+    #[test_case(VMCommand::LoadObjectTypeAttrByObjectIndex { attr_index: 0 })]
+    #[test_case(VMCommand::LoadObjectTypeAttrByObjectIndex { attr_index: 123 })]
+    #[test_case(VMCommand::LoadObjectAttr { attr_index: 0 })]
+    #[test_case(VMCommand::LoadObjectAttr { attr_index: 123 })]
+    #[test_case(VMCommand::StoreObjectAttr { attr_index: 0 })]
+    #[test_case(VMCommand::StoreObjectAttr { attr_index: 123 })]
+    #[test_case(VMCommand::InstanceObjectByTypeIndex)]
+    #[test_case(VMCommand::InstanceObjectByTypeId)]
+    #[test_case(VMCommand::CallObjectAction)]
+    #[test_case(VMCommand::RemoveObjectByIndex)]
+    #[test_case(VMCommand::RemoveObjectById)]
     fn bytecode_to_instruction_equivalence(instruction: VMCommand) {
         let bytecode = CommandByteCode::from(instruction);
         let decoded_instruction = VMCommand::try_from(bytecode).unwrap();

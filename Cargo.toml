@@ -1,6 +1,7 @@
 [workspace]
 members = [
 	"crud",
+	"data-types",
 	"engine",
 	"game",
 	"object",

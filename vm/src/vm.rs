@@ -1,11 +1,11 @@
 //! # The Sorcery Virtual Machine
 
-use crate::board::Board;
-use crate::instruction_rom::InstructionRom;
-use crate::rom::CardTypesRom;
-use crate::vmcommand::VMCommand;
-use crate::word::Word;
 use borsh::{BorshDeserialize, BorshSerialize};
+use solcery_data_types::game_state::GameState;
+use solcery_data_types::instruction_rom::InstructionRom;
+use solcery_data_types::object_type_rom::ObjectTypesRom;
+use solcery_data_types::vmcommand::VMCommand;
+use solcery_data_types::word::Word;
 use std::convert::TryFrom;
 use std::convert::TryInto;
 
@@ -37,27 +37,27 @@ impl<T> Sealed<T> {
 #[derive(Debug)]
 pub struct VM<'a> {
     instructions: InstructionRom<'a>,
-    card_types: CardTypesRom<'a>,
+    object_types: ObjectTypesRom<'a>,
     memory: Memory,
-    board: &'a mut Board,
+    game_state: &'a mut GameState,
     log: Log,
 }
 
 impl<'a> VM<'a> {
     pub fn init_vm(
         instructions: InstructionRom<'a>,
-        card_types: CardTypesRom<'a>,
-        board: &'a mut Board,
+        object_types: ObjectTypesRom<'a>,
+        game_state: &'a mut GameState,
         args: &'a [Word],
-        card_index: u32,
+        object_index: u32,
         action_index: u32,
     ) -> Self {
-        let memory = Memory::init_memory(args, card_index, action_index);
+        let memory = Memory::init_memory(args, object_index, action_index);
         Self {
             instructions,
-            card_types,
+            object_types,
             memory,
-            board,
+            game_state,
             log: vec![],
         }
     }
@@ -86,16 +86,16 @@ impl<'a> VM<'a> {
 
     pub fn resume_execution(
         instructions: InstructionRom<'a>,
-        card_types: CardTypesRom<'a>,
-        board: &'a mut Board,
+        object_types: ObjectTypesRom<'a>,
+        game_state: &'a mut GameState,
         sealed_memory: Sealed<Memory>,
     ) -> Self {
         let memory = Sealed::<Memory>::release_data(sealed_memory);
         Self {
             instructions,
-            card_types,
+            object_types,
             memory,
-            board,
+            game_state,
             log: vec![],
         }
     }
@@ -130,18 +130,18 @@ impl<'a> VM<'a> {
             VMCommand::And => self.memory.and(),
             VMCommand::Not => self.memory.not(),
             VMCommand::PushConstant(word) => self.memory.push_external(word),
-            VMCommand::LoadBoardAttr { index } => {
-                let attr = self.board.attrs[index as usize];
+            VMCommand::LoadGameStateAttr { index } => {
+                let attr = self.game_state.attrs[index as usize];
                 self.memory.push_external(attr)
             }
-            VMCommand::StoreBoardAttr { index } => {
+            VMCommand::StoreGameStateAttr { index } => {
                 let value = self.memory.pop_external()?;
-                self.log.push(Event::BoardChange {
+                self.log.push(Event::GameStateChange {
                     attr_index: index,
-                    previous_value: self.board.attrs[index as usize],
+                    previous_value: self.game_state.attrs[index as usize],
                     new_value: value,
                 });
-                self.board.attrs[index as usize] = value;
+                self.game_state.attrs[index as usize] = value;
                 Ok(())
             }
             VMCommand::LoadLocal { index } => self.memory.push_local(index as usize),
@@ -156,55 +156,55 @@ impl<'a> VM<'a> {
             VMCommand::Function { n_locals } => self.memory.function(n_locals as usize),
             VMCommand::Return => self.memory.fn_return(),
             VMCommand::ReturnVoid => self.memory.return_void(),
-            VMCommand::PushCardCount => {
-                let len = self.board.cards.len();
+            VMCommand::PushObjectCount => {
+                let len = self.game_state.objects.len();
                 self.memory.push_external(Word::Numeric(len as i32))
             }
             VMCommand::PushTypeCount => {
-                let len = self.card_types.card_type_count();
+                let len = self.object_types.object_type_count();
                 self.memory.push_external(Word::Numeric(len as i32))
             }
-            VMCommand::PushCardCountWithCardType => self.push_card_count_with_type(),
-            VMCommand::PushCardType => self.push_card_type(),
-            VMCommand::LoadCardTypeAttrByTypeIndex { attr_index } => {
-                self.push_card_type_attr_by_type_index(attr_index)
+            VMCommand::PushObjectCountWithObjectType => self.push_object_count_with_type(),
+            VMCommand::PushObjectType => self.push_object_type(),
+            VMCommand::LoadObjectTypeAttrByTypeIndex { attr_index } => {
+                self.push_object_type_attr_by_type_index(attr_index)
             }
-            VMCommand::LoadCardTypeAttrByCardIndex { attr_index } => {
-                self.push_card_type_attr_by_card_index(attr_index)
+            VMCommand::LoadObjectTypeAttrByObjectIndex { attr_index } => {
+                self.push_object_type_attr_by_object_index(attr_index)
             }
-            VMCommand::LoadCardAttr { attr_index } => self.push_card_attr(attr_index),
-            VMCommand::StoreCardAttr { attr_index } => self.pop_card_attr(attr_index),
-            VMCommand::InstanceCardByTypeIndex => self.instantiate_card_by_type_index(),
-            VMCommand::InstanceCardByTypeId => self.instantiate_card_by_type_id(),
-            VMCommand::CallCardAction => self.call_card_action(),
-            VMCommand::RemoveCardByIndex => self.remove_card_by_index(),
-            VMCommand::RemoveCardById => self.remove_card_by_id(),
+            VMCommand::LoadObjectAttr { attr_index } => self.push_object_attr(attr_index),
+            VMCommand::StoreObjectAttr { attr_index } => self.pop_object_attr(attr_index),
+            VMCommand::InstanceObjectByTypeIndex => self.instantiate_object_by_type_index(),
+            VMCommand::InstanceObjectByTypeId => self.instantiate_object_by_type_id(),
+            VMCommand::CallObjectAction => self.call_object_action(),
+            VMCommand::RemoveObjectByIndex => self.remove_object_by_index(),
+            VMCommand::RemoveObjectById => self.remove_object_by_id(),
             VMCommand::Halt => Err(InternalError::Halt),
         }
     }
 
-    fn push_card_type(&mut self) -> Result<(), InternalError> {
+    fn push_object_type(&mut self) -> Result<(), InternalError> {
         let index = self.memory.pop_external_no_pc_inc()?;
         match index {
             Word::Numeric(i) => {
-                let card_type = self.board.cards[i as usize].card_type();
-                let word = Word::Numeric(card_type as i32);
+                let object_type = self.game_state.objects[i as usize].object_type();
+                let word = Word::Numeric(object_type as i32);
                 self.memory.push_external(word)
             }
             Word::Boolean(_) => Err(InternalError::TypeMismatch),
         }
     }
 
-    fn push_card_count_with_type(&mut self) -> Result<(), InternalError> {
-        let card_type = self.memory.pop_external_no_pc_inc()?;
-        match card_type {
+    fn push_object_count_with_type(&mut self) -> Result<(), InternalError> {
+        let object_type = self.memory.pop_external_no_pc_inc()?;
+        match object_type {
             Word::Numeric(id) => {
-                // Word::Numeric contains i32, but card_type is u32, so convert is needed
+                // Word::Numeric contains i32, but object_type is u32, so convert is needed
                 let count = self
-                    .board
-                    .cards
+                    .game_state
+                    .objects
                     .iter()
-                    .filter(|card| card.card_type() == id as u32)
+                    .filter(|object| object.object_type() == id as u32)
                     .count();
 
                 let word = Word::Numeric(count as i32);
@@ -214,12 +214,15 @@ impl<'a> VM<'a> {
         }
     }
 
-    fn push_card_type_attr_by_type_index(&mut self, attr_index: u32) -> Result<(), InternalError> {
+    fn push_object_type_attr_by_type_index(
+        &mut self,
+        attr_index: u32,
+    ) -> Result<(), InternalError> {
         let type_index = self.memory.pop_external_no_pc_inc()?;
         match type_index {
             Word::Numeric(id) => {
-                let card_type = self.card_types.card_type_by_type_index(id as usize);
-                let attr_value = card_type.attr_by_index(attr_index as usize);
+                let object_type = self.object_types.object_type_by_type_index(id as usize);
+                let attr_value = object_type.attr_by_index(attr_index as usize);
 
                 let word = attr_value;
                 self.memory.push_external(word)
@@ -228,17 +231,20 @@ impl<'a> VM<'a> {
         }
     }
 
-    fn push_card_type_attr_by_card_index(&mut self, attr_index: u32) -> Result<(), InternalError> {
-        let card_index = self.memory.pop_external_no_pc_inc()?;
-        match card_index {
+    fn push_object_type_attr_by_object_index(
+        &mut self,
+        attr_index: u32,
+    ) -> Result<(), InternalError> {
+        let object_index = self.memory.pop_external_no_pc_inc()?;
+        match object_index {
             Word::Numeric(id) => {
-                let card = &self.board.cards[id as usize];
-                let card_type_id = card.card_type();
-                let card_type = self
-                    .card_types
-                    .card_type_by_type_id(card_type_id)
+                let object = &self.game_state.objects[id as usize];
+                let object_type_id = object.object_type();
+                let object_type = self
+                    .object_types
+                    .object_type_by_type_id(object_type_id)
                     .ok_or(InternalError::NoSuchType)?;
-                let attr_value = card_type.attr_by_index(attr_index as usize);
+                let attr_value = object_type.attr_by_index(attr_index as usize);
 
                 let word = attr_value;
                 self.memory.push_external(word)
@@ -247,12 +253,12 @@ impl<'a> VM<'a> {
         }
     }
 
-    fn push_card_attr(&mut self, attr_index: u32) -> Result<(), InternalError> {
-        let card_index = self.memory.pop_external_no_pc_inc()?;
-        match card_index {
+    fn push_object_attr(&mut self, attr_index: u32) -> Result<(), InternalError> {
+        let object_index = self.memory.pop_external_no_pc_inc()?;
+        match object_index {
             Word::Numeric(id) => {
-                let card = &self.board.cards[id as usize];
-                let attr_value = card.attrs[attr_index as usize];
+                let object = &self.game_state.objects[id as usize];
+                let attr_value = object.attrs[attr_index as usize];
 
                 let word = attr_value;
                 self.memory.push_external(word)
@@ -263,41 +269,41 @@ impl<'a> VM<'a> {
         }
     }
 
-    fn pop_card_attr(&mut self, attr_index: u32) -> Result<(), InternalError> {
-        let card_index = self.memory.pop_external_no_pc_inc()?;
-        match card_index {
+    fn pop_object_attr(&mut self, attr_index: u32) -> Result<(), InternalError> {
+        let object_index = self.memory.pop_external_no_pc_inc()?;
+        match object_index {
             Word::Numeric(id) => {
-                let card = &mut self.board.cards[id as usize];
+                let object = &mut self.game_state.objects[id as usize];
                 let attr_value = self.memory.pop_external()?;
 
-                self.log.push(Event::CardChange {
-                    card_index: id as u32,
+                self.log.push(Event::ObjectChange {
+                    object_index: id as u32,
                     attr_index,
-                    previous_value: card.attrs[attr_index as usize],
+                    previous_value: object.attrs[attr_index as usize],
                     new_value: attr_value,
                 });
 
-                card.attrs[attr_index as usize] = attr_value;
+                object.attrs[attr_index as usize] = attr_value;
                 Ok(())
             }
             Word::Boolean(_) => Err(InternalError::TypeMismatch),
         }
     }
 
-    fn instantiate_card_by_type_index(&mut self) -> Result<(), InternalError> {
+    fn instantiate_object_by_type_index(&mut self) -> Result<(), InternalError> {
         let index = self.memory.pop_external()?;
         match index {
             Word::Numeric(index) => {
                 let id = index.try_into().unwrap();
-                let card = self
-                    .card_types
-                    .instance_card_by_type_index(id, self.board.generate_card_id())
+                let object = self
+                    .object_types
+                    .instance_object_by_type_index(id, self.game_state.generate_object_id())
                     .unwrap();
-                self.board.cards.push(card);
+                self.game_state.objects.push(object);
 
-                self.log.push(Event::AddCardByIndex {
-                    card_index: (self.board.cards.len() - 1) as u32,
-                    cargtype_index: id as u32,
+                self.log.push(Event::AddObjectByIndex {
+                    object_index: (self.game_state.objects.len() - 1) as u32,
+                    object_type_index: id as u32,
                 });
                 Ok(())
             }
@@ -305,20 +311,20 @@ impl<'a> VM<'a> {
         }
     }
 
-    fn instantiate_card_by_type_id(&mut self) -> Result<(), InternalError> {
+    fn instantiate_object_by_type_id(&mut self) -> Result<(), InternalError> {
         let index = self.memory.pop_external()?;
         match index {
             Word::Numeric(index) => {
                 let id = index.try_into().unwrap();
-                let card = self
-                    .card_types
-                    .instance_card_by_type_id(id, self.board.generate_card_id())
+                let object = self
+                    .object_types
+                    .instance_object_by_type_id(id, self.game_state.generate_object_id())
                     .unwrap();
-                self.board.cards.push(card);
+                self.game_state.objects.push(object);
 
-                self.log.push(Event::AddCardById {
-                    card_index: (self.board.cards.len() - 1) as u32,
-                    cargtype_id: id as u32,
+                self.log.push(Event::AddObjectById {
+                    object_index: (self.game_state.objects.len() - 1) as u32,
+                    object_type_id: id as u32,
                 });
                 Ok(())
             }
@@ -326,7 +332,7 @@ impl<'a> VM<'a> {
         }
     }
 
-    fn call_card_action(&mut self) -> Result<(), InternalError> {
+    fn call_object_action(&mut self) -> Result<(), InternalError> {
         let action_index_word = self.memory.pop_external_no_pc_inc()?;
         let action_index =
             usize::try_from(action_index_word).map_err(|_| InternalError::TypeMismatch)?;
@@ -335,43 +341,43 @@ impl<'a> VM<'a> {
         let type_index =
             usize::try_from(type_index_word).map_err(|_| InternalError::TypeMismatch)?;
 
-        let card_type = self.card_types.card_type_by_type_index(type_index);
-        let entry_point = card_type.action_entry_point(action_index);
+        let object_type = self.object_types.object_type_by_type_index(type_index);
+        let entry_point = object_type.action_entry_point(action_index);
         self.memory
             .call(entry_point.address(), entry_point.n_args())?;
 
-        self.log.push(Event::CardActionStarted {
-            cardtype_index: type_index as u32,
+        self.log.push(Event::ObjectActionStarted {
+            object_type_index: type_index as u32,
             action_index: action_index as u32,
             args: self.memory.args(),
         });
         Ok(())
     }
 
-    fn remove_card_by_index(&mut self) -> Result<(), InternalError> {
-        let card_index_word = self.memory.pop_external()?;
-        let card_index =
-            usize::try_from(card_index_word).map_err(|_| InternalError::TypeMismatch)?;
+    fn remove_object_by_index(&mut self) -> Result<(), InternalError> {
+        let object_index_word = self.memory.pop_external()?;
+        let object_index =
+            usize::try_from(object_index_word).map_err(|_| InternalError::TypeMismatch)?;
 
-        let card = self.board.cards.remove(card_index);
+        let object = self.game_state.objects.remove(object_index);
 
-        self.log.push(Event::RemoveCard {
-            card_id: card.id() as u32,
+        self.log.push(Event::RemoveObject {
+            object_id: object.id() as u32,
         });
         Ok(())
     }
 
-    fn remove_card_by_id(&mut self) -> Result<(), InternalError> {
-        let card_id = self.memory.pop_external()?;
-        let card_id = u32::try_from(card_id).map_err(|_| InternalError::TypeMismatch)?;
+    fn remove_object_by_id(&mut self) -> Result<(), InternalError> {
+        let object_id = self.memory.pop_external()?;
+        let object_id = u32::try_from(object_id).map_err(|_| InternalError::TypeMismatch)?;
 
-        let board = &mut self.board;
+        let game_state = &mut self.game_state;
         let log = &mut self.log;
 
-        board.cards.retain(|card| {
-            if card.id() == card_id {
-                log.push(Event::RemoveCard {
-                    card_id: card_id as u32,
+        game_state.objects.retain(|object| {
+            if object.id() == object_id {
+                log.push(Event::RemoveObject {
+                    object_id: object_id as u32,
                 });
                 true
             } else {
@@ -397,15 +403,15 @@ impl<'a> VM<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::card::{CardType, EntryPoint};
-    use crate::word_vec;
     use pretty_assertions::assert_eq;
+    use solcery_data_types::object_type::{EntryPoint, ObjectType};
+    use solcery_data_types::word_vec;
 
-    fn type1() -> CardType {
+    fn type1() -> ObjectType {
         let type1_attrs = word_vec![10, 5, true, false,];
         let type1_init_attrs = word_vec![5, 5, false, false,];
         unsafe {
-            CardType::from_raw_parts(
+            ObjectType::from_raw_parts(
                 1,
                 type1_attrs,
                 type1_init_attrs,
@@ -414,11 +420,11 @@ mod tests {
         }
     }
 
-    fn type2() -> CardType {
+    fn type2() -> ObjectType {
         let type2_attrs = word_vec![20, 5, true, true,];
         let type2_init_attrs = word_vec![6, 4, false, false,];
         unsafe {
-            CardType::from_raw_parts(
+            ObjectType::from_raw_parts(
                 2,
                 type2_attrs,
                 type2_init_attrs,
@@ -427,47 +433,53 @@ mod tests {
         }
     }
 
-    fn testing_board() -> Board {
+    fn testing_game_state() -> GameState {
         let type1 = type1();
         let type2 = type2();
 
-        let board_attrs = word_vec![3, 4, 5, false, false, true,];
+        let game_state_attrs = word_vec![3, 4, 5, false, false, true,];
 
-        let mut card1 = type1.instantiate_card(1);
-        let mut card2 = type2.instantiate_card(2);
+        let mut object1 = type1.instantiate_object(1);
+        let mut object2 = type2.instantiate_object(2);
 
-        card1.attrs[0] = Word::Numeric(4);
-        card2.attrs[3] = Word::Boolean(true);
+        object1.attrs[0] = Word::Numeric(4);
+        object2.attrs[3] = Word::Boolean(true);
 
-        let card3 = type1.instantiate_card(3);
-        let card4 = type2.instantiate_card(4);
+        let object3 = type1.instantiate_object(3);
+        let object4 = type2.instantiate_object(4);
 
-        unsafe { Board::from_raw_parts(vec![card1, card2, card3, card4], board_attrs, 5) }
+        unsafe {
+            GameState::from_raw_parts(
+                vec![object1, object2, object3, object4],
+                game_state_attrs,
+                5,
+            )
+        }
     }
 
-    fn initial_board() -> Board {
-        let card1 = type1().instantiate_card(1);
-        let board_attrs = word_vec![0, 0, 0, false, false, false,];
-        unsafe { Board::from_raw_parts(vec![card1], board_attrs, 1) }
+    fn initial_game_state() -> GameState {
+        let object1 = type1().instantiate_object(1);
+        let game_state_attrs = word_vec![0, 0, 0, false, false, false,];
+        unsafe { GameState::from_raw_parts(vec![object1], game_state_attrs, 1) }
     }
 
     #[test]
     fn init_empty_memory_vm() {
         let instructions = vec![
             VMCommand::PushConstant(Word::Numeric(2)),
-            VMCommand::PushCardType,
+            VMCommand::PushObjectType,
             VMCommand::Halt,
         ];
         let instructions = InstructionRom::from_vm_commands(&instructions);
         let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
-        let card_types = vec![type1(), type2()];
-        let card_types = unsafe { CardTypesRom::from_raw_parts(&card_types) };
+        let object_types = vec![type1(), type2()];
+        let object_types = unsafe { ObjectTypesRom::from_raw_parts(&object_types) };
 
-        let mut board = testing_board();
+        let mut game_state = testing_game_state();
 
         let args = vec![];
-        let vm = VM::init_vm(instructions, card_types, &mut board, &args, 0, 0);
+        let vm = VM::init_vm(instructions, object_types, &mut game_state, &args, 0, 0);
         let memory = VM::release_memory(vm);
         let needed_memory = unsafe { Memory::from_raw_parts(word_vec![0, 0], 0, 0, 0, 0, 0) };
 
@@ -478,19 +490,19 @@ mod tests {
     fn push_type() {
         let instructions = vec![
             VMCommand::PushConstant(Word::Numeric(2)),
-            VMCommand::PushCardType,
+            VMCommand::PushObjectType,
             VMCommand::Halt,
         ];
         let instructions = InstructionRom::from_vm_commands(&instructions);
         let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
-        let card_types = vec![type1(), type2()];
-        let card_types = unsafe { CardTypesRom::from_raw_parts(&card_types) };
+        let object_types = vec![type1(), type2()];
+        let object_types = unsafe { ObjectTypesRom::from_raw_parts(&object_types) };
 
-        let mut board = testing_board();
+        let mut game_state = testing_game_state();
 
         let args = vec![];
-        let mut vm = VM::init_vm(instructions, card_types, &mut board, &args, 0, 0);
+        let mut vm = VM::init_vm(instructions, object_types, &mut game_state, &args, 0, 0);
 
         vm.execute(10).unwrap();
         assert!(vm.is_halted());
@@ -500,28 +512,28 @@ mod tests {
 
         assert_eq!(memory, needed_memory);
 
-        let board_needed = testing_board();
+        let game_state_needed = testing_game_state();
 
-        assert_eq!(board, board_needed);
+        assert_eq!(game_state, game_state_needed);
     }
 
     #[test]
-    fn push_card_count() {
+    fn push_object_count() {
         let instructions = vec![
             VMCommand::PushConstant(Word::Numeric(2)),
-            VMCommand::PushCardCountWithCardType,
+            VMCommand::PushObjectCountWithObjectType,
             VMCommand::Halt,
         ];
         let instructions = InstructionRom::from_vm_commands(&instructions);
         let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
-        let card_types = vec![type1(), type2()];
-        let card_types = unsafe { CardTypesRom::from_raw_parts(&card_types) };
+        let object_types = vec![type1(), type2()];
+        let object_types = unsafe { ObjectTypesRom::from_raw_parts(&object_types) };
 
-        let mut board = testing_board();
+        let mut game_state = testing_game_state();
 
         let args = vec![];
-        let mut vm = VM::init_vm(instructions, card_types, &mut board, &args, 0, 0);
+        let mut vm = VM::init_vm(instructions, object_types, &mut game_state, &args, 0, 0);
 
         vm.execute(10).unwrap();
 
@@ -532,28 +544,28 @@ mod tests {
 
         assert_eq!(memory, needed_memory);
 
-        let board_needed = testing_board();
+        let game_state_needed = testing_game_state();
 
-        assert_eq!(board, board_needed);
+        assert_eq!(game_state, game_state_needed);
     }
 
     #[test]
     fn push_type_attr_by_type_index() {
         let instructions = vec![
             VMCommand::PushConstant(Word::Numeric(1)),
-            VMCommand::LoadCardTypeAttrByTypeIndex { attr_index: 3 },
+            VMCommand::LoadObjectTypeAttrByTypeIndex { attr_index: 3 },
             VMCommand::Halt,
         ];
         let instructions = InstructionRom::from_vm_commands(&instructions);
         let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
-        let card_types = vec![type1(), type2()];
-        let card_types = unsafe { CardTypesRom::from_raw_parts(&card_types) };
+        let object_types = vec![type1(), type2()];
+        let object_types = unsafe { ObjectTypesRom::from_raw_parts(&object_types) };
 
-        let mut board = testing_board();
+        let mut game_state = testing_game_state();
 
         let args = vec![];
-        let mut vm = VM::init_vm(instructions, card_types, &mut board, &args, 0, 0);
+        let mut vm = VM::init_vm(instructions, object_types, &mut game_state, &args, 0, 0);
 
         vm.execute(10).unwrap();
 
@@ -564,28 +576,28 @@ mod tests {
 
         assert_eq!(memory, needed_memory);
 
-        let board_needed = testing_board();
+        let game_state_needed = testing_game_state();
 
-        assert_eq!(board, board_needed);
+        assert_eq!(game_state, game_state_needed);
     }
 
     #[test]
-    fn push_type_attr_by_card_index() {
+    fn push_type_attr_by_object_index() {
         let instructions = vec![
             VMCommand::PushConstant(Word::Numeric(1)),
-            VMCommand::LoadCardTypeAttrByCardIndex { attr_index: 3 },
+            VMCommand::LoadObjectTypeAttrByObjectIndex { attr_index: 3 },
             VMCommand::Halt,
         ];
         let instructions = InstructionRom::from_vm_commands(&instructions);
         let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
-        let card_types = vec![type1(), type2()];
-        let card_types = unsafe { CardTypesRom::from_raw_parts(&card_types) };
+        let object_types = vec![type1(), type2()];
+        let object_types = unsafe { ObjectTypesRom::from_raw_parts(&object_types) };
 
-        let mut board = testing_board();
+        let mut game_state = testing_game_state();
 
         let args = vec![];
-        let mut vm = VM::init_vm(instructions, card_types, &mut board, &args, 0, 0);
+        let mut vm = VM::init_vm(instructions, object_types, &mut game_state, &args, 0, 0);
 
         vm.execute(10).unwrap();
 
@@ -596,28 +608,28 @@ mod tests {
 
         assert_eq!(memory, needed_memory);
 
-        let board_needed = testing_board();
+        let game_state_needed = testing_game_state();
 
-        assert_eq!(board, board_needed);
+        assert_eq!(game_state, game_state_needed);
     }
 
     #[test]
     fn push_attr() {
         let instructions = vec![
             VMCommand::PushConstant(Word::Numeric(1)),
-            VMCommand::LoadCardAttr { attr_index: 3 },
+            VMCommand::LoadObjectAttr { attr_index: 3 },
             VMCommand::Halt,
         ];
         let instructions = InstructionRom::from_vm_commands(&instructions);
         let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
-        let card_types = vec![type1(), type2()];
-        let card_types = unsafe { CardTypesRom::from_raw_parts(&card_types) };
+        let object_types = vec![type1(), type2()];
+        let object_types = unsafe { ObjectTypesRom::from_raw_parts(&object_types) };
 
-        let mut board = testing_board();
+        let mut game_state = testing_game_state();
 
         let args = vec![];
-        let mut vm = VM::init_vm(instructions, card_types, &mut board, &args, 0, 0);
+        let mut vm = VM::init_vm(instructions, object_types, &mut game_state, &args, 0, 0);
 
         vm.execute(10).unwrap();
 
@@ -628,9 +640,9 @@ mod tests {
 
         assert_eq!(memory, needed_memory);
 
-        let board_needed = testing_board();
+        let game_state_needed = testing_game_state();
 
-        assert_eq!(board, board_needed);
+        assert_eq!(game_state, game_state_needed);
     }
 
     #[test]
@@ -638,19 +650,19 @@ mod tests {
         let instructions = vec![
             VMCommand::PushConstant(Word::Numeric(42)),
             VMCommand::PushConstant(Word::Numeric(1)),
-            VMCommand::StoreCardAttr { attr_index: 3 },
+            VMCommand::StoreObjectAttr { attr_index: 3 },
             VMCommand::Halt,
         ];
         let instructions = InstructionRom::from_vm_commands(&instructions);
         let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
-        let card_types = vec![type1(), type2()];
-        let card_types = unsafe { CardTypesRom::from_raw_parts(&card_types) };
+        let object_types = vec![type1(), type2()];
+        let object_types = unsafe { ObjectTypesRom::from_raw_parts(&object_types) };
 
-        let mut board = testing_board();
+        let mut game_state = testing_game_state();
 
         let args = vec![];
-        let mut vm = VM::init_vm(instructions, card_types, &mut board, &args, 0, 0);
+        let mut vm = VM::init_vm(instructions, object_types, &mut game_state, &args, 0, 0);
 
         vm.execute(10).unwrap();
 
@@ -661,29 +673,29 @@ mod tests {
 
         assert_eq!(memory, needed_memory);
 
-        let mut board_needed = testing_board();
-        board_needed.cards[1].attrs[3] = Word::Numeric(42);
+        let mut game_state_needed = testing_game_state();
+        game_state_needed.objects[1].attrs[3] = Word::Numeric(42);
 
-        assert_eq!(board, board_needed);
+        assert_eq!(game_state, game_state_needed);
     }
 
     #[test]
-    fn add_one_card_by_index() {
+    fn add_one_object_by_index() {
         let instructions = vec![
             VMCommand::PushConstant(Word::Numeric(1)),
-            VMCommand::InstanceCardByTypeIndex,
+            VMCommand::InstanceObjectByTypeIndex,
             VMCommand::Halt,
         ];
         let instructions = InstructionRom::from_vm_commands(&instructions);
         let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
-        let card_types = vec![type1(), type2()];
-        let card_types = unsafe { CardTypesRom::from_raw_parts(&card_types) };
+        let object_types = vec![type1(), type2()];
+        let object_types = unsafe { ObjectTypesRom::from_raw_parts(&object_types) };
 
-        let mut board = initial_board();
+        let mut game_state = initial_game_state();
 
         let args = vec![];
-        let mut vm = VM::init_vm(instructions, card_types, &mut board, &args, 0, 0);
+        let mut vm = VM::init_vm(instructions, object_types, &mut game_state, &args, 0, 0);
 
         vm.execute(10).unwrap();
 
@@ -694,31 +706,31 @@ mod tests {
 
         assert_eq!(memory, needed_memory);
 
-        let mut board_needed = initial_board();
-        let _ = board_needed.generate_card_id();
-        let added_card = type2().instantiate_card(1);
-        board_needed.cards.push(added_card);
+        let mut game_state_needed = initial_game_state();
+        let _ = game_state_needed.generate_object_id();
+        let added_object = type2().instantiate_object(1);
+        game_state_needed.objects.push(added_object);
 
-        assert_eq!(board, board_needed);
+        assert_eq!(game_state, game_state_needed);
     }
 
     #[test]
-    fn add_one_card_by_id() {
+    fn add_one_object_by_id() {
         let instructions = vec![
             VMCommand::PushConstant(Word::Numeric(2)),
-            VMCommand::InstanceCardByTypeId,
+            VMCommand::InstanceObjectByTypeId,
             VMCommand::Halt,
         ];
         let instructions = InstructionRom::from_vm_commands(&instructions);
         let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
-        let card_types = vec![type1(), type2()];
-        let card_types = unsafe { CardTypesRom::from_raw_parts(&card_types) };
+        let object_types = vec![type1(), type2()];
+        let object_types = unsafe { ObjectTypesRom::from_raw_parts(&object_types) };
 
-        let mut board = initial_board();
+        let mut game_state = initial_game_state();
 
         let args = vec![];
-        let mut vm = VM::init_vm(instructions, card_types, &mut board, &args, 0, 0);
+        let mut vm = VM::init_vm(instructions, object_types, &mut game_state, &args, 0, 0);
 
         vm.execute(10).unwrap();
 
@@ -729,23 +741,23 @@ mod tests {
 
         assert_eq!(memory, needed_memory);
 
-        let mut board_needed = initial_board();
-        let _ = board_needed.generate_card_id();
-        let added_card = type2().instantiate_card(1);
-        board_needed.cards.push(added_card);
+        let mut game_state_needed = initial_game_state();
+        let _ = game_state_needed.generate_object_id();
+        let added_object = type2().instantiate_object(1);
+        game_state_needed.objects.push(added_object);
 
-        assert_eq!(board, board_needed);
+        assert_eq!(game_state, game_state_needed);
     }
 
     #[test]
-    fn add_one_card() {
+    fn add_one_object() {
         let instructions = vec![
-            VMCommand::CallCardAction,
+            VMCommand::CallObjectAction,
             VMCommand::Halt,
             //{
             VMCommand::Function { n_locals: 0 }, // Добавляет на доску одну карту типа 2
             VMCommand::PushConstant(Word::Numeric(2)),
-            VMCommand::InstanceCardByTypeId,
+            VMCommand::InstanceObjectByTypeId,
             VMCommand::PushConstant(Word::Numeric(5)),
             VMCommand::Return,
             //}
@@ -753,13 +765,13 @@ mod tests {
         let instructions = InstructionRom::from_vm_commands(&instructions);
         let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
-        let card_types = vec![type1(), type2()];
-        let card_types = unsafe { CardTypesRom::from_raw_parts(&card_types) };
+        let object_types = vec![type1(), type2()];
+        let object_types = unsafe { ObjectTypesRom::from_raw_parts(&object_types) };
 
-        let mut board = initial_board();
+        let mut game_state = initial_game_state();
 
         let args = vec![];
-        let mut vm = VM::init_vm(instructions, card_types, &mut board, &args, 0, 0);
+        let mut vm = VM::init_vm(instructions, object_types, &mut game_state, &args, 0, 0);
 
         vm.execute(10).unwrap();
 
@@ -770,30 +782,30 @@ mod tests {
 
         assert_eq!(memory, needed_memory);
 
-        let mut board_needed = initial_board();
-        let card = type2().instantiate_card(board_needed.generate_card_id());
-        board_needed.cards.push(card);
+        let mut game_state_needed = initial_game_state();
+        let object = type2().instantiate_object(game_state_needed.generate_object_id());
+        game_state_needed.objects.push(object);
 
-        assert_eq!(board, board_needed);
+        assert_eq!(game_state, game_state_needed);
     }
 
     #[test]
-    fn remove_one_card() {
+    fn remove_one_object() {
         let instructions = vec![
             VMCommand::PushConstant(Word::Numeric(0)),
-            VMCommand::RemoveCardByIndex,
+            VMCommand::RemoveObjectByIndex,
             VMCommand::Halt,
         ];
         let instructions = InstructionRom::from_vm_commands(&instructions);
         let instructions = unsafe { InstructionRom::from_raw_parts(&instructions) };
 
-        let card_types = vec![type1(), type2()];
-        let card_types = unsafe { CardTypesRom::from_raw_parts(&card_types) };
+        let object_types = vec![type1(), type2()];
+        let object_types = unsafe { ObjectTypesRom::from_raw_parts(&object_types) };
 
-        let mut board = testing_board();
+        let mut game_state = testing_game_state();
 
         let args = vec![];
-        let mut vm = VM::init_vm(instructions, card_types, &mut board, &args, 0, 0);
+        let mut vm = VM::init_vm(instructions, object_types, &mut game_state, &args, 0, 0);
 
         vm.execute(10).unwrap();
 
@@ -804,9 +816,9 @@ mod tests {
 
         assert_eq!(memory, needed_memory);
 
-        let mut board_needed = testing_board();
-        board_needed.cards.remove(0);
+        let mut game_state_needed = testing_game_state();
+        game_state_needed.objects.remove(0);
 
-        assert_eq!(board, board_needed);
+        assert_eq!(game_state, game_state_needed);
     }
 }
