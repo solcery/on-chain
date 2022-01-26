@@ -126,11 +126,19 @@ fn create_player_account(
         _ => {}
     }
 
-    if *player_info.key == pda && signer.is_signer {
+    if !player_info.is_writable {
+        return Err(Error::NotWritable);
+    }
+
+    if !signer.is_signer {
+        return Err(Error::NotSigned);
+    }
+
+    if *player_info.key == pda {
         let player = Player::from_pubkey(pda);
         (CURRENT_PLAYER_VERSION, player)
             .serialize(&mut data)
-            .map_err(|_| Error::SerializationFailed)
+            .map_err(|_| Error::AccountTooSmall)
     } else {
         Err(Error::WrongPlayerAccount)
     }
