@@ -8,14 +8,15 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-mod game;
-use game::{Event, Game, GameState};
-
-mod player;
-use player::{Player, PlayerState, CURRENT_PLAYER_VERSION};
-
 mod container;
+mod error;
+mod game;
+mod player;
+
 use container::{Container, Extractable};
+use error::Error;
+use game::{Event, Game, GameState};
+use player::{Player, PlayerState, CURRENT_PLAYER_VERSION};
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, BorshSerialize, BorshDeserialize)]
 //TODO: Add conversion tests
@@ -45,7 +46,7 @@ pub fn process_instruction(
         Instruction::CreatePlayerAccount => {
             let signer = next_account_info(accounts_iter)?;
             let player_info = next_account_info(accounts_iter)?;
-            create_player_account(program_id, signer, player_info)
+            create_player_account(program_id, signer, player_info).map_err(ProgramError::from)
         }
         Instruction::UpdatePlayerAccount => {
             let signer = next_account_info(accounts_iter)?;
@@ -105,7 +106,7 @@ fn create_player_account(
     program_id: &Pubkey,
     signer: &AccountInfo,
     player_info: &AccountInfo,
-) -> ProgramResult {
+) -> Result<(), Error> {
     //player_info address check
     let (pda, _bump_seed) =
         Pubkey::find_program_address(&[b"player", signer.key.as_ref()], program_id);
@@ -120,7 +121,7 @@ fn create_player_account(
             //TODO: Better errors
             Player::deserialize(&mut buf)
                 //Here error occurs if player account was already initialized
-                .map_or(Ok(()), |_| Err(ProgramError::InvalidAccountData))?;
+                .map_or(Ok(()), |_| Err(Error::AlreadyCreated))?;
         }
         _ => {}
     }
@@ -129,9 +130,9 @@ fn create_player_account(
         let player = Player::from_pubkey(pda);
         (CURRENT_PLAYER_VERSION, player)
             .serialize(&mut data)
-            .map_err(ProgramError::from)
+            .map_err(|_| Error::SerializationFailed)
     } else {
-        Err(ProgramError::InvalidAccountData)
+        Err(Error::WrongPlayerAccount)
     }
 }
 
@@ -310,17 +311,4 @@ mod tests;
 //}
 //}
 //Err(ProgramError::InvalidAccountData)
-//}
-
-//pub fn create_player_state(
-//payer_info: &AccountInfo,
-//player_state_info: &AccountInfo,
-//) -> ProgramResult {
-//let player_state = PlayerState {
-//pubkey: *payer_info.key,
-//game: None,
-//};
-//player_state
-//.serialize(&mut *player_state_info.data.borrow_mut())
-//.map_err(ProgramError::from)
 //}
