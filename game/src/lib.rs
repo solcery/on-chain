@@ -21,12 +21,26 @@ use player::{Player, PlayerState, CURRENT_PLAYER_VERSION};
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, BorshSerialize, BorshDeserialize)]
 //TODO: Add conversion tests
 enum Instruction {
+    /// Creates a special [Player](Player) account for signer, where all the metainformation will be stored.
+    ///
+    /// Accounts expected:
+    ///
+    /// 0. `[signer]` The account of the person, who will be playing.
+    /// 1. `[writable]` Player account with correct PDA
+    //TODO: we should probably provide a way to create this account
     CreatePlayerAccount,
     UpdatePlayerAccount,
-    CreateGame { num_players: u32, max_items: u32 },
+    CreateGame {
+        num_players: u32,
+        max_items: u32,
+    },
     JoinGame,
-    AddItems { items_number: u32 },
-    SetGameState { new_game_state: GameState },
+    AddItems {
+        items_number: u32,
+    },
+    SetGameState {
+        new_game_state: GameState,
+    },
     AddEvent(Container<Event>),
     LeaveGame,
 }
@@ -117,11 +131,15 @@ fn create_player_account(
     //Check previous versions
     let version = <u32>::deserialize(&mut buf);
     match version {
+        Ok(0) => {} // Default value
         Ok(1) => {
             //TODO: Better errors
             Player::deserialize(&mut buf)
                 //Here error occurs if player account was already initialized
                 .map_or(Ok(()), |_| Err(Error::AlreadyCreated))?;
+        }
+        Ok(_) => {
+            return Err(Error::WrongAccountVersion);
         }
         _ => {}
     }

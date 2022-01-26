@@ -15,6 +15,8 @@ pub enum Error {
     AccountTooSmall,
     #[error("Address of the provided player account does not match the required PDA")]
     WrongPlayerAccount,
+    #[error("You are using old version of Player account. Please, update it via UpdatePlayerAccount instruction.")]
+    WrongAccountVersion,
     #[error("Transaction is not signed")]
     NotSigned,
 }
