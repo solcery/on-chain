@@ -7,15 +7,17 @@ use solana_program::{
     program_error::ProgramError,
     pubkey::Pubkey,
 };
-use std::convert::TryFrom;
 
 mod game;
-use game::{Event, EventContainer, Game, GameState};
+use game::{Event, Game, GameState};
 
 mod player;
 use player::{Player, PlayerState};
 
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]
+mod container;
+use container::{Container, Extractable};
+
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, BorshSerialize, BorshDeserialize)]
 //TODO: Add conversion tests
 enum Instruction {
     CreatePlayerAccount,
@@ -24,43 +26,8 @@ enum Instruction {
     JoinGame,
     AddItems { items_number: u32 },
     SetGameState { new_game_state: GameState },
-    AddEvent(EventContainer),
+    AddEvent(Container<Event>),
     LeaveGame,
-}
-impl TryFrom<&[u8]> for Instruction {
-    type Error = ProgramError;
-
-    fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
-        let (tag, mut data) = data.split_first().unwrap();
-        match tag {
-            0 => Ok(Self::CreatePlayerAccount),
-            1 => Ok(Self::UpdatePlayerAccount),
-            2 => {
-                let buf = &mut data;
-                let num_players = u32::deserialize(buf)?;
-                let max_items = u32::deserialize(buf)?;
-                Ok(Self::CreateGame {
-                    num_players,
-                    max_items,
-                })
-            }
-            3 => Ok(Self::JoinGame),
-            4 => {
-                let items_number = u32::deserialize(&mut data)?;
-                Ok(Self::AddItems { items_number })
-            }
-            5 => {
-                let new_game_state = GameState::deserialize(&mut data)?;
-                Ok(Self::SetGameState { new_game_state })
-            }
-            6 => {
-                let event_container = EventContainer::deserialize(&mut data)?;
-                Ok(Self::AddEvent(event_container))
-            }
-            7 => Ok(Self::LeaveGame),
-            _ => Err(ProgramError::InvalidAccountData),
-        }
-    }
 }
 
 entrypoint!(process_instruction);
@@ -69,7 +36,8 @@ pub fn process_instruction(
     accounts: &[AccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
-    let instruction = Instruction::try_from(instruction_data)?;
+    let mut buf = instruction_data;
+    let instruction = Instruction::deserialize(&mut buf)?;
 
     let accounts_iter = &mut accounts.iter();
     let payer_info = next_account_info(accounts_iter)?;
@@ -121,19 +89,7 @@ pub fn process_instruction(
             let signer = next_account_info(accounts_iter)?;
             let player = next_account_info(accounts_iter)?;
             let game = next_account_info(accounts_iter)?;
-            let event = match event_container {
-                EventContainer::InPlace(event) => event,
-                EventContainer::InAccount(pubkey) => {
-                    let event_account = next_account_info(accounts_iter)?;
-                    if *event_account.key == pubkey {
-                        let event = Event::deserialize(&mut event_account.data.borrow().as_ref())?;
-                        event
-                    } else {
-                        //TODO: We need more descriptive error here
-                        return Err(ProgramError::InvalidAccountData);
-                    }
-                }
-            };
+            let event = Extractable::extract(event_container, accounts_iter)?;
             add_event(signer, player, game, event)
         }
         Instruction::LeaveGame => {
