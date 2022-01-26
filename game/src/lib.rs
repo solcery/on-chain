@@ -12,7 +12,7 @@ mod game;
 use game::{Event, Game, GameState};
 
 mod player;
-use player::{Player, PlayerState};
+use player::{Player, PlayerState, CURRENT_PLAYER_VERSION};
 
 mod container;
 use container::{Container, Extractable};
@@ -45,7 +45,7 @@ pub fn process_instruction(
         Instruction::CreatePlayerAccount => {
             let signer = next_account_info(accounts_iter)?;
             let player_info = next_account_info(accounts_iter)?;
-            create_player_account(signer, player_info)
+            create_player_account(program_id, signer, player_info)
         }
         Instruction::UpdatePlayerAccount => {
             let signer = next_account_info(accounts_iter)?;
@@ -101,9 +101,38 @@ pub fn process_instruction(
     }
 }
 
-fn create_player_account(signer: &AccountInfo, player_info: &AccountInfo) -> ProgramResult {
-    //TODO: accounts check
-    unimplemented!();
+fn create_player_account(
+    program_id: &Pubkey,
+    signer: &AccountInfo,
+    player_info: &AccountInfo,
+) -> ProgramResult {
+    //player_info address check
+    let (pda, _bump_seed) =
+        Pubkey::find_program_address(&[b"player", signer.key.as_ref()], program_id);
+
+    let mut data: &mut [u8] = &mut player_info.data.borrow_mut();
+    let mut buf = &*data;
+
+    //Check previous versions
+    let version = <u32>::deserialize(&mut buf);
+    match version {
+        Ok(1) => {
+            //TODO: Better errors
+            Player::deserialize(&mut buf)
+                //Here error occurs if player account was already initialized
+                .map_or(Ok(()), |_| Err(ProgramError::InvalidAccountData))?;
+        }
+        _ => {}
+    }
+
+    if *player_info.key == pda && signer.is_signer {
+        let player = Player::from_pubkey(pda);
+        (CURRENT_PLAYER_VERSION, player)
+            .serialize(&mut data)
+            .map_err(ProgramError::from)
+    } else {
+        Err(ProgramError::InvalidAccountData)
+    }
 }
 
 fn update_player_account(signer: &AccountInfo, player_info: &AccountInfo) -> ProgramResult {
@@ -157,6 +186,9 @@ fn add_event(
     //TODO: accounts check
     unimplemented!();
 }
+
+#[cfg(test)]
+mod tests;
 
 // It is old code, that I'm keepeng for easy reference access. I'll delete it as soon as I finish
 // instruction implementation
