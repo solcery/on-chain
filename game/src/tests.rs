@@ -1,4 +1,5 @@
 use super::*;
+use player::Data as PlayerData;
 use pretty_assertions::assert_eq;
 
 #[test]
@@ -22,7 +23,7 @@ fn correct_input() {
     let (pda, _bump_seed) =
         Pubkey::find_program_address(&[b"player", signer_key.as_ref()], &program_id);
 
-    let player = Player::from_pubkey(pda.clone());
+    let player = PlayerData::from_pubkey(pda.clone());
 
     let account_data_expected = (CURRENT_PLAYER_VERSION, player).try_to_vec().unwrap();
     let mut player_account_data = vec![0; account_data_expected.len()];
@@ -178,7 +179,7 @@ fn wrong_player_account() {
         0,
     );
 
-    let player = Player::from_pubkey(player_key.clone());
+    let player = PlayerData::from_pubkey(player_key.clone());
 
     let account_data_expected = (CURRENT_PLAYER_VERSION, player).try_to_vec().unwrap();
     let mut player_account_data = vec![0; account_data_expected.len()];

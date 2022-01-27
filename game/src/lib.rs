@@ -53,10 +53,10 @@ enum Instruction {
 }
 
 entrypoint!(process_instruction);
-pub fn process_instruction(
-    program_id: &Pubkey,
-    accounts: &[AccountInfo],
-    instruction_data: &[u8],
+pub fn process_instruction<'a>(
+    program_id: &'a Pubkey,
+    accounts: &'a [AccountInfo<'a>],
+    instruction_data: &'a [u8],
 ) -> ProgramResult {
     let mut buf = instruction_data;
     let instruction = Instruction::deserialize(&mut buf)?;
@@ -79,10 +79,18 @@ pub fn process_instruction(
             max_items,
         } => {
             let signer = next_account_info(accounts_iter)?;
-            let player = next_account_info(accounts_iter)?;
+            let player_info = next_account_info(accounts_iter)?;
             let game_project = next_account_info(accounts_iter)?;
             let game = next_account_info(accounts_iter)?;
-            create_game(signer, player, game_project, game, num_players, max_items)
+            create_game(
+                program_id,
+                signer,
+                player_info,
+                game_project,
+                game,
+                num_players,
+                max_items,
+            )
         }
         Instruction::JoinGame => {
             let signer = next_account_info(accounts_iter)?;
@@ -123,70 +131,40 @@ pub fn process_instruction(
     }
 }
 
-fn create_player_account(
-    program_id: &Pubkey,
-    signer: &AccountInfo,
-    player_info: &AccountInfo,
+fn create_player_account<'a>(
+    program_id: &'a Pubkey,
+    signer: &'a AccountInfo<'a>,
+    player_info: &'a AccountInfo<'a>,
 ) -> Result<(), Error> {
-    //player_info address check
-    let (pda, _bump_seed) =
-        Pubkey::find_program_address(&[b"player", signer.key.as_ref()], program_id);
-
-    let mut data: &mut [u8] = &mut player_info.data.borrow_mut();
-    let mut buf = &*data;
-
-    //Check previous versions
-    let version = <u32>::deserialize(&mut buf);
-    match version {
-        Ok(0) => {} // Default value
-        Ok(1) => {
-            Player::deserialize(&mut buf)
-                //Here error occurs if player account was already initialized
-                .map_or(Ok(()), |_| Err(Error::AlreadyCreated))?;
-        }
-        Ok(_) => {
-            return Err(Error::WrongAccountVersion);
-        }
-        _ => {}
-    }
-
-    if !player_info.is_writable {
-        return Err(Error::NotWritable);
-    }
-
-    if !signer.is_signer {
-        return Err(Error::NotSigned);
-    }
-
-    if *player_info.key == pda {
-        let player = Player::from_pubkey(pda);
-        (CURRENT_PLAYER_VERSION, player)
-            .serialize(&mut data)
-            .map_err(|_| Error::AccountTooSmall)
-    } else {
-        Err(Error::WrongPlayerAccount)
-    }
+    let player = Player::new(program_id, signer, player_info)?;
+    player.pack()
 }
 
-fn update_player_account(
-    program_id: &Pubkey,
-    signer: &AccountInfo,
-    player_info: &AccountInfo,
+fn update_player_account<'a>(
+    program_id: &'a Pubkey,
+    signer: &'a AccountInfo<'a>,
+    player_info: &'a AccountInfo<'a>,
 ) -> Result<(), Error> {
     // No need to implement it now, as there are only one version of Player struct
     // By now it will only call create_player_account()
     create_player_account(program_id, signer, player_info)
 }
 
-fn create_game(
-    signer: &AccountInfo,
-    player_info: &AccountInfo,
-    game_project: &AccountInfo,
-    game: &AccountInfo,
+fn create_game<'a>(
+    program_id: &'a Pubkey,
+    signer: &'a AccountInfo<'a>,
+    player_info: &'a AccountInfo<'a>,
+    game_project: &'a AccountInfo<'a>,
+    state: &'a AccountInfo<'a>,
     num_players: u32,
     max_items: u32,
 ) -> ProgramResult {
-    //TODO: accounts check
+    let player = Player::unpack(program_id, signer, player_info)?;
+
+    //let game = Game::new()
+
+    //let game_project = GameProject::unpack(game_project)?;
+
     unimplemented!();
 }
 
