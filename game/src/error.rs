@@ -23,6 +23,8 @@ pub enum Error {
     EmptyAccount,
     #[error("Account data corrupted")]
     CorruptedAccount,
+    #[error("Wrong GameProject account")]
+    WrongProjectAccount,
 }
 
 impl From<Error> for ProgramError {

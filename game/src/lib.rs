@@ -81,16 +81,17 @@ pub fn process_instruction<'a>(
             let signer = next_account_info(accounts_iter)?;
             let player_info = next_account_info(accounts_iter)?;
             let game_project = next_account_info(accounts_iter)?;
-            let game = next_account_info(accounts_iter)?;
+            let game_info = next_account_info(accounts_iter)?;
             create_game(
                 program_id,
                 signer,
                 player_info,
                 game_project,
-                game,
+                game_info,
                 num_players,
                 max_items,
             )
+            .map_err(ProgramError::from)
         }
         Instruction::JoinGame => {
             let signer = next_account_info(accounts_iter)?;
@@ -154,18 +155,21 @@ fn create_game<'a>(
     program_id: &'a Pubkey,
     signer: &'a AccountInfo<'a>,
     player_info: &'a AccountInfo<'a>,
-    game_project: &'a AccountInfo<'a>,
-    state: &'a AccountInfo<'a>,
+    project: &'a AccountInfo<'a>,
+    game_info: &'a AccountInfo<'a>,
     num_players: u32,
     max_items: u32,
-) -> ProgramResult {
-    let player = Player::unpack(program_id, signer, player_info)?;
-
-    //let game = Game::new()
-
-    //let game_project = GameProject::unpack(game_project)?;
-
-    unimplemented!();
+) -> Result<(), Error> {
+    let game = Game::new(
+        program_id,
+        signer,
+        player_info,
+        project,
+        game_info,
+        num_players,
+        max_items,
+    )?;
+    game.pack()
 }
 
 fn join_game(signer: &AccountInfo, player: &AccountInfo, game: &AccountInfo) -> ProgramResult {

@@ -7,7 +7,6 @@ use std::num::NonZeroU32;
 pub const CURRENT_PLAYER_VERSION: u32 = 1;
 
 #[derive(Clone, Debug)]
-//TODO: Add correct Ord implementation
 pub struct Player<'a> {
     account: &'a AccountInfo<'a>,
     player_data: Data,
