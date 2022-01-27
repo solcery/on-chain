@@ -19,6 +19,10 @@ pub enum Error {
     WrongAccountVersion,
     #[error("Transaction is not signed")]
     NotSigned,
+    #[error("Account contain no data")]
+    EmptyAccount,
+    #[error("Account data corrupted")]
+    CorruptedAccount,
 }
 
 impl From<Error> for ProgramError {

@@ -18,15 +18,15 @@ pub struct Game {
 }
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]
-pub struct GameObject {
-    pub id: u32,
-    pub tpl_id: u32,
-    pub attrs: Vec<u32>,
+pub struct Object {
+    id: u32,
+    tpl_id: u32,
+    attrs: Vec<u32>,
 }
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]
-pub struct GameState {
-    objects: Vec<GameObject>,
+pub struct State {
+    objects: Vec<Object>,
 }
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]

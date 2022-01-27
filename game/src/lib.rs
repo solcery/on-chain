@@ -15,8 +15,8 @@ mod player;
 
 use container::Container;
 use error::Error;
-use game::{Event, Game, GameState};
-use player::{Player, PlayerState, CURRENT_PLAYER_VERSION};
+use game::{Event, Game, State as GameState};
+use player::{Player, State as PlayerState, CURRENT_PLAYER_VERSION};
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, BorshSerialize, BorshDeserialize)]
 //TODO: Add conversion tests
@@ -29,6 +29,13 @@ enum Instruction {
     /// 1. `[writable]` Player account with correct PDA
     //TODO: we should probably provide a way to create this account
     CreatePlayerAccount,
+    /// Updates [Player](Player) account from old version.
+    ///
+    /// Accounts expected:
+    ///
+    /// 0. `[signer]` The account of the person, who will be playing.
+    /// 1. `[writable]` Player account with correct PDA
+    //TODO: we should probably provide a way to create this account
     UpdatePlayerAccount,
     CreateGame {
         num_players: u32,
@@ -65,7 +72,7 @@ pub fn process_instruction(
         Instruction::UpdatePlayerAccount => {
             let signer = next_account_info(accounts_iter)?;
             let player_info = next_account_info(accounts_iter)?;
-            update_player_account(signer, player_info)
+            update_player_account(program_id, signer, player_info).map_err(ProgramError::from)
         }
         Instruction::CreateGame {
             num_players,
@@ -133,7 +140,6 @@ fn create_player_account(
     match version {
         Ok(0) => {} // Default value
         Ok(1) => {
-            //TODO: Better errors
             Player::deserialize(&mut buf)
                 //Here error occurs if player account was already initialized
                 .map_or(Ok(()), |_| Err(Error::AlreadyCreated))?;
@@ -162,9 +168,14 @@ fn create_player_account(
     }
 }
 
-fn update_player_account(signer: &AccountInfo, player_info: &AccountInfo) -> ProgramResult {
-    //TODO: accounts check
-    unimplemented!();
+fn update_player_account(
+    program_id: &Pubkey,
+    signer: &AccountInfo,
+    player_info: &AccountInfo,
+) -> Result<(), Error> {
+    // No need to implement it now, as there are only one version of Player struct
+    // By now it will only call create_player_account()
+    create_player_account(program_id, signer, player_info)
 }
 
 fn create_game(

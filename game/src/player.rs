@@ -24,7 +24,7 @@ impl Player {
 }
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]
-pub struct PlayerState {
+pub struct State {
     //TODO: move to SolceryPlayer protocol
     pub pubkey: Pubkey,
     pub game: Option<Pubkey>,
