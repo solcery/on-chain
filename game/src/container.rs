@@ -1,4 +1,5 @@
 use borsh::{BorshDeserialize, BorshSerialize};
+use solana_program::account_info::next_account_info;
 use solana_program::account_info::AccountInfo;
 use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
@@ -13,12 +14,26 @@ where
     InAccount(Pubkey),
 }
 
-pub trait Extractable
+impl<T> Container<T>
 where
-    Self: Clone + Eq + PartialEq + Ord + PartialOrd + Debug + BorshSerialize + BorshDeserialize,
+    T: Clone + Eq + PartialEq + Ord + PartialOrd + Debug + BorshSerialize + BorshDeserialize,
 {
-    fn extract(
-        containered_data: Container<Self>,
+    pub fn extract(
+        containered_data: Self,
         accounts_iter: &mut std::slice::Iter<'_, AccountInfo<'_>>,
-    ) -> Result<Self, ProgramError>;
+    ) -> Result<T, ProgramError> {
+        match containered_data {
+            Container::InPlace(data) => Ok(data),
+            Container::InAccount(pubkey) => {
+                let data_account = next_account_info(accounts_iter)?;
+                if *data_account.key == pubkey {
+                    let data = T::deserialize(&mut data_account.data.borrow().as_ref())?;
+                    Ok(data)
+                } else {
+                    //TODO: We need more descriptive error here
+                    Err(ProgramError::InvalidAccountData)
+                }
+            }
+        }
+    }
 }

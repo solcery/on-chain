@@ -13,7 +13,7 @@ mod error;
 mod game;
 mod player;
 
-use container::{Container, Extractable};
+use container::Container;
 use error::Error;
 use game::{Event, Game, GameState};
 use player::{Player, PlayerState, CURRENT_PLAYER_VERSION};
@@ -104,7 +104,7 @@ pub fn process_instruction(
             let signer = next_account_info(accounts_iter)?;
             let player = next_account_info(accounts_iter)?;
             let game = next_account_info(accounts_iter)?;
-            let event = Extractable::extract(event_container, accounts_iter)?;
+            let event = Container::extract(event_container, accounts_iter)?;
             add_event(signer, player, game, event)
         }
         Instruction::LeaveGame => {
