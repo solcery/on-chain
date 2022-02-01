@@ -40,7 +40,7 @@ impl<'a, T: PartialEq> PartialEq for Bundled<'a, T> {
     }
 }
 
-pub trait Bundle<'a>
+pub trait Bundle<'a, InitializationArg>
 where
     Self: Sized,
 {
@@ -50,6 +50,7 @@ where
     fn new(
         program_id: &'a Pubkey,
         accounts_iter: &mut std::slice::Iter<'a, AccountInfo<'a>>,
+        initialization_args: InitializationArg,
     ) -> Result<Bundled<'a, Self>, Self::Error>;
     #[must_use]
     fn unpack(

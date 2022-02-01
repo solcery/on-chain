@@ -17,12 +17,13 @@ pub struct Player {
     player_id: Option<NonZeroU32>,
 }
 
-impl<'a> Bundle<'a> for Player {
+impl<'a> Bundle<'a, ()> for Player {
     type Error = Error;
 
     fn new(
         program_id: &'a Pubkey,
         accounts_iter: &mut std::slice::Iter<'a, AccountInfo<'a>>,
+        initialization_args: (),
     ) -> Result<Bundled<'a, Self>, Self::Error> {
         let signer = next_account_info(accounts_iter)?;
         let player_info = next_account_info(accounts_iter)?;
