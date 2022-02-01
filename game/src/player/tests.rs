@@ -22,7 +22,7 @@ fn correct_input() {
     let (pda, _bump_seed) =
         Pubkey::find_program_address(&[b"player", signer_key.as_ref()], &program_id);
 
-    let player = Player::from_pubkey(pda.clone());
+    let player = Player::from_pubkey(pda);
 
     let account_data_expected = (CURRENT_PLAYER_VERSION, player).try_to_vec().unwrap();
     let mut player_account_data = vec![0; account_data_expected.len()];
@@ -154,7 +154,7 @@ fn wrong_player_account() {
         0,
     );
 
-    let player = Player::from_pubkey(player_key.clone());
+    let player = Player::from_pubkey(player_key);
 
     let account_data_expected = (CURRENT_PLAYER_VERSION, player).try_to_vec().unwrap();
     let mut player_account_data = vec![0; account_data_expected.len()];

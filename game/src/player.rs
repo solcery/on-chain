@@ -3,7 +3,7 @@ use crate::error::Error;
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::account_info::next_account_info;
 use solana_program::account_info::AccountInfo;
-use solana_program::program_error::ProgramError;
+
 use solana_program::pubkey::Pubkey;
 use std::num::NonZeroU32;
 

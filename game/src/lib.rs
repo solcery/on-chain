@@ -3,7 +3,6 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint,
     entrypoint::ProgramResult,
-    msg,
     program_error::ProgramError,
     pubkey::Pubkey,
 };
@@ -14,22 +13,22 @@ mod error;
 mod game;
 mod player;
 
-use bundled::{Bundle, Bundled};
+use bundled::Bundle;
 use container::Container;
-use error::Error;
+
 use game::{Event, Game, State as GameState};
-use player::{Player, State as PlayerState, CURRENT_PLAYER_VERSION};
+use player::Player;
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, BorshSerialize, BorshDeserialize)]
 //TODO: Add conversion tests
 enum Instruction {
-    /// Creates a special [Player](Player) account for signer, where all the metainformation will be stored.
+    /// Fills a special [Player](Player) account for signer, where all the metainformation will be stored.
     ///
     /// Accounts expected:
     ///
     /// 0. `[signer]` The account of the person, who will be playing.
-    /// 1. `[writable]` Player account with correct PDA
     //TODO: we should probably provide a way to create this account
+    /// 1. `[writable]` Player account with correct PDA
     CreatePlayerAccount,
     /// Updates [Player](Player) account from old version.
     ///
@@ -37,8 +36,16 @@ enum Instruction {
     ///
     /// 0. `[signer]` The account of the person, who will be playing.
     /// 1. `[writable]` Player account with correct PDA
-    //TODO: we should probably provide a way to create this account
     UpdatePlayerAccount,
+    /// Fills  [Game](Game) account for signer, where all the metainformation  of the game will be stored.
+    ///
+    /// Accounts expected:
+    ///
+    /// 0. `[signer]` The account of the person, who will be playing.
+    /// 1. `[writable]` Player account with correct PDA
+    /// 2. `[]` GameProject account
+    //TODO: we should probably provide a way to create this account
+    /// 3. `[writable]` Game account
     CreateGame {
         num_players: u32,
         max_items: u32,

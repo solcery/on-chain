@@ -1,11 +1,11 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::account_info::next_account_info;
 use solana_program::account_info::AccountInfo;
-use solana_program::program_error::ProgramError;
+
 use solana_program::pubkey::Pubkey;
 
 use crate::bundled::{Bundle, Bundled};
-use crate::container::Container;
+
 use crate::error::Error;
 use crate::player::Player;
 
@@ -48,8 +48,10 @@ impl<'a> Bundle<'a, InitializationArgs> for Game {
         accounts_iter: &mut std::slice::Iter<'a, AccountInfo<'a>>,
         initialization_args: InitializationArgs,
     ) -> Result<Bundled<'a, Self>, Self::Error> {
+        // How to use max_items?
         let (num_players, max_items) = initialization_args;
 
+        //Do we really need a player account for game creation?
         Player::unpack(program_id, accounts_iter)?;
 
         let project = next_account_info(accounts_iter)?;
