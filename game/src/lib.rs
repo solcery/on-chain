@@ -8,6 +8,7 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
+mod bundled;
 mod container;
 mod error;
 mod game;
