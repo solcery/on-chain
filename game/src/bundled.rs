@@ -8,7 +8,16 @@ use std::fmt::Debug;
 #[derive(Debug, Clone)]
 pub struct Bundled<'a, T> {
     data: T,
-    accounts: Vec<AccountInfo<'a>>,
+    accounts: Vec<&'a AccountInfo<'a>>,
+}
+
+impl<'a, T> Bundled<'a, T> {
+    pub unsafe fn new(data: T, accounts: Vec<&'a AccountInfo<'a>>) -> Self {
+        Self { data, accounts }
+    }
+    pub unsafe fn release(self) -> (T, Vec<&'a AccountInfo<'a>>) {
+        (self.data, self.accounts)
+    }
 }
 
 impl<'a, T> Borrow<T> for Bundled<'a, T> {
@@ -36,13 +45,17 @@ where
     Self: Sized,
 {
     type Error;
+
+    #[must_use]
     fn new(
         program_id: &'a Pubkey,
         accounts_iter: &mut std::slice::Iter<'a, AccountInfo<'a>>,
-    ) -> Result<Bundled<'a, Self>, ProgramError>;
+    ) -> Result<Bundled<'a, Self>, Self::Error>;
+    #[must_use]
     fn unpack(
         program_id: &'a Pubkey,
         accounts_iter: &mut std::slice::Iter<'a, AccountInfo<'a>>,
-    ) -> Result<Bundled<'a, Self>, ProgramError>;
+    ) -> Result<Bundled<'a, Self>, Self::Error>;
+    #[must_use]
     fn pack(bundle: Bundled<'a, Self>) -> Result<(), Self::Error>;
 }

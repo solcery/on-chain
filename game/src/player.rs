@@ -1,31 +1,31 @@
+use crate::bundled::{Bundle, Bundled};
 use crate::error::Error;
 use borsh::{BorshDeserialize, BorshSerialize};
+use solana_program::account_info::next_account_info;
 use solana_program::account_info::AccountInfo;
+use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
 use std::num::NonZeroU32;
 
 pub const CURRENT_PLAYER_VERSION: u32 = 1;
 
-#[derive(Clone, Debug)]
-pub struct Player<'a> {
-    account: &'a AccountInfo<'a>,
-    player_data: Data,
-}
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]
 //TODO: Add correct Ord implementation
-pub struct Data {
+pub struct Player {
     pubkey: Pubkey,
     items: Vec<(u32, Pubkey)>,
     player_id: Option<NonZeroU32>,
 }
 
-impl<'a> Player<'a> {
-    #[must_use]
-    pub fn new(
+impl<'a> Bundle<'a> for Player {
+    type Error = Error;
+
+    fn new(
         program_id: &'a Pubkey,
-        signer: &'a AccountInfo<'a>,
-        player_info: &'a AccountInfo<'a>,
-    ) -> Result<Self, Error> {
+        accounts_iter: &mut std::slice::Iter<'a, AccountInfo<'a>>,
+    ) -> Result<Bundled<'a, Self>, Self::Error> {
+        let signer = next_account_info(accounts_iter)?;
+        let player_info = next_account_info(accounts_iter)?;
         //player_info address check
         let (pda, _bump_seed) =
             Pubkey::find_program_address(&[b"player", signer.key.as_ref()], program_id);
@@ -39,7 +39,7 @@ impl<'a> Player<'a> {
         match version {
             Ok(0) => {} // Default value
             Ok(1) => {
-                Data::deserialize(&mut buf)
+                Player::deserialize(&mut buf)
                     //Here error occurs if player account was already initialized
                     .map_or(Ok(()), |_| Err(Error::AlreadyCreated))?;
             }
@@ -54,21 +54,19 @@ impl<'a> Player<'a> {
         }
 
         if *player_info.key == pda {
-            Ok(Self {
-                account: player_info,
-                player_data: Data::from_pubkey(pda),
-            })
+            Ok(unsafe { Bundled::new(Player::from_pubkey(pda), vec![player_info]) })
         } else {
             Err(Error::WrongPlayerAccount)
         }
     }
+    fn unpack(
+        program_id: &'a Pubkey,
+        accounts_iter: &mut std::slice::Iter<'a, AccountInfo<'a>>,
+    ) -> Result<Bundled<'a, Self>, Self::Error> {
+        let signer = next_account_info(accounts_iter)?;
+        let player_info = next_account_info(accounts_iter)?;
 
-    #[must_use]
-    pub fn unpack(
-        program_id: &Pubkey,
-        signer: &AccountInfo,
-        player_info: &'a AccountInfo<'a>,
-    ) -> Result<Self, Error> {
+        //player_info address check
         let (pda, _bump_seed) =
             Pubkey::find_program_address(&[b"player", signer.key.as_ref()], program_id);
 
@@ -90,36 +88,26 @@ impl<'a> Player<'a> {
         let version = <u32>::deserialize(&mut data);
         let player_data = match version {
             Ok(0) => Err(Error::EmptyAccount),
-            Ok(1) => Data::deserialize(&mut data).map_err(|_| Error::CorruptedAccount),
+            Ok(1) => Player::deserialize(&mut data).map_err(|_| Error::CorruptedAccount),
             Ok(_) => Err(Error::WrongAccountVersion),
             _ => Err(Error::CorruptedAccount),
         }?;
         if player_data.key() == signer.key {
-            Ok(Self {
-                account: player_info,
-                player_data: player_data,
-            })
+            Ok(unsafe { Bundled::new(player_data, vec![player_info]) })
         } else {
             Err(Error::WrongPlayerAccount)
         }
     }
-
-    #[must_use]
-    pub fn pack(self) -> Result<(), Error> {
-        let mut data: &mut [u8] = &mut self.account.data.borrow_mut();
-        (CURRENT_PLAYER_VERSION, self.player_data)
+    fn pack(bundle: Bundled<'a, Self>) -> Result<(), Self::Error> {
+        let (player_data, accounts) = unsafe { bundle.release() };
+        let mut data: &mut [u8] = &mut accounts[0].data.borrow_mut();
+        (CURRENT_PLAYER_VERSION, player_data)
             .serialize(&mut data)
             .map_err(|_| Error::AccountTooSmall)
     }
 }
 
-impl<'a> PartialEq for Player<'a> {
-    fn eq(&self, other: &Self) -> bool {
-        self.player_data == other.player_data
-    }
-}
-
-impl Data {
+impl Player {
     #[must_use]
     pub fn from_pubkey(pubkey: Pubkey) -> Self {
         Self {

@@ -16,7 +16,8 @@ mod player;
 
 use container::Container;
 use error::Error;
-use game::{Event, Game, State as GameState};
+use game::{Event, State as GameState};
+//use game::{Event, Game, State as GameState};
 use player::{Player, State as PlayerState, CURRENT_PLAYER_VERSION};
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, BorshSerialize, BorshDeserialize)]
@@ -69,15 +70,17 @@ pub fn process_instruction<'a>(
             let signer = next_account_info(accounts_iter)?;
             let player_info = next_account_info(accounts_iter)?;
 
-            let player = Player::new(program_id, signer, player_info)?;
-            player.pack().map_err(ProgramError::from)
+            unimplemented!();
+            //let player = Player::new(program_id, signer, player_info)?;
+            //player.pack().map_err(ProgramError::from)
         }
         Instruction::UpdatePlayerAccount => {
             let signer = next_account_info(accounts_iter)?;
             let player_info = next_account_info(accounts_iter)?;
 
-            let player = Player::unpack(program_id, signer, player_info)?;
-            player.pack().map_err(ProgramError::from)
+            unimplemented!();
+            //let player = Player::unpack(program_id, signer, player_info)?;
+            //player.pack().map_err(ProgramError::from)
         }
         Instruction::CreateGame {
             num_players,
@@ -146,16 +149,17 @@ fn create_game<'a>(
     num_players: u32,
     max_items: u32,
 ) -> Result<(), Error> {
-    let game = Game::new(
-        program_id,
-        signer,
-        player_info,
-        project,
-        game_info,
-        num_players,
-        max_items,
-    )?;
-    game.pack()
+    //let game = Game::new(
+    //program_id,
+    //signer,
+    //player_info,
+    //project,
+    //game_info,
+    //num_players,
+    //max_items,
+    //)?;
+    //game.pack()
+    unimplemented!();
 }
 
 fn join_game(signer: &AccountInfo, player: &AccountInfo, game: &AccountInfo) -> ProgramResult {

@@ -2,9 +2,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::program_error::ProgramError;
 use thiserror::Error;
 
-#[derive(
-    Error, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug, BorshSerialize, BorshDeserialize,
-)]
+#[derive(Error, Clone, Eq, PartialEq, Debug)]
 pub enum Error {
     #[error("Player account for this signer is already created")]
     AlreadyCreated,
@@ -25,10 +23,22 @@ pub enum Error {
     CorruptedAccount,
     #[error("Wrong GameProject account")]
     WrongProjectAccount,
+    #[error("ProgramError in the underlying code")]
+    ProgramError(ProgramError),
 }
 
 impl From<Error> for ProgramError {
     fn from(error: Error) -> Self {
-        ProgramError::Custom(error as u32)
+        match error {
+            Error::ProgramError(e) => e,
+            //FIXME: create proper conversion from Error to ProgramError
+            e => ProgramError::Custom(0),
+        }
+    }
+}
+
+impl From<ProgramError> for Error {
+    fn from(error: ProgramError) -> Self {
+        Error::ProgramError(error)
     }
 }
