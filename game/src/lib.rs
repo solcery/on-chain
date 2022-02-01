@@ -14,10 +14,10 @@ mod error;
 mod game;
 mod player;
 
+use bundled::{Bundle, Bundled};
 use container::Container;
 use error::Error;
-use game::{Event, State as GameState};
-//use game::{Event, Game, State as GameState};
+use game::{Event, Game, State as GameState};
 use player::{Player, State as PlayerState, CURRENT_PLAYER_VERSION};
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, BorshSerialize, BorshDeserialize)]
@@ -67,39 +67,19 @@ pub fn process_instruction<'a>(
     let payer_info = next_account_info(accounts_iter)?;
     match instruction {
         Instruction::CreatePlayerAccount => {
-            let signer = next_account_info(accounts_iter)?;
-            let player_info = next_account_info(accounts_iter)?;
-
-            unimplemented!();
-            //let player = Player::new(program_id, signer, player_info)?;
-            //player.pack().map_err(ProgramError::from)
+            let player = Player::new(program_id, accounts_iter, ())?;
+            Bundle::pack(player).map_err(ProgramError::from)
         }
         Instruction::UpdatePlayerAccount => {
-            let signer = next_account_info(accounts_iter)?;
-            let player_info = next_account_info(accounts_iter)?;
-
-            unimplemented!();
-            //let player = Player::unpack(program_id, signer, player_info)?;
-            //player.pack().map_err(ProgramError::from)
+            let player = Player::unpack(program_id, accounts_iter)?;
+            Bundle::pack(player).map_err(ProgramError::from)
         }
         Instruction::CreateGame {
             num_players,
             max_items,
         } => {
-            let signer = next_account_info(accounts_iter)?;
-            let player_info = next_account_info(accounts_iter)?;
-            let game_project = next_account_info(accounts_iter)?;
-            let game_info = next_account_info(accounts_iter)?;
-            create_game(
-                program_id,
-                signer,
-                player_info,
-                game_project,
-                game_info,
-                num_players,
-                max_items,
-            )
-            .map_err(ProgramError::from)
+            let game = Game::new(program_id, accounts_iter, (num_players, max_items))?;
+            Bundle::pack(game).map_err(ProgramError::from)
         }
         Instruction::JoinGame => {
             let signer = next_account_info(accounts_iter)?;
@@ -138,28 +118,6 @@ pub fn process_instruction<'a>(
             leave_game(signer, player, game)
         }
     }
-}
-
-fn create_game<'a>(
-    program_id: &'a Pubkey,
-    signer: &'a AccountInfo<'a>,
-    player_info: &'a AccountInfo<'a>,
-    project: &'a AccountInfo<'a>,
-    game_info: &'a AccountInfo<'a>,
-    num_players: u32,
-    max_items: u32,
-) -> Result<(), Error> {
-    //let game = Game::new(
-    //program_id,
-    //signer,
-    //player_info,
-    //project,
-    //game_info,
-    //num_players,
-    //max_items,
-    //)?;
-    //game.pack()
-    unimplemented!();
 }
 
 fn join_game(signer: &AccountInfo, player: &AccountInfo, game: &AccountInfo) -> ProgramResult {
