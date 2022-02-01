@@ -67,12 +67,16 @@ pub fn process_instruction<'a>(
         Instruction::CreatePlayerAccount => {
             let signer = next_account_info(accounts_iter)?;
             let player_info = next_account_info(accounts_iter)?;
-            create_player_account(program_id, signer, player_info).map_err(ProgramError::from)
+
+            let player = Player::new(program_id, signer, player_info)?;
+            player.pack().map_err(ProgramError::from)
         }
         Instruction::UpdatePlayerAccount => {
             let signer = next_account_info(accounts_iter)?;
             let player_info = next_account_info(accounts_iter)?;
-            update_player_account(program_id, signer, player_info).map_err(ProgramError::from)
+
+            let player = Player::unpack(program_id, signer, player_info)?;
+            player.pack().map_err(ProgramError::from)
         }
         Instruction::CreateGame {
             num_players,
@@ -132,25 +136,6 @@ pub fn process_instruction<'a>(
     }
 }
 
-fn create_player_account<'a>(
-    program_id: &'a Pubkey,
-    signer: &'a AccountInfo<'a>,
-    player_info: &'a AccountInfo<'a>,
-) -> Result<(), Error> {
-    let player = Player::new(program_id, signer, player_info)?;
-    player.pack()
-}
-
-fn update_player_account<'a>(
-    program_id: &'a Pubkey,
-    signer: &'a AccountInfo<'a>,
-    player_info: &'a AccountInfo<'a>,
-) -> Result<(), Error> {
-    // No need to implement it now, as there are only one version of Player struct
-    // By now it will only call create_player_account()
-    create_player_account(program_id, signer, player_info)
-}
-
 fn create_game<'a>(
     program_id: &'a Pubkey,
     signer: &'a AccountInfo<'a>,
@@ -206,9 +191,6 @@ fn add_event(
     //TODO: accounts check
     unimplemented!();
 }
-
-#[cfg(test)]
-mod tests;
 
 // It is old code, that I'm keepeng for easy reference access. I'll delete it as soon as I finish
 // instruction implementation

@@ -1,6 +1,6 @@
 use super::*;
-use player::Data as PlayerData;
 use pretty_assertions::assert_eq;
+use Data as PlayerData;
 
 #[test]
 fn correct_input() {
@@ -38,49 +38,13 @@ fn correct_input() {
         false,
         0,
     );
-    create_player_account(&program_id, &signer, &player_account_info).unwrap();
+
+    let player_info = Player::new(&program_id, &signer, &player_account_info).unwrap();
+    player_info.pack().unwrap();
 
     let account_data: &[u8] = &player_account_info.data.borrow();
 
     assert_eq!(account_data_expected.as_slice(), account_data);
-}
-
-#[test]
-fn player_account_not_writable() {
-    let program_id = Pubkey::new_unique();
-    let signer_key = Pubkey::new_unique();
-
-    let mut signer_account_data = [0; 2]; // This is arbitrary number, just to fill AccountInfo
-    let mut signer_balance = 0;
-
-    let signer = AccountInfo::new(
-        &signer_key,
-        true,
-        false,
-        &mut signer_balance,
-        &mut signer_account_data,
-        &spl_token::ID,
-        false,
-        0,
-    );
-    let (pda, _bump_seed) =
-        Pubkey::find_program_address(&[b"player", signer_key.as_ref()], &program_id);
-
-    let mut player_account_data = vec![0; 1];
-    let mut player_balance = 10;
-    let player_account_info = AccountInfo::new(
-        &pda,
-        false,
-        false,
-        &mut player_balance,
-        &mut player_account_data,
-        &spl_token::ID,
-        false,
-        0,
-    );
-    let result = create_player_account(&program_id, &signer, &player_account_info);
-
-    assert_eq!(result, Err(Error::NotWritable));
 }
 
 #[test]
@@ -116,7 +80,9 @@ fn player_account_too_small() {
         false,
         0,
     );
-    let result = create_player_account(&program_id, &signer, &player_account_info);
+
+    let player_info = Player::new(&program_id, &signer, &player_account_info).unwrap();
+    let result = player_info.pack();
 
     assert_eq!(result, Err(Error::AccountTooSmall));
 }
@@ -154,7 +120,7 @@ fn not_signed() {
         false,
         0,
     );
-    let result = create_player_account(&program_id, &signer, &player_account_info);
+    let result = Player::new(&program_id, &signer, &player_account_info);
 
     assert_eq!(result, Err(Error::NotSigned));
 }
@@ -195,7 +161,7 @@ fn wrong_player_account() {
         0,
     );
 
-    let result = create_player_account(&program_id, &signer, &player_account_info);
+    let result = Player::new(&program_id, &signer, &player_account_info);
 
     assert_eq!(result, Err(Error::WrongPlayerAccount));
 }

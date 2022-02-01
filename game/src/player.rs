@@ -33,7 +33,8 @@ impl<'a> Player<'a> {
         let data: &[u8] = &player_info.data.borrow();
         let mut buf = &*data;
 
-        //Check previous versions
+        // Check previous versions
+        // We need this check to prove, that the player does not try to wipe the existing account
         let version = <u32>::deserialize(&mut buf);
         match version {
             Ok(0) => {} // Default value
@@ -46,10 +47,6 @@ impl<'a> Player<'a> {
                 return Err(Error::WrongAccountVersion);
             }
             _ => {}
-        }
-
-        if !player_info.is_writable {
-            return Err(Error::NotWritable);
         }
 
         if !signer.is_signer {
@@ -74,6 +71,10 @@ impl<'a> Player<'a> {
     ) -> Result<Self, Error> {
         let (pda, _bump_seed) =
             Pubkey::find_program_address(&[b"player", signer.key.as_ref()], program_id);
+
+        if player_info.owner != program_id {
+            return Err(Error::WrongPlayerAccount);
+        }
 
         //player_info address check
         if *player_info.key != pda {
@@ -105,14 +106,16 @@ impl<'a> Player<'a> {
 
     #[must_use]
     pub fn pack(self) -> Result<(), Error> {
-        if !self.account.is_writable {
-            return Err(Error::NotWritable);
-        }
-
         let mut data: &mut [u8] = &mut self.account.data.borrow_mut();
         (CURRENT_PLAYER_VERSION, self.player_data)
             .serialize(&mut data)
             .map_err(|_| Error::AccountTooSmall)
+    }
+}
+
+impl<'a> PartialEq for Player<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        self.player_data == other.player_data
     }
 }
 
@@ -138,3 +141,6 @@ pub struct State {
     pub pubkey: Pubkey,
     pub game: Option<Pubkey>,
 }
+
+#[cfg(test)]
+mod tests;
