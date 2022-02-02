@@ -62,7 +62,7 @@ impl<'a> Bundled<'a, Game> {
                 if remaining_players > 0 {
                     // SAFETY: .len() + 1 is guaranteed to be greater than zero
                     let id = unsafe { NonZeroU32::new_unchecked(game.players.len() as u32 + 1) };
-                    let player_key = *player.key();
+                    let player_key = player.key();
                     //SAFETY: game and player are changed synchronously, so the invariants are
                     //preserved
                     unsafe { player.set_game(game_key, id) };

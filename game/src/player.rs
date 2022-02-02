@@ -99,7 +99,7 @@ impl<'a> Bundle<'a, ()> for Player {
             Ok(_) => Err(Error::WrongAccountVersion),
             _ => Err(Error::CorruptedAccount),
         }?;
-        if player_data.key() == signer.key {
+        if player_data.key() == *signer.key {
             Ok(unsafe { Bundled::new(player_data, player_info) })
         } else {
             Err(Error::WrongPlayerAccount)
@@ -126,13 +126,18 @@ impl Player {
     }
 
     #[must_use]
-    pub fn key(&self) -> &Pubkey {
-        &self.pubkey
+    pub fn key(&self) -> Pubkey {
+        self.pubkey
     }
 
     #[must_use]
     pub fn in_game(&self) -> bool {
         self.game.is_some()
+    }
+
+    #[must_use]
+    pub fn game_key(&self) -> Option<Pubkey> {
+        self.game.as_ref().map(|game| game.game_key)
     }
 
     pub unsafe fn set_game(&mut self, game_key: Pubkey, player_id: NonZeroU32) {
