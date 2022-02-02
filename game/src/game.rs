@@ -1,13 +1,12 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::account_info::next_account_info;
 use solana_program::account_info::AccountInfo;
-
 use solana_program::pubkey::Pubkey;
+use std::num::NonZeroU32;
 
 use crate::bundled::{Bundle, Bundled};
-
 use crate::error::Error;
-use crate::player::Player;
+use crate::player::Player as PlayerInfo;
 
 pub const CURRENT_GAME_VERSION: u32 = 1;
 
@@ -21,6 +20,18 @@ pub struct Game {
 }
 
 impl Game {
+    pub unsafe fn init(project: Pubkey, state: Pubkey, num_players: u32) -> Self {
+        Self {
+            project,
+            status: Status::Initialization {
+                remaining_players: num_players,
+            },
+            state,
+            state_step: 0,
+            players: vec![],
+        }
+    }
+
     pub unsafe fn from_raw_parts(
         project: Pubkey,
         status: Status,
@@ -34,6 +45,37 @@ impl Game {
             state,
             state_step,
             players,
+        }
+    }
+}
+
+impl<'a> Bundled<'a, Game> {
+    pub fn add_player(&mut self, player: &mut PlayerInfo) -> Result<(), Error> {
+        if player.in_game() {
+            return Err(Error::AlreadyInGame);
+        }
+
+        let game_key = self.key();
+        let game: &mut Game = self.data_mut();
+        match game.status {
+            Status::Initialization { remaining_players } => {
+                if remaining_players > 0 {
+                    // SAFETY: .len() + 1 is guaranteed to be greater than zero
+                    let id = unsafe { NonZeroU32::new_unchecked(game.players.len() as u32 + 1) };
+                    let player_key = *player.key();
+                    //SAFETY: game and player are changed synchronously, so the invariants are
+                    //preserved
+                    unsafe { player.set_game(game_key, id) };
+                    game.players.push(Player {
+                        key: player_key,
+                        id,
+                    });
+                    Ok(())
+                } else {
+                    Err(Error::NoPlayerSlots)
+                }
+            }
+            _ => Err(Error::GameStarted),
         }
     }
 }
@@ -52,7 +94,7 @@ impl<'a> Bundle<'a, InitializationArgs> for Game {
         let (num_players, max_items) = initialization_args;
 
         //Do we really need a player account for game creation?
-        Player::unpack(program_id, accounts_iter)?;
+        PlayerInfo::unpack(program_id, accounts_iter)?;
 
         let project = next_account_info(accounts_iter)?;
         let game_info = next_account_info(accounts_iter)?;
@@ -80,19 +122,9 @@ impl<'a> Bundle<'a, InitializationArgs> for Game {
             _ => {}
         }
 
-        let game = unsafe {
-            Game::from_raw_parts(
-                *project.key,
-                Status::Initialization {
-                    remaining_players: num_players,
-                },
-                *game_info.key,
-                0,
-                vec![],
-            )
-        };
+        let game = unsafe { Game::init(*project.key, *game_info.key, num_players) };
 
-        Ok(unsafe { Bundled::new(game, vec![game_info]) })
+        Ok(unsafe { Bundled::new(game, game_info) })
     }
     fn unpack(
         program_id: &'a Pubkey,
@@ -101,13 +133,19 @@ impl<'a> Bundle<'a, InitializationArgs> for Game {
         unimplemented!();
     }
     fn pack(bundle: Bundled<'a, Self>) -> Result<(), Self::Error> {
-        let (game_data, accounts) = unsafe { bundle.release() };
+        let (game_data, account) = unsafe { bundle.release() };
 
-        let mut data: &mut [u8] = &mut accounts[0].data.borrow_mut();
+        let mut data: &mut [u8] = &mut account.data.borrow_mut();
         (CURRENT_GAME_VERSION, game_data)
             .serialize(&mut data)
             .map_err(|_| Error::AccountTooSmall)
     }
+}
+
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]
+pub struct Player {
+    id: NonZeroU32,
+    key: Pubkey,
 }
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]

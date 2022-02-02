@@ -89,10 +89,14 @@ pub fn process_instruction<'a>(
             Bundle::pack(game).map_err(ProgramError::from)
         }
         Instruction::JoinGame => {
-            let signer = next_account_info(accounts_iter)?;
-            let player = next_account_info(accounts_iter)?;
-            let game = next_account_info(accounts_iter)?;
-            join_game(signer, player, game)
+            let mut player = Player::unpack(program_id, accounts_iter)?;
+            //FIXME: quick hack caused by the fact, that both player and game are using signer and
+            //player_info accounts
+            let accounts_iter = &mut accounts.iter();
+            let mut game = Game::unpack(program_id, accounts_iter)?;
+            game.add_player(player.data_mut())?;
+            Bundle::pack(player)?;
+            Bundle::pack(game).map_err(ProgramError::from)
         }
         Instruction::AddItems { items_number } => {
             let signer = next_account_info(accounts_iter)?;
@@ -125,11 +129,6 @@ pub fn process_instruction<'a>(
             leave_game(signer, player, game)
         }
     }
-}
-
-fn join_game(signer: &AccountInfo, player: &AccountInfo, game: &AccountInfo) -> ProgramResult {
-    //TODO: accounts check
-    unimplemented!();
 }
 
 fn add_items(

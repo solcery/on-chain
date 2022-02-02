@@ -14,7 +14,13 @@ pub const CURRENT_PLAYER_VERSION: u32 = 1;
 pub struct Player {
     pubkey: Pubkey,
     items: Vec<(u32, Pubkey)>,
-    player_id: Option<NonZeroU32>,
+    game: Option<GameInfo>,
+}
+
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]
+pub struct GameInfo {
+    player_id: NonZeroU32,
+    game_key: Pubkey,
 }
 
 impl<'a> Bundle<'a, ()> for Player {
@@ -55,7 +61,7 @@ impl<'a> Bundle<'a, ()> for Player {
         }
 
         if *player_info.key == pda {
-            Ok(unsafe { Bundled::new(Player::from_pubkey(pda), vec![player_info]) })
+            Ok(unsafe { Bundled::new(Player::from_pubkey(pda), player_info) })
         } else {
             Err(Error::WrongPlayerAccount)
         }
@@ -94,14 +100,15 @@ impl<'a> Bundle<'a, ()> for Player {
             _ => Err(Error::CorruptedAccount),
         }?;
         if player_data.key() == signer.key {
-            Ok(unsafe { Bundled::new(player_data, vec![player_info]) })
+            Ok(unsafe { Bundled::new(player_data, player_info) })
         } else {
             Err(Error::WrongPlayerAccount)
         }
     }
     fn pack(bundle: Bundled<'a, Self>) -> Result<(), Self::Error> {
-        let (player_data, accounts) = unsafe { bundle.release() };
-        let mut data: &mut [u8] = &mut accounts[0].data.borrow_mut();
+        let (player_data, account) = unsafe { bundle.release() };
+
+        let mut data: &mut [u8] = &mut account.data.borrow_mut();
         (CURRENT_PLAYER_VERSION, player_data)
             .serialize(&mut data)
             .map_err(|_| Error::AccountTooSmall)
@@ -114,13 +121,29 @@ impl Player {
         Self {
             pubkey,
             items: vec![],
-            player_id: None,
+            game: None,
         }
     }
 
     #[must_use]
     pub fn key(&self) -> &Pubkey {
         &self.pubkey
+    }
+
+    #[must_use]
+    pub fn in_game(&self) -> bool {
+        self.game.is_some()
+    }
+
+    pub unsafe fn set_game(&mut self, game_key: Pubkey, player_id: NonZeroU32) {
+        self.game = Some(GameInfo {
+            player_id,
+            game_key,
+        });
+    }
+
+    pub unsafe fn leave_game(&mut self) {
+        self.game = None;
     }
 }
 

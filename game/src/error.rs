@@ -24,6 +24,12 @@ pub enum Error {
     WrongProjectAccount,
     #[error("ProgramError in the underlying code")]
     ProgramError(ProgramError),
+    #[error("Player is already participating in another game")]
+    AlreadyInGame,
+    #[error("Attempted to join a game, which is already started")]
+    GameStarted,
+    #[error("No player slots left")]
+    NoPlayerSlots,
 }
 
 impl From<Error> for ProgramError {

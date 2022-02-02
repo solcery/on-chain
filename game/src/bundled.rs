@@ -1,35 +1,35 @@
 use solana_program::account_info::AccountInfo;
 
 use solana_program::pubkey::Pubkey;
-use std::borrow::Borrow;
-use std::borrow::BorrowMut;
 use std::fmt::Debug;
 
 #[derive(Debug, Clone)]
 pub struct Bundled<'a, T> {
     data: T,
-    accounts: Vec<&'a AccountInfo<'a>>,
+    account: &'a AccountInfo<'a>,
 }
 
 impl<'a, T> Bundled<'a, T> {
-    pub unsafe fn new(data: T, accounts: Vec<&'a AccountInfo<'a>>) -> Self {
-        Self { data, accounts }
+    pub unsafe fn new(data: T, account: &'a AccountInfo<'a>) -> Self {
+        Self { data, account }
     }
-    pub unsafe fn release(self) -> (T, Vec<&'a AccountInfo<'a>>) {
-        (self.data, self.accounts)
-    }
-}
 
-impl<'a, T> Borrow<T> for Bundled<'a, T> {
-    #[inline]
-    fn borrow(&self) -> &T {
+    pub unsafe fn release(self) -> (T, &'a AccountInfo<'a>) {
+        (self.data, self.account)
+    }
+
+    #[must_use]
+    pub fn key(&self) -> Pubkey {
+        *self.account.key
+    }
+
+    #[must_use]
+    pub fn data(&self) -> &T {
         &self.data
     }
-}
 
-impl<'a, T> BorrowMut<T> for Bundled<'a, T> {
-    #[inline]
-    fn borrow_mut(&mut self) -> &mut T {
+    #[must_use]
+    pub fn data_mut(&mut self) -> &mut T {
         &mut self.data
     }
 }
