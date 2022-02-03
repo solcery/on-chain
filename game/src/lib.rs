@@ -123,10 +123,14 @@ pub fn process_instruction<'a>(
             add_event(signer, player, game, event)
         }
         Instruction::LeaveGame => {
-            let signer = next_account_info(accounts_iter)?;
-            let player = next_account_info(accounts_iter)?;
-            let game = next_account_info(accounts_iter)?;
-            leave_game(signer, player, game)
+            let mut player = Player::unpack(program_id, accounts_iter)?;
+            //FIXME: quick hack caused by the fact, that both player and game are using signer and
+            //player_info accounts
+            let accounts_iter = &mut accounts.iter();
+            let mut game = Game::unpack(program_id, accounts_iter)?;
+            game.remove_player(player.data_mut())?;
+            Bundle::pack(player)?;
+            Bundle::pack(game).map_err(ProgramError::from)
         }
     }
 }
@@ -142,11 +146,6 @@ fn add_items(
 }
 
 fn set_game_state(signer: &AccountInfo, player: &AccountInfo, game: &AccountInfo) -> ProgramResult {
-    //TODO: accounts check
-    unimplemented!();
-}
-
-fn leave_game(signer: &AccountInfo, player: &AccountInfo, game: &AccountInfo) -> ProgramResult {
     //TODO: accounts check
     unimplemented!();
 }

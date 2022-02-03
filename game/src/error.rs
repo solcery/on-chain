@@ -30,6 +30,10 @@ pub enum Error {
     GameStarted,
     #[error("No player slots left")]
     NoPlayerSlots,
+    #[error("Player not in this game")]
+    NotInGame,
+    #[error("The game is not finished")]
+    NotFinished,
 }
 
 impl From<Error> for ProgramError {

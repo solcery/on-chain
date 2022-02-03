@@ -63,9 +63,10 @@ impl<'a> Bundled<'a, Game> {
                     // SAFETY: .len() + 1 is guaranteed to be greater than zero
                     let id = unsafe { NonZeroU32::new_unchecked(game.players.len() as u32 + 1) };
                     let player_key = player.key();
-                    //SAFETY: game and player are changed synchronously, so the invariants are
-                    //preserved
-                    unsafe { player.set_game(game_key, id) };
+                    unsafe {
+                        //SAFETY: game and player are changed synchronously, so the invariants are preserved
+                        player.set_game(game_key, id);
+                    }
                     game.players.push(Player {
                         key: player_key,
                         id,
@@ -76,6 +77,32 @@ impl<'a> Bundled<'a, Game> {
                 }
             }
             _ => Err(Error::GameStarted),
+        }
+    }
+    pub fn remove_player(&mut self, player: &mut PlayerInfo) -> Result<(), Error> {
+        let game: &mut Game = self.data_mut();
+        match &game.status {
+            Status::Finished { winners } => {
+                let player_key = player.key();
+                let player_index = game.players.iter().position(|x| x.key == player_key);
+
+                if let Some(index) = player_index {
+                    game.players.swap_remove(index);
+
+                    // Just to be completely paranoid.
+                    // This assert should never fail.
+                    debug_assert_eq!(player.game_key(), Some(self.key()));
+
+                    unsafe {
+                        //SAFETY: game and player are changed synchronously, so the invariants are preserved
+                        player.leave_game()
+                    };
+                    Ok(())
+                } else {
+                    Err(Error::NotInGame)
+                }
+            }
+            _ => Err(Error::NotFinished),
         }
     }
 }
