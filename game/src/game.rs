@@ -82,7 +82,8 @@ impl<'a> Bundled<'a, Game> {
     pub fn remove_player(&mut self, player: &mut PlayerInfo) -> Result<(), Error> {
         let game: &mut Game = self.data_mut();
         match &game.status {
-            Status::Finished { winners } => {
+            //TODO: State::Canceled is not used as by now we do not have CancelGame instruction
+            Status::Finished { winners: _ } => {
                 let player_key = player.key();
                 let player_index = game.players.iter().position(|x| x.key == player_key);
 

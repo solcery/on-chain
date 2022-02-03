@@ -98,28 +98,28 @@ pub fn process_instruction<'a>(
             Bundle::pack(game).map_err(ProgramError::from)
         }
         Instruction::AddItems { items_number } => {
-            let signer = next_account_info(accounts_iter)?;
-            let player = next_account_info(accounts_iter)?;
-            let game = next_account_info(accounts_iter)?;
-            let mut items = Vec::<&AccountInfo>::with_capacity(items_number as usize);
-            for _ in 0..items_number {
-                let item_account_info = next_account_info(accounts_iter)?;
-                items.push(item_account_info);
-            }
-            add_items(signer, player, game, items)
+            //let signer = next_account_info(accounts_iter)?;
+            //let player = next_account_info(accounts_iter)?;
+            //let game = next_account_info(accounts_iter)?;
+            //let mut items = Vec::<&AccountInfo>::with_capacity(items_number as usize);
+            //for _ in 0..items_number {
+            //let item_account_info = next_account_info(accounts_iter)?;
+            //items.push(item_account_info);
+            //}
+            unimplemented!();
         }
         Instruction::SetGameState { new_game_state } => {
-            let signer = next_account_info(accounts_iter)?;
-            let player = next_account_info(accounts_iter)?;
-            let game = next_account_info(accounts_iter)?;
-            set_game_state(signer, player, game)
+            //let signer = next_account_info(accounts_iter)?;
+            //let player = next_account_info(accounts_iter)?;
+            //let game = next_account_info(accounts_iter)?;
+            unimplemented!();
         }
         Instruction::AddEvent(event_container) => {
-            let signer = next_account_info(accounts_iter)?;
-            let player = next_account_info(accounts_iter)?;
-            let game = next_account_info(accounts_iter)?;
-            let event = Container::extract(event_container, accounts_iter)?;
-            add_event(signer, player, game, event)
+            //let signer = next_account_info(accounts_iter)?;
+            //let player = next_account_info(accounts_iter)?;
+            //let game = next_account_info(accounts_iter)?;
+            //let event = Container::extract(event_container, accounts_iter)?;
+            unimplemented!();
         }
         Instruction::LeaveGame => {
             let mut player = Player::unpack(program_id, accounts_iter)?;
@@ -132,31 +132,6 @@ pub fn process_instruction<'a>(
             Bundle::pack(game).map_err(ProgramError::from)
         }
     }
-}
-
-fn add_items(
-    signer: &AccountInfo,
-    player: &AccountInfo,
-    game: &AccountInfo,
-    items: Vec<&AccountInfo>,
-) -> ProgramResult {
-    //TODO: accounts check
-    unimplemented!();
-}
-
-fn set_game_state(signer: &AccountInfo, player: &AccountInfo, game: &AccountInfo) -> ProgramResult {
-    //TODO: accounts check
-    unimplemented!();
-}
-
-fn add_event(
-    signer: &AccountInfo,
-    player: &AccountInfo,
-    game: &AccountInfo,
-    event: Event,
-) -> ProgramResult {
-    //TODO: accounts check
-    unimplemented!();
 }
 
 // It is old code, that I'm keepeng for easy reference access. I'll delete it as soon as I finish
