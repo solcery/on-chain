@@ -157,7 +157,29 @@ impl<'a> Bundle<'a, InitializationArgs> for Game {
         program_id: &'a Pubkey,
         accounts_iter: &mut std::slice::Iter<'a, AccountInfo<'a>>,
     ) -> Result<Bundled<'a, Self>, Self::Error> {
-        unimplemented!();
+        // FIXME: now unpack() method itself does not check anyting about signer.
+        // Maybe, it is ok, since all the interractions with Game require Player account, which
+        // perform checks.
+        // Maybe we should add another check here. Smth like "check that the signer has a player
+        // account and it is participating in the game (this is not correct, as it will break
+        // join_game)"
+        let game_info = next_account_info(accounts_iter)?;
+
+        if game_info.owner != program_id {
+            return Err(Error::WrongAccountOwner);
+        }
+
+        let mut data: &[u8] = &game_info.data.borrow();
+        //Check previous versions
+        let version = <u32>::deserialize(&mut data);
+        let game_data = match version {
+            Ok(0) => Err(Error::EmptyAccount),
+            Ok(1) => Game::deserialize(&mut data).map_err(|_| Error::CorruptedAccount),
+            Ok(_) => Err(Error::WrongAccountVersion),
+            _ => Err(Error::CorruptedAccount),
+        }?;
+
+        Ok(unsafe { Bundled::new(game_data, game_info) })
     }
     fn pack(bundle: Bundled<'a, Self>) -> Result<(), Self::Error> {
         let (game_data, account) = unsafe { bundle.release() };

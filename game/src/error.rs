@@ -34,6 +34,8 @@ pub enum Error {
     NotInGame,
     #[error("The game is not finished")]
     NotFinished,
+    #[error("Account is not owned by Game program")]
+    WrongAccountOwner,
 }
 
 impl From<Error> for ProgramError {

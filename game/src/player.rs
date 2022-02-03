@@ -78,7 +78,7 @@ impl<'a> Bundle<'a, ()> for Player {
             Pubkey::find_program_address(&[b"player", signer.key.as_ref()], program_id);
 
         if player_info.owner != program_id {
-            return Err(Error::WrongPlayerAccount);
+            return Err(Error::WrongAccountOwner);
         }
 
         //player_info address check
