@@ -46,17 +46,16 @@ where
 {
     type Error;
 
-    #[must_use]
     fn new(
         program_id: &'a Pubkey,
         accounts_iter: &mut std::slice::Iter<'a, AccountInfo<'a>>,
         initialization_args: InitializationArg,
     ) -> Result<Bundled<'a, Self>, Self::Error>;
-    #[must_use]
+
     fn unpack(
         program_id: &'a Pubkey,
         accounts_iter: &mut std::slice::Iter<'a, AccountInfo<'a>>,
     ) -> Result<Bundled<'a, Self>, Self::Error>;
-    #[must_use]
+
     fn pack(bundle: Bundled<'a, Self>) -> Result<(), Self::Error>;
 }

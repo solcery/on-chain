@@ -71,7 +71,6 @@ pub fn process_instruction<'a>(
     let instruction = Instruction::deserialize(&mut buf)?;
 
     let accounts_iter = &mut accounts.iter();
-    let payer_info = next_account_info(accounts_iter)?;
     match instruction {
         Instruction::CreatePlayerAccount => {
             let player = Player::new(program_id, accounts_iter, ())?;
@@ -164,12 +163,6 @@ fn add_event(
 // instruction implementation
 
 //match tag {
-//0 => {
-//let game_info = next_account_info(accounts_iter)?;
-//let game_project_info = next_account_info(accounts_iter)?;
-//let game_state_info = next_account_info(accounts_iter)?;
-//create_game(game_info, game_project_info, game_state_info)
-//}
 //1 => {
 //let game_info = next_account_info(accounts_iter)?;
 //let player_state_info = next_account_info(accounts_iter)?;
@@ -190,56 +183,11 @@ fn add_event(
 //let state_step = u32::deserialize(buf)?;
 //set_state(game_info, game_state_info, state_step, buf)
 //}
-//4 => {
-//let game_info = next_account_info(accounts_iter)?;
-//let player_state_info = next_account_info(accounts_iter)?;
-//let victory = bool::deserialize(&mut data)?;
-//leave_game(game_info, player_state_info, victory)
-//}
 //5 => {
 //let player_state_info = next_account_info(accounts_iter)?;
 //create_player_state(payer_info, player_state_info)
 //}
 //_ => Err(ProgramError::InvalidAccountData),
-//}
-
-//pub fn create_game(
-//game_info: &AccountInfo,
-//game_project_info: &AccountInfo,
-//game_state_info: &AccountInfo,
-//) -> ProgramResult {
-//let game = Game {
-//game_project: *game_project_info.key,
-//state_pubkey: *game_state_info.key,
-//state_step: 0,
-//players: Vec::new(),
-//finished: false,
-//winners: Vec::new(),
-//};
-//game.serialize(&mut *game_info.data.borrow_mut())
-//.map_err(ProgramError::from)
-//}
-
-//pub fn join_game(
-//game_info: &AccountInfo,
-//player_state_info: &AccountInfo,
-//items: &[(u32, &AccountInfo)],
-//) -> ProgramResult {
-//let mut game = Game::deserialize(&mut game_info.data.borrow().as_ref())?;
-//let mut player_state = PlayerState::deserialize(&mut player_state_info.data.borrow().as_ref())?;
-//let player_items = items.iter().map(|item| (item.0, *item.1.key)).collect();
-//msg!("{:?}", player_items);
-//game.players.push(Player {
-//pubkey: player_state.pubkey,
-//online: true,
-//items: player_items,
-//});
-//player_state.game = Some(*game_info.key);
-//player_state
-//.serialize(&mut *player_state_info.data.borrow_mut())
-//.map_err(ProgramError::from)?;
-//game.serialize(&mut *game_info.data.borrow_mut())
-//.map_err(ProgramError::from)
 //}
 
 //pub fn set_state(
@@ -256,28 +204,4 @@ fn add_event(
 //game_state_info.data.borrow_mut().copy_from_slice(new_state);
 //game.serialize(&mut *game_info.data.borrow_mut())
 //.map_err(ProgramError::from)
-//}
-
-//pub fn leave_game(
-//game_info: &AccountInfo,
-//player_state_info: &AccountInfo,
-//_victory: bool,
-//) -> ProgramResult {
-//let mut game = Game::deserialize(&mut game_info.data.borrow().as_ref())?;
-//let mut player_state = PlayerState::deserialize(&mut player_state_info.data.borrow().as_ref())?;
-
-//game.finished = true;
-//for player in &mut game.players {
-//if player.pubkey == player_state.pubkey {
-//player_state.game = None;
-//player.online = false;
-//player_state
-//.serialize(&mut *player_state_info.data.borrow_mut())
-//.map_err(ProgramError::from)?;
-//return game
-//.serialize(&mut *game_info.data.borrow_mut())
-//.map_err(ProgramError::from);
-//}
-//}
-//Err(ProgramError::InvalidAccountData)
 //}

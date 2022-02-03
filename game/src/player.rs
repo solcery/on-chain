@@ -29,7 +29,7 @@ impl<'a> Bundle<'a, ()> for Player {
     fn new(
         program_id: &'a Pubkey,
         accounts_iter: &mut std::slice::Iter<'a, AccountInfo<'a>>,
-        initialization_args: (),
+        _initialization_args: (),
     ) -> Result<Bundled<'a, Self>, Self::Error> {
         let signer = next_account_info(accounts_iter)?;
         let player_info = next_account_info(accounts_iter)?;
