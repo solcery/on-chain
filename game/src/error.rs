@@ -36,6 +36,8 @@ pub enum Error {
     NotFinished,
     #[error("Account is not owned by Game program")]
     WrongAccountOwner,
+    #[error("This game can not be played with this number of players")]
+    WrongPlayerNumber,
 }
 
 impl From<Error> for ProgramError {

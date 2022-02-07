@@ -130,7 +130,8 @@ impl<'a> Bundle<'a, InitializationArgs> for Game {
         let project_data: &[u8] = &project.data.borrow();
         let mut project_buf = &*project_data;
 
-        Project::deserialize(&mut project_buf).map_err(|_| Error::WrongProjectAccount)?;
+        let project_struct =
+            Project::deserialize(&mut project_buf).map_err(|_| Error::WrongProjectAccount)?;
 
         let data: &[u8] = &game_info.data.borrow();
         let mut buf = &*data;
@@ -150,9 +151,13 @@ impl<'a> Bundle<'a, InitializationArgs> for Game {
             _ => {}
         }
 
-        let game = unsafe { Game::init(*project.key, *game_info.key, num_players) };
-
-        Ok(unsafe { Bundled::new(game, game_info) })
+        let players_range = project_struct.min_players..=project_struct.max_players;
+        if players_range.contains(&num_players) {
+            let game = unsafe { Game::init(*project.key, *game_info.key, num_players) };
+            Ok(unsafe { Bundled::new(game, game_info) })
+        } else {
+            Err(Error::WrongPlayerNumber)
+        }
     }
     fn unpack(
         program_id: &'a Pubkey,
@@ -206,8 +211,8 @@ pub struct Project {
     //This is a possible layout:
     //instructions: Pubkey,
     //object_types: Pubkey,
-    min_players: u32,
-    max_players: u32,
+    pub min_players: u32,
+    pub max_players: u32,
     //symtab: SymbolTable,
 }
 
