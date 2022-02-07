@@ -38,6 +38,10 @@ pub enum Error {
     WrongAccountOwner,
     #[error("This game can not be played with this number of players")]
     WrongPlayerNumber,
+    #[error("Not all players have joined the game")]
+    NotAllPlayersReady,
+    #[error("Illegal status change")]
+    IllegalStatusChange,
 }
 
 impl From<Error> for ProgramError {

@@ -106,6 +106,33 @@ impl<'a> Bundled<'a, Game> {
             _ => Err(Error::NotFinished),
         }
     }
+    pub fn set_status(&mut self, new_status: Status) -> Result<(), Error> {
+        let game: &mut Game = self.data_mut();
+        match (&game.status, new_status) {
+            (
+                Status::Initialization {
+                    remaining_players: _,
+                },
+                Status::Canceled,
+            ) => {
+                game.status = Status::Canceled;
+                Ok(())
+            }
+            (Status::Initialization { remaining_players }, Status::Started) => {
+                if *remaining_players == 0 {
+                    game.status = Status::Started;
+                    Ok(())
+                } else {
+                    Err(Error::NotAllPlayersReady)
+                }
+            }
+            (Status::Started, Status::Finished { winners }) => {
+                game.status = Status::Finished { winners };
+                Ok(())
+            }
+            _ => Err(Error::IllegalStatusChange),
+        }
+    }
 }
 
 type InitializationArgs = (u32, u32); // num_players and max_items
@@ -222,18 +249,6 @@ pub enum Status {
     Canceled,
     Started,
     Finished { winners: Vec<Pubkey> },
-}
-
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]
-pub struct Object {
-    id: u32,
-    tpl_id: u32,
-    attrs: Vec<u32>,
-}
-
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]
-pub struct State {
-    objects: Vec<Object>,
 }
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]

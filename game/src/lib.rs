@@ -1,9 +1,6 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    entrypoint,
-    entrypoint::ProgramResult,
-    program_error::ProgramError,
+    account_info::AccountInfo, entrypoint, entrypoint::ProgramResult, program_error::ProgramError,
     pubkey::Pubkey,
 };
 
@@ -15,8 +12,8 @@ mod player;
 
 use bundled::Bundle;
 use container::Container;
-
-use game::{Event, Game, State as GameState};
+use error::Error;
+use game::{Event, Game, Status as GameStatus};
 use player::Player;
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, BorshSerialize, BorshDeserialize)]
@@ -54,8 +51,8 @@ enum Instruction {
     AddItems {
         items_number: u32,
     },
-    SetGameState {
-        new_game_state: GameState,
+    SetGameStatus {
+        new_game_status: GameStatus,
     },
     AddEvent(Container<Event>),
     LeaveGame,
@@ -108,11 +105,19 @@ pub fn process_instruction<'a>(
             //}
             unimplemented!();
         }
-        Instruction::SetGameState { new_game_state } => {
-            //let signer = next_account_info(accounts_iter)?;
-            //let player = next_account_info(accounts_iter)?;
-            //let game = next_account_info(accounts_iter)?;
-            unimplemented!();
+        Instruction::SetGameStatus { new_game_status } => {
+            let player = Player::unpack(program_id, accounts_iter)?;
+            //FIXME: quick hack caused by the fact, that both player and game are using signer and
+            //player_info accounts
+            let accounts_iter = &mut accounts.iter();
+            let mut game = Game::unpack(program_id, accounts_iter)?;
+
+            if player.data().game_key() == Some(game.key()) {
+                game.set_status(new_game_status)?;
+                Bundle::pack(game).map_err(ProgramError::from)
+            } else {
+                Err(ProgramError::from(Error::NotInGame))
+            }
         }
         Instruction::AddEvent(event_container) => {
             //let signer = next_account_info(accounts_iter)?;
