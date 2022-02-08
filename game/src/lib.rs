@@ -1,6 +1,9 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
-    account_info::AccountInfo, entrypoint, entrypoint::ProgramResult, program_error::ProgramError,
+    account_info::{next_account_info, AccountInfo},
+    entrypoint,
+    entrypoint::ProgramResult,
+    program_error::ProgramError,
     pubkey::Pubkey,
 };
 
@@ -49,7 +52,7 @@ enum Instruction {
     },
     JoinGame,
     AddItems {
-        items_number: u32,
+        num_items: u32,
     },
     SetGameStatus {
         new_game_status: GameStatus,
@@ -94,16 +97,26 @@ pub fn process_instruction<'a>(
             Bundle::pack(player)?;
             Bundle::pack(game).map_err(ProgramError::from)
         }
-        Instruction::AddItems { items_number } => {
-            //let signer = next_account_info(accounts_iter)?;
-            //let player = next_account_info(accounts_iter)?;
-            //let game = next_account_info(accounts_iter)?;
-            //let mut items = Vec::<&AccountInfo>::with_capacity(items_number as usize);
-            //for _ in 0..items_number {
-            //let item_account_info = next_account_info(accounts_iter)?;
-            //items.push(item_account_info);
-            //}
-            unimplemented!();
+        Instruction::AddItems { num_items } => {
+            let player = Player::unpack(program_id, accounts_iter)?;
+            //FIXME: quick hack caused by the fact, that both player and game are using signer and
+            //player_info accounts
+            let accounts_iter = &mut accounts.iter();
+            let mut game = Game::unpack(program_id, accounts_iter)?;
+
+            if player.data().game_key() == Some(game.key()) {
+                let mut items =
+                    Vec::<(&AccountInfo, &AccountInfo)>::with_capacity(num_items as usize);
+                for _ in 0..num_items {
+                    let item = next_account_info(accounts_iter)?;
+                    let mint = next_account_info(accounts_iter)?;
+                    items.push((item, mint));
+                }
+                game.add_items(player.data(), items)?;
+                Bundle::pack(game).map_err(ProgramError::from)
+            } else {
+                Err(ProgramError::from(Error::NotInGame))
+            }
         }
         Instruction::SetGameStatus { new_game_status } => {
             let player = Player::unpack(program_id, accounts_iter)?;

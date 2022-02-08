@@ -26,7 +26,7 @@ pub enum Error {
     ProgramError(ProgramError),
     #[error("Player is already participating in another game")]
     AlreadyInGame,
-    #[error("Attempted to join a game, which is already started")]
+    #[error("Game already started")]
     GameStarted,
     #[error("No player slots left")]
     NoPlayerSlots,
@@ -42,6 +42,16 @@ pub enum Error {
     NotAllPlayersReady,
     #[error("Illegal status change")]
     IllegalStatusChange,
+    #[error("Attempted to add too many items")]
+    TooManyItems,
+    #[error("Mint in token account and key of the mint account does not match")]
+    WrongAccountMint,
+    #[error("NFT is not owned by player")]
+    NotOwnedNFT,
+    #[error("The supplied token is not an NFT")]
+    NotAnNFT,
+    #[error("The supplied token is already in game")]
+    TokenAlreadyInGame,
 }
 
 impl From<Error> for ProgramError {

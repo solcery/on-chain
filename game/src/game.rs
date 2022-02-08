@@ -1,7 +1,10 @@
 use borsh::{BorshDeserialize, BorshSerialize};
-use solana_program::account_info::next_account_info;
-use solana_program::account_info::AccountInfo;
-use solana_program::pubkey::Pubkey;
+use solana_program::{
+    account_info::{next_account_info, AccountInfo},
+    program_pack::Pack,
+    pubkey::Pubkey,
+};
+use spl_token::state::{Account, Mint};
 use std::num::NonZeroU32;
 
 use crate::bundled::{Bundle, Bundled};
@@ -20,11 +23,12 @@ pub struct Game {
 }
 
 impl Game {
-    pub unsafe fn init(project: Pubkey, state: Pubkey, num_players: u32) -> Self {
+    unsafe fn init(project: Pubkey, state: Pubkey, num_players: u32, max_items: u32) -> Self {
         Self {
             project,
             status: Status::Initialization {
                 remaining_players: num_players,
+                max_items,
             },
             state,
             state_step: 0,
@@ -32,7 +36,7 @@ impl Game {
         }
     }
 
-    pub unsafe fn from_raw_parts(
+    unsafe fn from_raw_parts(
         project: Pubkey,
         status: Status,
         state: Pubkey,
@@ -47,6 +51,12 @@ impl Game {
             players,
         }
     }
+
+    fn item_count(&self) -> usize {
+        self.players
+            .iter()
+            .fold(0, |acc, player| acc + player.items.len())
+    }
 }
 
 impl<'a> Bundled<'a, Game> {
@@ -58,7 +68,9 @@ impl<'a> Bundled<'a, Game> {
         let game_key = self.key();
         let game: &mut Game = self.data_mut();
         match game.status {
-            Status::Initialization { remaining_players } => {
+            Status::Initialization {
+                remaining_players, ..
+            } => {
                 if remaining_players > 0 {
                     // SAFETY: .len() + 1 is guaranteed to be greater than zero
                     let id = unsafe { NonZeroU32::new_unchecked(game.players.len() as u32 + 1) };
@@ -70,6 +82,7 @@ impl<'a> Bundled<'a, Game> {
                     game.players.push(Player {
                         key: player_key,
                         id,
+                        items: vec![],
                     });
                     Ok(())
                 } else {
@@ -109,16 +122,16 @@ impl<'a> Bundled<'a, Game> {
     pub fn set_status(&mut self, new_status: Status) -> Result<(), Error> {
         let game: &mut Game = self.data_mut();
         match (&game.status, new_status) {
-            (
-                Status::Initialization {
-                    remaining_players: _,
-                },
-                Status::Canceled,
-            ) => {
+            (Status::Initialization { .. }, Status::Canceled) => {
                 game.status = Status::Canceled;
                 Ok(())
             }
-            (Status::Initialization { remaining_players }, Status::Started) => {
+            (
+                Status::Initialization {
+                    remaining_players, ..
+                },
+                Status::Started,
+            ) => {
                 if *remaining_players == 0 {
                     game.status = Status::Started;
                     Ok(())
@@ -131,6 +144,96 @@ impl<'a> Bundled<'a, Game> {
                 Ok(())
             }
             _ => Err(Error::IllegalStatusChange),
+        }
+    }
+
+    pub fn add_items(
+        &mut self,
+        player: &PlayerInfo,
+        items: Vec<(&AccountInfo, &AccountInfo)>,
+    ) -> Result<(), Error> {
+        let game = self.data_mut();
+
+        let player_key = player.key();
+        let player_index = game
+            .players
+            .iter()
+            .position(|x| x.key == player_key)
+            .ok_or(Error::NotInGame)?;
+
+        if let Status::Initialization { max_items, .. } = &game.status {
+            if items.len() > *max_items as usize {
+                return Err(Error::TooManyItems);
+            }
+
+            // It is required, that each item in the game has unique id.
+            // This ids are NonZeroU32 derived from the number of already added items, so that
+            // the first added item will have id=1, second - id=2 and so on.
+            let mut item_id = unsafe {
+                // SAFETY: always item_count returns value >= 0 and there will be definitely less
+                // items than u32::MAX
+                NonZeroU32::new_unchecked(game.item_count() as u32 + 1)
+            };
+
+            for item_bundle in items.iter() {
+                let (token, mint) = item_bundle;
+
+                let token_account = Account::unpack_from_slice(&token.data.borrow())?;
+                let mint_key = token_account.mint;
+
+                if mint_key != *mint.key {
+                    return Err(Error::WrongAccountMint);
+                }
+
+                if token_account.owner != player.key() {
+                    return Err(Error::NotOwnedNFT);
+                }
+
+                let mint = Mint::unpack_from_slice(&mint.data.borrow())?;
+
+                if mint.mint_authority.is_some() {
+                    return Err(Error::NotAnNFT);
+                }
+
+                if mint.supply != 1 {
+                    return Err(Error::NotAnNFT);
+                }
+
+                if mint.decimals != 0 {
+                    // IMO, this is unnecessary -- we've already checked that supply == 1.
+                    return Err(Error::NotAnNFT);
+                }
+
+                // So, now this token is definitely an NFT
+
+                // Check, that the player has not already added this NFT
+                let player_info = &mut game.players[player_index];
+
+                for item in player_info.items.iter() {
+                    // Here we check only in the player's items, because we require, that the token
+                    // is owned by that player.
+
+                    // EXPLOIT: Player1 add item, transfer ownership to Player2, than Player2 is
+                    // able to add the same item.
+
+                    // FIXME: We should implemet a function, that check NFTs against all the items
+                    // in the game
+                    if &item.token == token.key {
+                        return Err(Error::TokenAlreadyInGame);
+                    }
+                }
+
+                let new_item = Item {
+                    id: item_id,
+                    token: *token.key,
+                };
+
+                player_info.items.push(new_item);
+                item_id = unsafe { NonZeroU32::new_unchecked(u32::from(item_id) + 1) };
+            }
+            Ok(())
+        } else {
+            Err(Error::GameStarted)
         }
     }
 }
@@ -152,7 +255,7 @@ impl<'a> Bundle<'a, InitializationArgs> for Game {
         PlayerInfo::unpack(program_id, accounts_iter)?;
 
         let project = next_account_info(accounts_iter)?;
-        let game_info = next_account_info(accounts_iter)?;
+        let game_state = next_account_info(accounts_iter)?;
 
         let project_data: &[u8] = &project.data.borrow();
         let mut project_buf = &*project_data;
@@ -160,7 +263,7 @@ impl<'a> Bundle<'a, InitializationArgs> for Game {
         let project_struct =
             Project::deserialize(&mut project_buf).map_err(|_| Error::WrongProjectAccount)?;
 
-        let data: &[u8] = &game_info.data.borrow();
+        let data: &[u8] = &game_state.data.borrow();
         let mut buf = &*data;
 
         //Check previous versions
@@ -180,8 +283,8 @@ impl<'a> Bundle<'a, InitializationArgs> for Game {
 
         let players_range = project_struct.min_players..=project_struct.max_players;
         if players_range.contains(&num_players) {
-            let game = unsafe { Game::init(*project.key, *game_info.key, num_players) };
-            Ok(unsafe { Bundled::new(game, game_info) })
+            let game = unsafe { Game::init(*project.key, *game_state.key, num_players, max_items) };
+            Ok(unsafe { Bundled::new(game, game_state) })
         } else {
             Err(Error::WrongPlayerNumber)
         }
@@ -228,6 +331,13 @@ impl<'a> Bundle<'a, InitializationArgs> for Game {
 pub struct Player {
     id: NonZeroU32,
     key: Pubkey,
+    items: Vec<Item>,
+}
+
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]
+pub struct Item {
+    id: NonZeroU32,
+    token: Pubkey,
 }
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]
@@ -245,10 +355,15 @@ pub struct Project {
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]
 pub enum Status {
-    Initialization { remaining_players: u32 },
+    Initialization {
+        remaining_players: u32,
+        max_items: u32,
+    },
     Canceled,
     Started,
-    Finished { winners: Vec<Pubkey> },
+    Finished {
+        winners: Vec<Pubkey>,
+    },
 }
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]
