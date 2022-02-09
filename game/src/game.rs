@@ -59,7 +59,7 @@ impl Game {
     }
 }
 
-impl<'a> Bundled<'a, Game> {
+impl<'s, 't0> Bundled<'s, 't0, Game> {
     pub fn add_player(&mut self, player: &mut PlayerInfo) -> Result<(), Error> {
         if player.in_game() {
             return Err(Error::AlreadyInGame);
@@ -240,14 +240,14 @@ impl<'a> Bundled<'a, Game> {
 
 type InitializationArgs = (u32, u32); // num_players and max_items
 
-impl<'a> Bundle<'a, InitializationArgs> for Game {
+impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for Game {
     type Error = Error;
 
     fn new(
-        program_id: &'a Pubkey,
-        accounts_iter: &mut std::slice::Iter<'a, AccountInfo<'a>>,
+        program_id: &'r Pubkey,
+        accounts_iter: &mut std::slice::Iter<'s, AccountInfo<'t0>>,
         initialization_args: InitializationArgs,
-    ) -> Result<Bundled<'a, Self>, Self::Error> {
+    ) -> Result<Bundled<'s, 't0, Self>, Self::Error> {
         // How to use max_items?
         let (num_players, max_items) = initialization_args;
 
@@ -290,9 +290,9 @@ impl<'a> Bundle<'a, InitializationArgs> for Game {
         }
     }
     fn unpack(
-        program_id: &'a Pubkey,
-        accounts_iter: &mut std::slice::Iter<'a, AccountInfo<'a>>,
-    ) -> Result<Bundled<'a, Self>, Self::Error> {
+        program_id: &'r Pubkey,
+        accounts_iter: &mut std::slice::Iter<'s, AccountInfo<'t0>>,
+    ) -> Result<Bundled<'s, 't0, Self>, Self::Error> {
         // FIXME: now unpack() method itself does not check anyting about signer.
         // Maybe, it is ok, since all the interractions with Game require Player account, which
         // perform checks.
@@ -317,7 +317,7 @@ impl<'a> Bundle<'a, InitializationArgs> for Game {
 
         Ok(unsafe { Bundled::new(game_data, game_info) })
     }
-    fn pack(bundle: Bundled<'a, Self>) -> Result<(), Self::Error> {
+    fn pack(bundle: Bundled<'s, 't0, Self>) -> Result<(), Self::Error> {
         let (game_data, account) = unsafe { bundle.release() };
 
         let mut data: &mut [u8] = &mut account.data.borrow_mut();

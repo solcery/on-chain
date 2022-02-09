@@ -4,17 +4,17 @@ use solana_program::pubkey::Pubkey;
 use std::fmt::Debug;
 
 #[derive(Debug, Clone)]
-pub struct Bundled<'a, T> {
+pub struct Bundled<'s, 't0, T> {
     data: T,
-    account: &'a AccountInfo<'a>,
+    account: &'s AccountInfo<'t0>,
 }
 
-impl<'a, T> Bundled<'a, T> {
-    pub unsafe fn new(data: T, account: &'a AccountInfo<'a>) -> Self {
+impl<'s, 't0, T> Bundled<'s, 't0, T> {
+    pub unsafe fn new(data: T, account: &'s AccountInfo<'t0>) -> Self {
         Self { data, account }
     }
 
-    pub unsafe fn release(self) -> (T, &'a AccountInfo<'a>) {
+    pub unsafe fn release(self) -> (T, &'s AccountInfo<'t0>) {
         (self.data, self.account)
     }
 
@@ -34,28 +34,28 @@ impl<'a, T> Bundled<'a, T> {
     }
 }
 
-impl<'a, T: PartialEq> PartialEq for Bundled<'a, T> {
+impl<'s, 't0, T: PartialEq> PartialEq for Bundled<'s, 't0, T> {
     fn eq(&self, other: &Self) -> bool {
         self.data == other.data
     }
 }
 
-pub trait Bundle<'a, InitializationArg>
+pub trait Bundle<'r, 's, 't0, 't1, InitializationArg>
 where
     Self: Sized,
 {
     type Error;
 
     fn new(
-        program_id: &'a Pubkey,
-        accounts_iter: &mut std::slice::Iter<'a, AccountInfo<'a>>,
+        program_id: &'r Pubkey,
+        accounts_iter: &mut std::slice::Iter<'s, AccountInfo<'t0>>,
         initialization_args: InitializationArg,
-    ) -> Result<Bundled<'a, Self>, Self::Error>;
+    ) -> Result<Bundled<'s, 't0, Self>, Self::Error>;
 
     fn unpack(
-        program_id: &'a Pubkey,
-        accounts_iter: &mut std::slice::Iter<'a, AccountInfo<'a>>,
-    ) -> Result<Bundled<'a, Self>, Self::Error>;
+        program_id: &'r Pubkey,
+        accounts_iter: &mut std::slice::Iter<'s, AccountInfo<'t0>>,
+    ) -> Result<Bundled<'s, 't0, Self>, Self::Error>;
 
-    fn pack(bundle: Bundled<'a, Self>) -> Result<(), Self::Error>;
+    fn pack(bundle: Bundled<'s, 't0, Self>) -> Result<(), Self::Error>;
 }

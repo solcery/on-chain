@@ -23,14 +23,14 @@ pub struct GameInfo {
     game_key: Pubkey,
 }
 
-impl<'a> Bundle<'a, ()> for Player {
+impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, ()> for Player {
     type Error = Error;
 
     fn new(
-        program_id: &'a Pubkey,
-        accounts_iter: &mut std::slice::Iter<'a, AccountInfo<'a>>,
+        program_id: &'r Pubkey,
+        accounts_iter: &mut std::slice::Iter<'s, AccountInfo<'t0>>,
         _initialization_args: (),
-    ) -> Result<Bundled<'a, Self>, Self::Error> {
+    ) -> Result<Bundled<'s, 't0, Self>, Self::Error> {
         let signer = next_account_info(accounts_iter)?;
         let player_info = next_account_info(accounts_iter)?;
         //player_info address check
@@ -67,9 +67,9 @@ impl<'a> Bundle<'a, ()> for Player {
         }
     }
     fn unpack(
-        program_id: &'a Pubkey,
-        accounts_iter: &mut std::slice::Iter<'a, AccountInfo<'a>>,
-    ) -> Result<Bundled<'a, Self>, Self::Error> {
+        program_id: &'r Pubkey,
+        accounts_iter: &mut std::slice::Iter<'s, AccountInfo<'t0>>,
+    ) -> Result<Bundled<'s, 't0, Self>, Self::Error> {
         let signer = next_account_info(accounts_iter)?;
         let player_info = next_account_info(accounts_iter)?;
 
@@ -105,7 +105,7 @@ impl<'a> Bundle<'a, ()> for Player {
             Err(Error::WrongPlayerAccount)
         }
     }
-    fn pack(bundle: Bundled<'a, Self>) -> Result<(), Self::Error> {
+    fn pack(bundle: Bundled<'s, 't0, Self>) -> Result<(), Self::Error> {
         let (player_data, account) = unsafe { bundle.release() };
 
         let mut data: &mut [u8] = &mut account.data.borrow_mut();
