@@ -2620,6 +2620,8 @@ dependencies = [
  "borsh-derive",
  "pretty_assertions",
  "solana-program",
+ "solana-program-test",
+ "solana-sdk",
  "spl-token",
  "thiserror",
 ]

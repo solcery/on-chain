@@ -21,7 +21,7 @@ use player::Player;
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, BorshSerialize, BorshDeserialize)]
 //TODO: Add conversion tests
-enum Instruction {
+pub enum Instruction {
     /// Fills a special [Player](Player) account for signer, where all the metainformation will be stored.
     ///
     /// Accounts expected:
