@@ -70,22 +70,31 @@ pub fn process_instruction(
     let mut buf = instruction_data;
     let instruction = Instruction::deserialize(&mut buf)?;
 
+    process(program_id, accounts, instruction).map_err(ProgramError::from)
+}
+
+fn process(
+    //FIXME: Needs a better name!
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    instruction: Instruction,
+) -> Result<(), Error> {
     let accounts_iter = &mut accounts.iter();
     match instruction {
         Instruction::CreatePlayerAccount => {
             let player = Player::new(program_id, accounts_iter, ())?;
-            Bundle::pack(player).map_err(ProgramError::from)
+            Bundle::pack(player)?;
         }
         Instruction::UpdatePlayerAccount => {
             let player = Player::unpack(program_id, accounts_iter)?;
-            Bundle::pack(player).map_err(ProgramError::from)
+            Bundle::pack(player)?;
         }
         Instruction::CreateGame {
             num_players,
             max_items,
         } => {
             let game = Game::new(program_id, accounts_iter, (num_players, max_items))?;
-            Bundle::pack(game).map_err(ProgramError::from)
+            Bundle::pack(game)?;
         }
         Instruction::JoinGame => {
             let mut player = Player::unpack(program_id, accounts_iter)?;
@@ -95,7 +104,7 @@ pub fn process_instruction(
             let mut game = Game::unpack(program_id, accounts_iter)?;
             game.add_player(player.data_mut())?;
             Bundle::pack(player)?;
-            Bundle::pack(game).map_err(ProgramError::from)
+            Bundle::pack(game)?;
         }
         Instruction::AddItems { num_items } => {
             let player = Player::unpack(program_id, accounts_iter)?;
@@ -104,19 +113,18 @@ pub fn process_instruction(
             let accounts_iter = &mut accounts.iter();
             let mut game = Game::unpack(program_id, accounts_iter)?;
 
-            if player.data().game_key() == Some(game.key()) {
-                let mut items =
-                    Vec::<(&AccountInfo, &AccountInfo)>::with_capacity(num_items as usize);
-                for _ in 0..num_items {
-                    let item = next_account_info(accounts_iter)?;
-                    let mint = next_account_info(accounts_iter)?;
-                    items.push((item, mint));
-                }
-                game.add_items(player.data(), items)?;
-                Bundle::pack(game).map_err(ProgramError::from)
-            } else {
-                Err(ProgramError::from(Error::NotInGame))
+            if player.data().game_key() != Some(game.key()) {
+                return Err(Error::NotInGame);
             }
+
+            let mut items = Vec::<(&AccountInfo, &AccountInfo)>::with_capacity(num_items as usize);
+            for _ in 0..num_items {
+                let item = next_account_info(accounts_iter)?;
+                let mint = next_account_info(accounts_iter)?;
+                items.push((item, mint));
+            }
+            game.add_items(player.data(), items)?;
+            Bundle::pack(game)?;
         }
         Instruction::SetGameStatus { new_game_status } => {
             let player = Player::unpack(program_id, accounts_iter)?;
@@ -125,12 +133,12 @@ pub fn process_instruction(
             let accounts_iter = &mut accounts.iter();
             let mut game = Game::unpack(program_id, accounts_iter)?;
 
-            if player.data().game_key() == Some(game.key()) {
-                game.set_status(new_game_status)?;
-                Bundle::pack(game).map_err(ProgramError::from)
-            } else {
-                Err(ProgramError::from(Error::NotInGame))
+            if player.data().game_key() != Some(game.key()) {
+                return Err(Error::NotInGame);
             }
+
+            game.set_status(new_game_status)?;
+            Bundle::pack(game)?;
         }
         Instruction::AddEvent(event_container) => {
             //let signer = next_account_info(accounts_iter)?;
@@ -147,41 +155,11 @@ pub fn process_instruction(
             let mut game = Game::unpack(program_id, accounts_iter)?;
             game.remove_player(player.data_mut())?;
             Bundle::pack(player)?;
-            Bundle::pack(game).map_err(ProgramError::from)
+            Bundle::pack(game)?;
         }
     }
+    Ok(())
 }
-
-// It is old code, that I'm keepeng for easy reference access. I'll delete it as soon as I finish
-// instruction implementation
-
-//match tag {
-//1 => {
-//let game_info = next_account_info(accounts_iter)?;
-//let player_state_info = next_account_info(accounts_iter)?;
-//let item_ids = Vec::<u32>::deserialize(&mut data)?;
-//let mut items: Vec<(u32, &AccountInfo)> = Vec::new();
-//for &item_id in &item_ids {
-//let item_account_info = next_account_info(accounts_iter)?;
-//let item: (u32, &AccountInfo) = (item_id, item_account_info);
-//items.push(item);
-//}
-//// msg!("{:?}", items);
-//join_game(game_info, player_state_info, &items)
-//}
-//2 => {
-//let game_info = next_account_info(accounts_iter)?;
-//let game_state_info = next_account_info(accounts_iter)?;
-//let buf = &mut data;
-//let state_step = u32::deserialize(buf)?;
-//set_state(game_info, game_state_info, state_step, buf)
-//}
-//5 => {
-//let player_state_info = next_account_info(accounts_iter)?;
-//create_player_state(payer_info, player_state_info)
-//}
-//_ => Err(ProgramError::InvalidAccountData),
-//}
 
 //pub fn set_state(
 //game_info: &AccountInfo,

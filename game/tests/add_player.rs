@@ -12,6 +12,7 @@ use solana_sdk::{
 use solcery_game::{process_instruction, Instruction as GameInstruction};
 
 #[tokio::test]
+#[ignore]
 async fn add_player() {
     let program_id = Pubkey::new_unique();
 
