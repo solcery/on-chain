@@ -1,8 +1,9 @@
 use crate::bundled::{Bundle, Bundled};
 use crate::error::Error;
 use borsh::{BorshDeserialize, BorshSerialize};
-use solana_program::account_info::next_account_info;
-use solana_program::account_info::AccountInfo;
+use solana_program::{
+    account_info::next_account_info, account_info::AccountInfo, program_error::ProgramError,
+};
 
 use solana_program::pubkey::Pubkey;
 use std::num::NonZeroU32;
@@ -60,7 +61,7 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, ()> for Player {
             return Err(Error::NotSigned);
         }
 
-        if *player_info.key == pda {
+        if dbg!(*player_info.key) == dbg!(pda) {
             Ok(unsafe { Bundled::new(Player::from_pubkey(pda), player_info) })
         } else {
             Err(Error::WrongPlayerAccount)
@@ -111,7 +112,7 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, ()> for Player {
         let mut data: &mut [u8] = &mut account.data.borrow_mut();
         (CURRENT_PLAYER_VERSION, player_data)
             .serialize(&mut data)
-            .map_err(|_| Error::AccountTooSmall)
+            .map_err(|e| Error::ProgramError(ProgramError::from(e)))
     }
 }
 

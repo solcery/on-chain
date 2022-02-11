@@ -46,6 +46,7 @@ pub enum Instruction {
     /// 2. `[]` GameProject account
     //TODO: we should probably provide a way to create this account
     /// 3. `[writable]` Game account
+    /// 3. `[writable]` GameState account
     CreateGame {
         num_players: u32,
         max_items: u32,
@@ -70,7 +71,7 @@ pub fn process_instruction(
     let mut buf = instruction_data;
     let instruction = Instruction::deserialize(&mut buf)?;
 
-    process(program_id, accounts, instruction).map_err(ProgramError::from)
+    dbg!(process(program_id, accounts, instruction)).map_err(ProgramError::from)
 }
 
 fn process(

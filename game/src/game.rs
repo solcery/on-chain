@@ -1,6 +1,7 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
+    program_error::ProgramError,
     program_pack::Pack,
     pubkey::Pubkey,
 };
@@ -255,6 +256,7 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for Game {
         PlayerInfo::unpack(program_id, accounts_iter)?;
 
         let project = next_account_info(accounts_iter)?;
+        let game_info = next_account_info(accounts_iter)?;
         let game_state = next_account_info(accounts_iter)?;
 
         let project_data: &[u8] = &project.data.borrow();
@@ -263,7 +265,7 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for Game {
         let project_struct =
             Project::deserialize(&mut project_buf).map_err(|_| Error::WrongProjectAccount)?;
 
-        let data: &[u8] = &game_state.data.borrow();
+        let data: &[u8] = &game_info.data.borrow();
         let mut buf = &*data;
 
         //Check previous versions
@@ -272,6 +274,10 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for Game {
             Ok(0) => {} // Default value
             Ok(1) => {
                 Game::deserialize(&mut buf)
+                    //Error occurs if account was already initialized
+                    .map_or(Ok(()), |_| Err(Error::AlreadyCreated))?;
+                let mut state_data: &[u8] = &game_info.data.borrow();
+                Game::deserialize(&mut state_data)
                     //Error occurs if account was already initialized
                     .map_or(Ok(()), |_| Err(Error::AlreadyCreated))?;
             }
@@ -284,7 +290,7 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for Game {
         let players_range = project_struct.min_players..=project_struct.max_players;
         if players_range.contains(&num_players) {
             let game = unsafe { Game::init(*project.key, *game_state.key, num_players, max_items) };
-            Ok(unsafe { Bundled::new(game, game_state) })
+            Ok(unsafe { Bundled::new(game, game_info) })
         } else {
             Err(Error::WrongPlayerNumber)
         }
@@ -323,7 +329,7 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for Game {
         let mut data: &mut [u8] = &mut account.data.borrow_mut();
         (CURRENT_GAME_VERSION, game_data)
             .serialize(&mut data)
-            .map_err(|_| Error::AccountTooSmall)
+            .map_err(|e| Error::ProgramError(ProgramError::from(e)))
     }
 }
 

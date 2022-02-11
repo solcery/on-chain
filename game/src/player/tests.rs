@@ -89,7 +89,12 @@ fn player_account_too_small() {
     let player_info = Player::new(&program_id, &mut account_iter, ()).unwrap();
     let result = Bundle::pack(player_info);
 
-    assert_eq!(result, Err(Error::AccountTooSmall));
+    assert_eq!(
+        result,
+        Err(Error::ProgramError(ProgramError::BorshIoError(
+            "failed to write whole buffer".to_string()
+        )))
+    );
 }
 
 #[test]
