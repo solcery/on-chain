@@ -12,12 +12,14 @@ mod container;
 mod error;
 mod game;
 mod player;
+mod state;
 
 use bundled::Bundle;
 use container::Container;
 use error::Error;
-use game::{Event, Game, Status as GameStatus};
+use game::{Game, Status as GameStatus};
 use player::Player;
+use state::{Event, State};
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, BorshSerialize, BorshDeserialize)]
 //TODO: Add conversion tests
@@ -58,7 +60,10 @@ pub enum Instruction {
     SetGameStatus {
         new_game_status: GameStatus,
     },
-    AddEvent(Container<Event>),
+    AddEvent {
+        event_container: Container<Vec<Event>>,
+        state_step: u32,
+    },
     LeaveGame,
 }
 
@@ -94,14 +99,17 @@ fn process(
             num_players,
             max_items,
         } => {
+            let player = Player::unpack(program_id, accounts_iter)?;
+            if player.data().in_game() {
+                return Err(Error::AlreadyInGame);
+            }
             let game = Game::new(program_id, accounts_iter, (num_players, max_items))?;
+            let state = State::new(program_id, accounts_iter, game.key())?;
+            Bundle::pack(state)?;
             Bundle::pack(game)?;
         }
         Instruction::JoinGame => {
             let mut player = Player::unpack(program_id, accounts_iter)?;
-            //FIXME: quick hack caused by the fact, that both player and game are using signer and
-            //player_info accounts
-            let accounts_iter = &mut accounts.iter();
             let mut game = Game::unpack(program_id, accounts_iter)?;
             game.add_player(player.data_mut())?;
             Bundle::pack(player)?;
@@ -109,9 +117,6 @@ fn process(
         }
         Instruction::AddItems { num_items } => {
             let player = Player::unpack(program_id, accounts_iter)?;
-            //FIXME: quick hack caused by the fact, that both player and game are using signer and
-            //player_info accounts
-            let accounts_iter = &mut accounts.iter();
             let mut game = Game::unpack(program_id, accounts_iter)?;
 
             if player.data().game_key() != Some(game.key()) {
@@ -129,9 +134,6 @@ fn process(
         }
         Instruction::SetGameStatus { new_game_status } => {
             let player = Player::unpack(program_id, accounts_iter)?;
-            //FIXME: quick hack caused by the fact, that both player and game are using signer and
-            //player_info accounts
-            let accounts_iter = &mut accounts.iter();
             let mut game = Game::unpack(program_id, accounts_iter)?;
 
             if player.data().game_key() != Some(game.key()) {
@@ -141,18 +143,34 @@ fn process(
             game.set_status(new_game_status)?;
             Bundle::pack(game)?;
         }
-        Instruction::AddEvent(event_container) => {
-            //let signer = next_account_info(accounts_iter)?;
-            //let player = next_account_info(accounts_iter)?;
-            //let game = next_account_info(accounts_iter)?;
-            //let event = Container::extract(event_container, accounts_iter)?;
-            unimplemented!();
+        Instruction::AddEvent {
+            event_container,
+            state_step,
+        } => {
+            let player = Player::unpack(program_id, accounts_iter)?;
+            let game = Game::unpack(program_id, accounts_iter)?;
+
+            if player.data().game_key() != Some(game.key()) {
+                return Err(Error::NotInGame);
+            }
+            let mut state = State::unpack(program_id, accounts_iter)?;
+
+            if state.game_key() != game.key() {
+                return Err(Error::StateAccountMismatch);
+            }
+
+            debug_assert_eq!(state.key(), game.state_key());
+            let events = Container::extract(event_container, accounts_iter)?;
+
+            unsafe {
+                // SAFETY: It was checked, that this state belongs to this game.
+                state.add_events(state_step, &events)?;
+            }
+
+            Bundle::pack(state)?;
         }
         Instruction::LeaveGame => {
             let mut player = Player::unpack(program_id, accounts_iter)?;
-            //FIXME: quick hack caused by the fact, that both player and game are using signer and
-            //player_info accounts
-            let accounts_iter = &mut accounts.iter();
             let mut game = Game::unpack(program_id, accounts_iter)?;
             game.remove_player(player.data_mut())?;
             Bundle::pack(player)?;

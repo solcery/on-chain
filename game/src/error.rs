@@ -31,6 +31,8 @@ pub enum Error {
     NotSigned,
     #[error("ProgramError in the underlying code: {0}")]
     ProgramError(ProgramError),
+    #[error("Game and State accounts does not match")]
+    StateAccountMismatch,
     #[error("The supplied token is already in game")]
     TokenAlreadyInGame,
     #[error("Attempted to add too many items")]
@@ -47,6 +49,8 @@ pub enum Error {
     WrongPlayerNumber,
     #[error("Wrong GameProject account")]
     WrongProjectAccount,
+    #[error("Wrong state step, you are probably out of sync")]
+    WrongStateStep,
 }
 
 impl From<Error> for ProgramError {

@@ -19,7 +19,6 @@ pub struct Game {
     project: Pubkey,
     status: Status,
     state: Pubkey,
-    state_step: u32,
     players: Vec<Player>,
 }
 
@@ -32,7 +31,6 @@ impl Game {
                 max_items,
             },
             state,
-            state_step: 0,
             players: vec![],
         }
     }
@@ -41,14 +39,12 @@ impl Game {
         project: Pubkey,
         status: Status,
         state: Pubkey,
-        state_step: u32,
         players: Vec<Player>,
     ) -> Self {
         Self {
             project,
             status,
             state,
-            state_step,
             players,
         }
     }
@@ -93,6 +89,7 @@ impl<'s, 't0> Bundled<'s, 't0, Game> {
             _ => Err(Error::GameStarted),
         }
     }
+
     pub fn remove_player(&mut self, player: &mut PlayerInfo) -> Result<(), Error> {
         let game: &mut Game = self.data_mut();
         match &game.status {
@@ -120,6 +117,7 @@ impl<'s, 't0> Bundled<'s, 't0, Game> {
             _ => Err(Error::NotFinished),
         }
     }
+
     pub fn set_status(&mut self, new_status: Status) -> Result<(), Error> {
         let game: &mut Game = self.data_mut();
         match (&game.status, new_status) {
@@ -237,6 +235,10 @@ impl<'s, 't0> Bundled<'s, 't0, Game> {
             Err(Error::GameStarted)
         }
     }
+
+    pub fn state_key(&self) -> Pubkey {
+        self.data().state
+    }
 }
 
 type InitializationArgs = (u32, u32); // num_players and max_items
@@ -251,9 +253,6 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for Game {
     ) -> Result<Bundled<'s, 't0, Self>, Self::Error> {
         // How to use max_items?
         let (num_players, max_items) = initialization_args;
-
-        //Do we really need a player account for game creation?
-        PlayerInfo::unpack(program_id, accounts_iter)?;
 
         let project = next_account_info(accounts_iter)?;
         let game_info = next_account_info(accounts_iter)?;
@@ -299,9 +298,6 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for Game {
         program_id: &'r Pubkey,
         accounts_iter: &mut std::slice::Iter<'s, AccountInfo<'t0>>,
     ) -> Result<Bundled<'s, 't0, Self>, Self::Error> {
-        // FIXME: now unpack() method itself does not check anyting about signer.
-        // Maybe, it is ok, since all the interractions with Game require Player account, which
-        // perform checks.
         // Maybe we should add another check here. Smth like "check that the signer has a player
         // account and it is participating in the game (this is not correct, as it will break
         // join_game)"
@@ -369,18 +365,5 @@ pub enum Status {
     Started,
     Finished {
         winners: Vec<Pubkey>,
-    },
-}
-
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]
-pub enum Event {
-    PlayerUsedObject {
-        player_id: u32,
-        object_id: u32,
-    },
-    PlayerUsedObjectOnTarget {
-        player_id: u32,
-        object_id: u32,
-        target_id: u32,
     },
 }
