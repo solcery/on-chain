@@ -2636,6 +2636,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
+ "solcery-data-types",
  "spl-token",
  "thiserror",
 ]

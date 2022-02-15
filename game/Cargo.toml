@@ -13,6 +13,7 @@ thiserror = "1.0.24"
 borsh = "0.9.1"
 borsh-derive = "0.9.0"
 spl-token = {version="3.3.0", features = ["no-entrypoint"]}
+solcery-data-types = { path = "../data-types" }
 
 [dev-dependencies]
 pretty_assertions = "0.6.1"

@@ -6,16 +6,15 @@ use solana_program::{
     program_error::ProgramError,
     pubkey::Pubkey,
 };
+use solcery_data_types::container::Container;
 
 mod bundled;
-mod container;
 mod error;
 mod game;
 mod player;
 mod state;
 
 use bundled::Bundle;
-use container::Container;
 use error::Error;
 use game::{Game, Status as GameStatus};
 use player::Player;
