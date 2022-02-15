@@ -154,7 +154,7 @@ fn process(
             }
             let mut state = State::unpack(program_id, accounts_iter)?;
 
-            if state.game_key() != game.key() {
+            if state.data().game_key() != game.key() {
                 return Err(Error::StateAccountMismatch);
             }
 

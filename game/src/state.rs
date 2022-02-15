@@ -7,52 +7,13 @@ use solana_program::{
 
 use crate::bundled::{Bundle, Bundled};
 use crate::error::Error;
-
-pub const CURRENT_GAME_STATE_VERSION: u32 = 1;
-
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]
-pub enum Event {
-    PlayerUsedObject {
-        player_id: u32,
-        object_id: u32,
-    },
-    PlayerUsedObjectOnTarget {
-        player_id: u32,
-        object_id: u32,
-        target_id: u32,
-    },
-}
-
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]
-pub struct State {
-    log: Vec<Event>,
-    state_step: u32,
-    game_info: Pubkey,
-}
-
-impl State {
-    fn new(key: Pubkey) -> Self {
-        Self {
-            log: vec![],
-            state_step: 0,
-            game_info: key,
-        }
-    }
-}
+pub use solcery_data_types::state::{Event, State, CURRENT_GAME_STATE_VERSION};
 
 impl<'s, 't0> Bundled<'s, 't0, State> {
     pub unsafe fn add_events(&mut self, state_step: u32, events: &[Event]) -> Result<(), Error> {
-        if state_step == self.data().state_step {
-            let state = self.data_mut();
-            state.state_step += events.len() as u32;
-            state.log.extend_from_slice(events);
-            Ok(())
-        } else {
-            Err(Error::WrongStateStep)
-        }
-    }
-    pub fn game_key(&self) -> Pubkey {
-        self.data().game_info
+        self.data_mut()
+            .add_events(state_step, events)
+            .map_err(|_| Error::WrongStateStep)
     }
 }
 
@@ -87,7 +48,7 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for State {
             _ => {}
         }
 
-        let state = State::new(game_info);
+        let state = State::init(game_info);
         Ok(unsafe { Bundled::new(state, game_state) })
     }
     fn unpack(

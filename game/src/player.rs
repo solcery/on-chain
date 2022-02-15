@@ -8,7 +8,7 @@ use solana_program::{
 use solana_program::pubkey::Pubkey;
 
 pub use solcery_data_types::player::Player;
-use solcery_data_types::player::{GameInfo, CURRENT_PLAYER_VERSION};
+use solcery_data_types::player::CURRENT_PLAYER_VERSION;
 
 impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, ()> for Player {
     type Error = Error;

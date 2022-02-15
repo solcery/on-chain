@@ -24,11 +24,31 @@ pub struct State {
 }
 
 impl State {
-    pub fn new(key: Pubkey) -> Self {
+    pub fn init(key: Pubkey) -> Self {
         Self {
             log: vec![],
             state_step: 0,
             game_info: key,
         }
     }
+    pub unsafe fn add_events(
+        &mut self,
+        state_step: u32,
+        events: &[Event],
+    ) -> Result<(), WrongStateStep> {
+        if state_step == self.state_step {
+            self.state_step += events.len() as u32;
+            self.log.extend_from_slice(events);
+            Ok(())
+        } else {
+            Err(WrongStateStep {})
+        }
+    }
+    pub fn game_key(&self) -> Pubkey {
+        self.game_info
+    }
 }
+#[derive(
+    Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize,
+)]
+pub struct WrongStateStep {}
