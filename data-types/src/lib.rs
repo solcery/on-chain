@@ -5,5 +5,7 @@ pub mod instruction_rom;
 pub mod object;
 pub mod object_type;
 pub mod object_type_rom;
+pub mod player;
+pub mod state;
 pub mod vmcommand;
 pub mod word;
