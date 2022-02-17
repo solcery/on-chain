@@ -52,10 +52,6 @@ impl Game {
         game_key: Pubkey,
         player: &mut PlayerInfo,
     ) -> Result<(), Error> {
-        if player.in_game() {
-            return Err(Error::AlreadyInGame);
-        }
-
         match self.status {
             Status::Initialization {
                 remaining_players, ..
@@ -233,8 +229,6 @@ pub enum Status {
     Error, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize,
 )]
 pub enum Error {
-    #[error("Player is already participating in another game")]
-    AlreadyInGame,
     #[error("The game has already started")]
     GameStarted,
     #[error("Illegal status change")]

@@ -11,50 +11,9 @@ use std::num::NonZeroU32;
 use crate::bundled::{Bundle, Bundled};
 use crate::error::Error;
 use crate::player::Player as PlayerInfo;
+pub use solcery_data_types::game::{Game, Item, Player, Project, Status};
 
 pub const CURRENT_GAME_VERSION: u32 = 1;
-
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]
-pub struct Game {
-    project: Pubkey,
-    status: Status,
-    state: Pubkey,
-    players: Vec<Player>,
-}
-
-impl Game {
-    unsafe fn init(project: Pubkey, state: Pubkey, num_players: u32, max_items: u32) -> Self {
-        Self {
-            project,
-            status: Status::Initialization {
-                remaining_players: num_players,
-                max_items,
-            },
-            state,
-            players: vec![],
-        }
-    }
-
-    unsafe fn from_raw_parts(
-        project: Pubkey,
-        status: Status,
-        state: Pubkey,
-        players: Vec<Player>,
-    ) -> Self {
-        Self {
-            project,
-            status,
-            state,
-            players,
-        }
-    }
-
-    fn item_count(&self) -> usize {
-        self.players
-            .iter()
-            .fold(0, |acc, player| acc + player.items.len())
-    }
-}
 
 impl<'s, 't0> Bundled<'s, 't0, Game> {
     pub fn add_player(&mut self, player: &mut PlayerInfo) -> Result<(), Error> {
@@ -64,86 +23,20 @@ impl<'s, 't0> Bundled<'s, 't0, Game> {
 
         let game_key = self.key();
         let game: &mut Game = self.data_mut();
-        match game.status {
-            Status::Initialization {
-                remaining_players, ..
-            } => {
-                if remaining_players > 0 {
-                    // SAFETY: .len() + 1 is guaranteed to be greater than zero
-                    let id = unsafe { NonZeroU32::new_unchecked(game.players.len() as u32 + 1) };
-                    let player_key = player.key();
-                    unsafe {
-                        //SAFETY: game and player are changed synchronously, so the invariants are preserved
-                        player.set_game(game_key, id);
-                    }
-                    game.players.push(Player {
-                        key: player_key,
-                        id,
-                        items: vec![],
-                    });
-                    Ok(())
-                } else {
-                    Err(Error::NoPlayerSlots)
-                }
-            }
-            _ => Err(Error::GameStarted),
-        }
+        unsafe { game.add_player(game_key, player) }?;
+        Ok(())
     }
 
     pub fn remove_player(&mut self, player: &mut PlayerInfo) -> Result<(), Error> {
         let game: &mut Game = self.data_mut();
-        match &game.status {
-            //TODO: State::Canceled is not used as by now we do not have CancelGame instruction
-            Status::Finished { winners: _ } => {
-                let player_key = player.key();
-                let player_index = game.players.iter().position(|x| x.key == player_key);
-
-                if let Some(index) = player_index {
-                    game.players.swap_remove(index);
-
-                    // Just to be completely paranoid.
-                    // This assert should never fail.
-                    debug_assert_eq!(player.game_key(), Some(self.key()));
-
-                    unsafe {
-                        //SAFETY: game and player are changed synchronously, so the invariants are preserved
-                        player.leave_game()
-                    };
-                    Ok(())
-                } else {
-                    Err(Error::NotInGame)
-                }
-            }
-            _ => Err(Error::NotFinished),
-        }
+        unsafe { game.remove_player(player) }?;
+        Ok(())
     }
 
     pub fn set_status(&mut self, new_status: Status) -> Result<(), Error> {
         let game: &mut Game = self.data_mut();
-        match (&game.status, new_status) {
-            (Status::Initialization { .. }, Status::Canceled) => {
-                game.status = Status::Canceled;
-                Ok(())
-            }
-            (
-                Status::Initialization {
-                    remaining_players, ..
-                },
-                Status::Started,
-            ) => {
-                if *remaining_players == 0 {
-                    game.status = Status::Started;
-                    Ok(())
-                } else {
-                    Err(Error::NotAllPlayersReady)
-                }
-            }
-            (Status::Started, Status::Finished { winners }) => {
-                game.status = Status::Finished { winners };
-                Ok(())
-            }
-            _ => Err(Error::IllegalStatusChange),
-        }
+        game.set_status(new_status)?;
+        Ok(())
     }
 
     pub fn add_items(
@@ -152,31 +45,11 @@ impl<'s, 't0> Bundled<'s, 't0, Game> {
         items: Vec<(&AccountInfo, &AccountInfo)>,
     ) -> Result<(), Error> {
         let game = self.data_mut();
-
         let player_key = player.key();
-        let player_index = game
-            .players
+
+        let items: Vec<_> = items
             .iter()
-            .position(|x| x.key == player_key)
-            .ok_or(Error::NotInGame)?;
-
-        if let Status::Initialization { max_items, .. } = &game.status {
-            if items.len() > *max_items as usize {
-                return Err(Error::TooManyItems);
-            }
-
-            // It is required, that each item in the game has unique id.
-            // This ids are NonZeroU32 derived from the number of already added items, so that
-            // the first added item will have id=1, second - id=2 and so on.
-            let mut item_id = unsafe {
-                // SAFETY: always item_count returns value >= 0 and there will be definitely less
-                // items than u32::MAX
-                NonZeroU32::new_unchecked(game.item_count() as u32 + 1)
-            };
-
-            for item_bundle in items.iter() {
-                let (token, mint) = item_bundle;
-
+            .map(|(token, mint)| {
                 let token_account = Account::unpack_from_slice(&token.data.borrow())?;
                 let mint_key = token_account.mint;
 
@@ -204,40 +77,18 @@ impl<'s, 't0> Bundled<'s, 't0, Game> {
                 }
 
                 // So, now this token is definitely an NFT
+                Ok(token.key)
+            })
+            .collect::<Result<_, _>>()?;
 
-                // Check, that the player has not already added this NFT
-                let player_info = &mut game.players[player_index];
-
-                for item in player_info.items.iter() {
-                    // Here we check only in the player's items, because we require, that the token
-                    // is owned by that player.
-
-                    // EXPLOIT: Player1 add item, transfer ownership to Player2, than Player2 is
-                    // able to add the same item.
-
-                    // FIXME: We should implemet a function, that check NFTs against all the items
-                    // in the game
-                    if &item.token == token.key {
-                        return Err(Error::TokenAlreadyInGame);
-                    }
-                }
-
-                let new_item = Item {
-                    id: item_id,
-                    token: *token.key,
-                };
-
-                player_info.items.push(new_item);
-                item_id = unsafe { NonZeroU32::new_unchecked(u32::from(item_id) + 1) };
-            }
-            Ok(())
-        } else {
-            Err(Error::GameStarted)
+        unsafe {
+            game.add_items(player, items)?;
         }
+        Ok(())
     }
 
     pub fn state_key(&self) -> Pubkey {
-        self.data().state
+        self.data().state_key()
     }
 }
 
@@ -327,43 +178,4 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for Game {
             .serialize(&mut data)
             .map_err(|e| Error::ProgramError(ProgramError::from(e)))
     }
-}
-
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]
-pub struct Player {
-    id: NonZeroU32,
-    key: Pubkey,
-    items: Vec<Item>,
-}
-
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]
-pub struct Item {
-    id: NonZeroU32,
-    token: Pubkey,
-}
-
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]
-pub struct Project {
-    //By now it is empty, as we can't validate anything.
-    //Later we'll add needed information
-    //
-    //This is a possible layout:
-    //instructions: Pubkey,
-    //object_types: Pubkey,
-    pub min_players: u32,
-    pub max_players: u32,
-    //symtab: SymbolTable,
-}
-
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]
-pub enum Status {
-    Initialization {
-        remaining_players: u32,
-        max_items: u32,
-    },
-    Canceled,
-    Started,
-    Finished {
-        winners: Vec<Pubkey>,
-    },
 }

@@ -1,4 +1,5 @@
 use solana_program::program_error::ProgramError;
+use solcery_data_types::game::Error as GameError;
 use thiserror::Error;
 
 #[derive(Error, Clone, Eq, PartialEq, Debug)]
@@ -11,18 +12,8 @@ pub enum Error {
     CorruptedAccount,
     #[error("Account contain no data")]
     EmptyAccount,
-    #[error("The game has already started")]
-    GameStarted,
-    #[error("Illegal status change")]
-    IllegalStatusChange,
-    #[error("No player slots left")]
-    NoPlayerSlots,
-    #[error("Not all players have joined the game")]
-    NotAllPlayersReady,
     #[error("The supplied token is not an NFT")]
     NotAnNFT,
-    #[error("The game is not finished")]
-    NotFinished,
     #[error("Player not in this game")]
     NotInGame,
     #[error("NFT is not owned by player")]
@@ -33,10 +24,6 @@ pub enum Error {
     ProgramError(ProgramError),
     #[error("Game and State accounts does not match")]
     StateAccountMismatch,
-    #[error("The supplied token is already in game")]
-    TokenAlreadyInGame,
-    #[error("Attempted to add too many items")]
-    TooManyItems,
     #[error("Mint in token account and key of the mint account does not match")]
     WrongAccountMint,
     #[error("Account is not owned by Game program")]
@@ -51,6 +38,8 @@ pub enum Error {
     WrongProjectAccount,
     #[error("Wrong state step, you are probably out of sync")]
     WrongStateStep,
+    #[error("GameError")]
+    Game(GameError),
 }
 
 impl From<Error> for ProgramError {
@@ -66,5 +55,11 @@ impl From<Error> for ProgramError {
 impl From<ProgramError> for Error {
     fn from(error: ProgramError) -> Self {
         Error::ProgramError(error)
+    }
+}
+
+impl From<GameError> for Error {
+    fn from(error: GameError) -> Self {
+        Error::Game(error)
     }
 }
