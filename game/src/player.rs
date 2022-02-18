@@ -48,7 +48,7 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, ()> for Player {
         }
 
         if dbg!(*player_info.key) == dbg!(pda) {
-            Ok(unsafe { Bundled::new(Player::from_pubkey(pda), player_info) })
+            Ok(unsafe { Bundled::new(Player::from_pubkey(*signer.key), player_info) })
         } else {
             Err(Error::WrongPlayerAccount)
         }

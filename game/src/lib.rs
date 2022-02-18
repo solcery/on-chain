@@ -178,19 +178,3 @@ fn process(
     }
     Ok(())
 }
-
-//pub fn set_state(
-//game_info: &AccountInfo,
-//game_state_info: &AccountInfo,
-//state_step: u32,
-//new_state: &[u8],
-//) -> ProgramResult {
-//let mut game = Game::deserialize(&mut game_info.data.borrow().as_ref())?;
-//if game.state_step != state_step {
-//return Err(ProgramError::InvalidAccountData);
-//}
-//game.state_step = state_step + 1;
-//game_state_info.data.borrow_mut().copy_from_slice(new_state);
-//game.serialize(&mut *game_info.data.borrow_mut())
-//.map_err(ProgramError::from)
-//}

@@ -30,6 +30,19 @@ impl Player {
     }
 
     #[must_use]
+    pub unsafe fn from_raw_parts(
+        pubkey: Pubkey,
+        items: Vec<(u32, Pubkey)>,
+        game: Option<GameInfo>,
+    ) -> Self {
+        Self {
+            pubkey,
+            items,
+            game,
+        }
+    }
+
+    #[must_use]
     pub fn key(&self) -> Pubkey {
         self.pubkey
     }

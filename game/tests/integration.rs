@@ -1,3 +1,5 @@
+use borsh::BorshDeserialize;
+use pretty_assertions::assert_eq;
 use solana_program::{instruction::Instruction as SolanaInstruction, pubkey::Pubkey};
 use solana_program_test::{processor, tokio, ProgramTest};
 use solana_sdk::{
@@ -8,6 +10,7 @@ use solana_sdk::{
     transaction::Transaction,
 };
 
+use solcery_data_types::player::{Player, CURRENT_PLAYER_VERSION};
 use solcery_game::{process_instruction, Instruction as GameInstruction};
 
 #[tokio::test]
@@ -30,15 +33,29 @@ async fn add_player() {
             program_id,
             &GameInstruction::CreatePlayerAccount,
             vec![
-                AccountMeta::new_readonly(player_id.pubkey(), true),
-                AccountMeta::new(player_info_pda, false),
+                AccountMeta::new_readonly(dbg!(player_id.pubkey()), true),
+                AccountMeta::new(dbg!(player_info_pda), false),
             ],
         )],
         Some(&payer.try_pubkey().unwrap()),
     );
 
     transaction.sign(&[&payer, &player_id], recent_blockhash);
+
     banks_client.process_transaction(transaction).await.unwrap();
+    let player_info = banks_client
+        .get_account(player_info_pda)
+        .await
+        .unwrap()
+        .unwrap();
+
+    let (ver, player): (u32, Player) =
+        <(u32, Player)>::deserialize(&mut player_info.data.as_slice()).unwrap();
+
+    let expected_player = unsafe { Player::from_raw_parts(player_id.pubkey(), vec![], None) };
+
+    assert_eq!(ver, CURRENT_PLAYER_VERSION);
+    assert_eq!(player, expected_player);
 }
 
 #[tokio::test]
