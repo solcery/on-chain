@@ -47,7 +47,7 @@ pub enum Instruction {
     /// 2. `[]` GameProject account
     //TODO: we should probably provide a way to create this account
     /// 3. `[writable]` Game account
-    /// 3. `[writable]` GameState account
+    /// 4. `[writable]` GameState account
     CreateGame {
         num_players: u32,
         max_items: u32,
@@ -103,6 +103,15 @@ fn process(
                 return Err(Error::AlreadyInGame);
             }
             let game = Game::new(program_id, accounts_iter, (num_players, max_items))?;
+
+            //both game and state use the same accounts, so acoount_iter have to be "restarted"
+            let accounts_iter = &mut accounts.iter();
+            //FIXME: Should be rewritten with .skip()
+            //requires signature changes for Bundled trait
+            accounts_iter.next();
+            accounts_iter.next();
+            accounts_iter.next();
+            accounts_iter.next();
             let state = State::new(program_id, accounts_iter, game.key())?;
             Bundle::pack(state)?;
             Bundle::pack(game)?;

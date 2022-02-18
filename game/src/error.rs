@@ -30,6 +30,8 @@ pub enum Error {
     WrongAccountOwner,
     #[error("You are using old version of Player account. Please, update it via UpdatePlayerAccount instruction.")]
     WrongAccountVersion,
+    #[error("You are using old Game Project account.")]
+    WrongProjectVersion,
     #[error("Address of the provided player account does not match the required PDA")]
     WrongPlayerAccount,
     #[error("This game can not be played with this number of players")]

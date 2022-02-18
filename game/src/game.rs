@@ -8,12 +8,16 @@ use solana_program::{
 use spl_token::state::{Account, Mint};
 use std::num::NonZeroU32;
 
-use crate::bundled::{Bundle, Bundled};
-use crate::error::Error;
-use crate::player::Player as PlayerInfo;
-pub use solcery_data_types::game::{Game, Item, Player, Project, Status};
-
-pub const CURRENT_GAME_VERSION: u32 = 1;
+use crate::{
+    bundled::{Bundle, Bundled},
+    error::Error,
+    player::Player as PlayerInfo,
+};
+//FIXME: remove unneeded pub's
+pub use solcery_data_types::game::{
+    Game, Item, Player, Project, Status, CURRENT_GAME_PROJECT_VERSION, CURRENT_GAME_VERSION,
+};
+use solcery_data_types::state::State;
 
 impl<'s, 't0> Bundled<'s, 't0, Game> {
     pub fn add_player(&mut self, player: &mut PlayerInfo) -> Result<(), Error> {
@@ -112,8 +116,15 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for Game {
         let project_data: &[u8] = &project.data.borrow();
         let mut project_buf = &*project_data;
 
-        let project_struct =
-            Project::deserialize(&mut project_buf).map_err(|_| Error::WrongProjectAccount)?;
+        let (project_ver, project_struct) = <(u32, Project)>::deserialize(&mut project_buf)
+            .map_err(|_| Error::WrongProjectAccount)?;
+
+        if project_ver == 0 {
+            return Err(Error::WrongProjectAccount);
+        }
+        if project_ver != CURRENT_GAME_PROJECT_VERSION {
+            return Err(Error::WrongProjectVersion);
+        }
 
         let data: &[u8] = &game_info.data.borrow();
         let mut buf = &*data;
@@ -127,7 +138,7 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for Game {
                     //Error occurs if account was already initialized
                     .map_or(Ok(()), |_| Err(Error::AlreadyCreated))?;
                 let mut state_data: &[u8] = &game_info.data.borrow();
-                Game::deserialize(&mut state_data)
+                State::deserialize(&mut state_data)
                     //Error occurs if account was already initialized
                     .map_or(Ok(()), |_| Err(Error::AlreadyCreated))?;
             }

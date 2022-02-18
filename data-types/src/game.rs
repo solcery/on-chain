@@ -5,6 +5,7 @@ use thiserror::Error;
 
 use crate::player::Player as PlayerInfo;
 pub const CURRENT_GAME_VERSION: u32 = 1;
+pub const CURRENT_GAME_PROJECT_VERSION: u32 = 1;
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]
 pub struct Game {
