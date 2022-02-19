@@ -6,7 +6,6 @@ use solana_program::{
     pubkey::Pubkey,
 };
 use spl_token::state::{Account, Mint};
-use std::num::NonZeroU32;
 
 use crate::{
     bundled::{Bundle, Bundled},
@@ -49,7 +48,6 @@ impl<'s, 't0> Bundled<'s, 't0, Game> {
         items: Vec<(&AccountInfo, &AccountInfo)>,
     ) -> Result<(), Error> {
         let game = self.data_mut();
-        let player_key = player.key();
 
         let items: Vec<_> = items
             .iter()
@@ -122,6 +120,11 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for Game {
         if project_ver == 0 {
             return Err(Error::WrongProjectAccount);
         }
+
+        if project.owner != program_id {
+            return Err(Error::WrongAccountOwner);
+        }
+
         if project_ver != CURRENT_GAME_PROJECT_VERSION {
             return Err(Error::WrongProjectVersion);
         }

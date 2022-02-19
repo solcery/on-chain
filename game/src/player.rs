@@ -47,7 +47,7 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, ()> for Player {
             return Err(Error::NotSigned);
         }
 
-        if dbg!(*player_info.key) == dbg!(pda) {
+        if *player_info.key == pda {
             Ok(unsafe { Bundled::new(Player::from_pubkey(*signer.key), player_info) })
         } else {
             Err(Error::WrongPlayerAccount)

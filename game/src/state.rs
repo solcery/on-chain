@@ -23,7 +23,7 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for State {
     type Error = Error;
 
     fn new(
-        program_id: &'r Pubkey,
+        _program_id: &'r Pubkey,
         accounts_iter: &mut std::slice::Iter<'s, AccountInfo<'t0>>,
         initialization_args: InitializationArgs,
     ) -> Result<Bundled<'s, 't0, Self>, Self::Error> {

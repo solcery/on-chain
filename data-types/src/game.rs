@@ -53,12 +53,13 @@ impl Game {
         game_key: Pubkey,
         player: &mut PlayerInfo,
     ) -> Result<(), Error> {
-        match self.status {
+        match &mut self.status {
             Status::Initialization {
                 remaining_players, ..
             } => {
-                if remaining_players > 0 {
-                    // SAFETY: .len() + 1 is guaranteed to be greater than zero
+                if *remaining_players > 0 {
+                    // SAFETY: .len() + 1 is guaranteed to be greater than zero and less than
+                    // U32::MAX
                     let id = NonZeroU32::new_unchecked(self.players.len() as u32 + 1);
                     let player_key = player.key();
                     //SAFETY: game and player are changed synchronously, so the invariants are preserved
@@ -68,6 +69,7 @@ impl Game {
                         id,
                         items: vec![],
                     });
+                    *remaining_players -= 1;
                     Ok(())
                 } else {
                     Err(Error::NoPlayerSlots)
@@ -192,6 +194,11 @@ pub struct Player {
     id: NonZeroU32,
     key: Pubkey,
     items: Vec<Item>,
+}
+impl Player {
+    pub unsafe fn from_raw_parts(id: NonZeroU32, key: Pubkey, items: Vec<Item>) -> Self {
+        Self { id, key, items }
+    }
 }
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]
