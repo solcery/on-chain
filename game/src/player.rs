@@ -13,11 +13,14 @@ use solcery_data_types::player::CURRENT_PLAYER_VERSION;
 impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, ()> for Player {
     type Error = Error;
 
-    fn new(
+    fn new<AccountIter>(
         program_id: &'r Pubkey,
-        accounts_iter: &mut std::slice::Iter<'s, AccountInfo<'t0>>,
+        accounts_iter: &mut AccountIter,
         _initialization_args: (),
-    ) -> Result<Bundled<'s, 't0, Self>, Self::Error> {
+    ) -> Result<Bundled<'s, 't0, Self>, Self::Error>
+    where
+        AccountIter: Iterator<Item = &'s AccountInfo<'t0>>,
+    {
         let signer = next_account_info(accounts_iter)?;
         let player_info = next_account_info(accounts_iter)?;
         //player_info address check
@@ -53,10 +56,13 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, ()> for Player {
             Err(Error::WrongPlayerAccount)
         }
     }
-    fn unpack(
+    fn unpack<AccountIter>(
         program_id: &'r Pubkey,
-        accounts_iter: &mut std::slice::Iter<'s, AccountInfo<'t0>>,
-    ) -> Result<Bundled<'s, 't0, Self>, Self::Error> {
+        accounts_iter: &mut AccountIter,
+    ) -> Result<Bundled<'s, 't0, Self>, Self::Error>
+    where
+        AccountIter: Iterator<Item = &'s AccountInfo<'t0>>,
+    {
         let signer = next_account_info(accounts_iter)?;
         let player_info = next_account_info(accounts_iter)?;
 

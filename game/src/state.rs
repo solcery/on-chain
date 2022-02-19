@@ -22,11 +22,14 @@ type InitializationArgs = Pubkey; // game_info address
 impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for State {
     type Error = Error;
 
-    fn new(
+    fn new<AccountIter>(
         _program_id: &'r Pubkey,
-        accounts_iter: &mut std::slice::Iter<'s, AccountInfo<'t0>>,
+        accounts_iter: &mut AccountIter,
         initialization_args: InitializationArgs,
-    ) -> Result<Bundled<'s, 't0, Self>, Self::Error> {
+    ) -> Result<Bundled<'s, 't0, Self>, Self::Error>
+    where
+        AccountIter: Iterator<Item = &'s AccountInfo<'t0>>,
+    {
         let game_info = initialization_args;
         let game_state = next_account_info(accounts_iter)?;
 
@@ -51,10 +54,14 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for State {
         let state = State::init(game_info);
         Ok(unsafe { Bundled::new(state, game_state) })
     }
-    fn unpack(
+
+    fn unpack<AccountIter>(
         program_id: &'r Pubkey,
-        accounts_iter: &mut std::slice::Iter<'s, AccountInfo<'t0>>,
-    ) -> Result<Bundled<'s, 't0, Self>, Self::Error> {
+        accounts_iter: &mut AccountIter,
+    ) -> Result<Bundled<'s, 't0, Self>, Self::Error>
+    where
+        AccountIter: Iterator<Item = &'s AccountInfo<'t0>>,
+    {
         let game_state = next_account_info(accounts_iter)?;
 
         if game_state.owner != program_id {

@@ -46,16 +46,20 @@ where
 {
     type Error;
 
-    fn new(
+    fn new<AccountIter>(
         program_id: &'r Pubkey,
-        accounts_iter: &mut std::slice::Iter<'s, AccountInfo<'t0>>,
+        accounts_iter: &mut AccountIter,
         initialization_args: InitializationArg,
-    ) -> Result<Bundled<'s, 't0, Self>, Self::Error>;
+    ) -> Result<Bundled<'s, 't0, Self>, Self::Error>
+    where
+        AccountIter: Iterator<Item = &'s AccountInfo<'t0>>;
 
-    fn unpack(
+    fn unpack<AccountIter>(
         program_id: &'r Pubkey,
-        accounts_iter: &mut std::slice::Iter<'s, AccountInfo<'t0>>,
-    ) -> Result<Bundled<'s, 't0, Self>, Self::Error>;
+        accounts_iter: &mut AccountIter,
+    ) -> Result<Bundled<'s, 't0, Self>, Self::Error>
+    where
+        AccountIter: Iterator<Item = &'s AccountInfo<'t0>>;
 
     fn pack(bundle: Bundled<'s, 't0, Self>) -> Result<(), Self::Error>;
 }

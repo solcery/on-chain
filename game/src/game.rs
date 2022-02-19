@@ -99,11 +99,14 @@ type InitializationArgs = (u32, u32); // num_players and max_items
 impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for Game {
     type Error = Error;
 
-    fn new(
+    fn new<AccountIter>(
         program_id: &'r Pubkey,
-        accounts_iter: &mut std::slice::Iter<'s, AccountInfo<'t0>>,
+        accounts_iter: &mut AccountIter,
         initialization_args: InitializationArgs,
-    ) -> Result<Bundled<'s, 't0, Self>, Self::Error> {
+    ) -> Result<Bundled<'s, 't0, Self>, Self::Error>
+    where
+        AccountIter: Iterator<Item = &'s AccountInfo<'t0>>,
+    {
         // How to use max_items?
         let (num_players, max_items) = initialization_args;
 
@@ -159,10 +162,14 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for Game {
             Err(Error::WrongPlayerNumber)
         }
     }
-    fn unpack(
+
+    fn unpack<AccountIter>(
         program_id: &'r Pubkey,
-        accounts_iter: &mut std::slice::Iter<'s, AccountInfo<'t0>>,
-    ) -> Result<Bundled<'s, 't0, Self>, Self::Error> {
+        accounts_iter: &mut AccountIter,
+    ) -> Result<Bundled<'s, 't0, Self>, Self::Error>
+    where
+        AccountIter: Iterator<Item = &'s AccountInfo<'t0>>,
+    {
         // Maybe we should add another check here. Smth like "check that the signer has a player
         // account and it is participating in the game (this is not correct, as it will break
         // join_game)"

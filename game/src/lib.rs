@@ -113,13 +113,8 @@ fn process(
             let game = Game::new(program_id, accounts_iter, (num_players, max_items))?;
 
             //both game and state use the same accounts, so acoount_iter have to be "restarted"
-            let accounts_iter = &mut accounts.iter();
-            //FIXME: Should be rewritten with .skip()
-            //requires signature changes for Bundled trait
-            accounts_iter.next();
-            accounts_iter.next();
-            accounts_iter.next();
-            accounts_iter.next();
+            let accounts_iter = &mut accounts.iter().skip(4);
+
             let state = State::new(program_id, accounts_iter, game.key())?;
             Bundle::pack(state)?;
             Bundle::pack(game)?;
