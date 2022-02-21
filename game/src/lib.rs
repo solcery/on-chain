@@ -58,12 +58,16 @@ pub enum Instruction {
     ///
     /// 0. `[signer]` The account of the person, who will be playing.
     /// 1. `[writable]` Player account with correct PDA
-    //TODO: we should probably provide a way to create this account
     /// 3. `[writable]` Game account
     JoinGame,
     AddItems {
         num_items: u32,
     },
+    /// Accounts expected:
+    ///
+    /// 0. `[signer]` The account of the person, who will be playing.
+    /// 1. `[]` Player account with correct PDA
+    /// 3. `[writable]` Game account
     SetGameStatus {
         new_game_status: GameStatus,
     },
