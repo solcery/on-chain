@@ -7,13 +7,36 @@ use solana_program::{
 
 use crate::bundled::{Bundle, Bundled};
 use crate::error::Error;
-pub use solcery_data_types::state::{Event, State, CURRENT_GAME_STATE_VERSION};
+pub use solcery_data_types::{
+    game::Game,
+    player::Player,
+    state::{Event, State, CURRENT_GAME_STATE_VERSION},
+};
 
 impl<'s, 't0> Bundled<'s, 't0, State> {
-    pub unsafe fn add_events(&mut self, state_step: u32, events: &[Event]) -> Result<(), Error> {
-        self.data_mut()
-            .add_events(state_step, events)
-            .map_err(|_| Error::WrongStateStep)
+    pub fn add_events<'a, 'b>(
+        &mut self,
+        player: &Bundled<'a, 'b, Player>,
+        game: &Bundled<'a, 'b, Game>,
+        state_step: u32,
+        events: &[Event],
+    ) -> Result<(), Error> {
+        if player.data().game_key() != Some(game.key()) {
+            return Err(Error::NotInGame);
+        }
+
+        if self.data().game_key() != game.key() {
+            return Err(Error::StateAccountMismatch);
+        }
+
+        debug_assert_eq!(self.key(), game.state_key());
+
+        unsafe {
+            // SAFETY: It was checked, that state, game and player are consistent.
+            self.data_mut()
+                .add_events(state_step, events)
+                .map_err(|_| Error::WrongStateStep)
+        }
     }
 }
 

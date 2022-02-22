@@ -48,6 +48,9 @@ impl Game {
             .fold(0, |acc, player| acc + player.items.len())
     }
 
+    /// # Safety
+    ///
+    /// `game_key` must be the Pubkey of an Account, which stores `Self`
     pub unsafe fn add_player(
         &mut self,
         game_key: Pubkey,
@@ -79,7 +82,7 @@ impl Game {
         }
     }
 
-    pub unsafe fn remove_player(&mut self, player: &mut PlayerInfo) -> Result<(), Error> {
+    pub fn remove_player(&mut self, player: &mut PlayerInfo) -> Result<(), Error> {
         match &self.status {
             //TODO: State::Canceled is not used as by now we do not have CancelGame instruction
             Status::Finished { winners: _ } => {
@@ -89,8 +92,10 @@ impl Game {
                 if let Some(index) = player_index {
                     self.players.swap_remove(index);
 
-                    //SAFETY: game and player are changed synchronously, so the invariants are preserved
-                    player.leave_game();
+                    unsafe {
+                        //SAFETY: game and player are changed synchronously, so the invariants are preserved
+                        player.leave_game();
+                    }
                     Ok(())
                 } else {
                     Err(Error::NotInGame)
@@ -100,7 +105,10 @@ impl Game {
         }
     }
 
-    pub fn set_status(&mut self, new_status: Status) -> Result<(), Error> {
+    /// # Safety
+    ///
+    /// Only players participating in `self` are allowed to change the status.
+    pub unsafe fn set_status(&mut self, new_status: Status) -> Result<(), Error> {
         match (&self.status, new_status) {
             (Status::Initialization { .. }, Status::Canceled) => {
                 self.status = Status::Canceled;
@@ -127,6 +135,9 @@ impl Game {
         }
     }
 
+    /// # Safety
+    ///
+    /// items must contain only keys of valid NFTs
     pub unsafe fn add_items(
         &mut self,
         player: &PlayerInfo,

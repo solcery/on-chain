@@ -19,34 +19,60 @@ pub use solcery_data_types::game::{
 use solcery_data_types::state::State;
 
 impl<'s, 't0> Bundled<'s, 't0, Game> {
-    pub fn add_player(&mut self, player: &mut PlayerInfo) -> Result<(), Error> {
+    pub fn add_player<'a, 'b>(
+        &mut self,
+        player_bundle: &mut Bundled<'a, 'b, PlayerInfo>,
+    ) -> Result<(), Error> {
+        let player = player_bundle.data_mut();
+
         if player.in_game() {
             return Err(Error::AlreadyInGame);
         }
 
         let game_key = self.key();
-        let game: &mut Game = self.data_mut();
+        let game = self.data_mut();
         unsafe { game.add_player(game_key, player) }?;
         Ok(())
     }
 
-    pub fn remove_player(&mut self, player: &mut PlayerInfo) -> Result<(), Error> {
-        let game: &mut Game = self.data_mut();
-        unsafe { game.remove_player(player) }?;
-        Ok(())
-    }
-
-    pub fn set_status(&mut self, new_status: Status) -> Result<(), Error> {
-        let game: &mut Game = self.data_mut();
-        game.set_status(new_status)?;
-        Ok(())
-    }
-
-    pub fn add_items(
+    pub fn remove_player<'a, 'b>(
         &mut self,
-        player: &PlayerInfo,
+        player_bundle: &mut Bundled<'a, 'b, PlayerInfo>,
+    ) -> Result<(), Error> {
+        let player = player_bundle.data_mut();
+        let game = self.data_mut();
+        game.remove_player(player)?;
+        Ok(())
+    }
+
+    pub fn set_status<'a, 'b>(
+        &mut self,
+        player: &Bundled<'a, 'b, PlayerInfo>,
+        new_status: Status,
+    ) -> Result<(), Error> {
+        if player.data().game_key() != Some(self.key()) {
+            return Err(Error::NotInGame);
+        }
+
+        let game: &mut Game = self.data_mut();
+        unsafe {
+            //SAFETY: We've checked, that the player belongs to that game
+
+            game.set_status(new_status)?;
+        }
+        Ok(())
+    }
+
+    pub fn add_items<'a, 'b>(
+        &mut self,
+        player_bundle: &Bundled<'a, 'b, PlayerInfo>,
         items: Vec<(&AccountInfo, &AccountInfo)>,
     ) -> Result<(), Error> {
+        let player = player_bundle.data();
+        if player.game_key() != Some(self.key()) {
+            return Err(Error::NotInGame);
+        }
+
         let game = self.data_mut();
 
         let items: Vec<_> = items

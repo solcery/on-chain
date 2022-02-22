@@ -131,7 +131,9 @@ fn process(
         Instruction::JoinGame => {
             let mut player = Player::unpack(program_id, accounts_iter)?;
             let mut game = Game::unpack(program_id, accounts_iter)?;
-            game.add_player(player.data_mut())?;
+
+            game.add_player(&mut player)?;
+
             Bundle::pack(player)?;
             Bundle::pack(game)?;
         }
@@ -139,28 +141,23 @@ fn process(
             let player = Player::unpack(program_id, accounts_iter)?;
             let mut game = Game::unpack(program_id, accounts_iter)?;
 
-            if player.data().game_key() != Some(game.key()) {
-                return Err(Error::NotInGame);
-            }
-
             let mut items = Vec::<(&AccountInfo, &AccountInfo)>::with_capacity(num_items as usize);
             for _ in 0..num_items {
                 let item = next_account_info(accounts_iter)?;
                 let mint = next_account_info(accounts_iter)?;
                 items.push((item, mint));
             }
-            game.add_items(player.data(), items)?;
+
+            game.add_items(&player, items)?;
+
             Bundle::pack(game)?;
         }
         Instruction::SetGameStatus { new_game_status } => {
             let player = Player::unpack(program_id, accounts_iter)?;
             let mut game = Game::unpack(program_id, accounts_iter)?;
 
-            if player.data().game_key() != Some(game.key()) {
-                return Err(Error::NotInGame);
-            }
+            game.set_status(&player, new_game_status)?;
 
-            game.set_status(new_game_status)?;
             Bundle::pack(game)?;
         }
         Instruction::AddEvent {
@@ -169,30 +166,20 @@ fn process(
         } => {
             let player = Player::unpack(program_id, accounts_iter)?;
             let game = Game::unpack(program_id, accounts_iter)?;
-
-            if player.data().game_key() != Some(game.key()) {
-                return Err(Error::NotInGame);
-            }
             let mut state = State::unpack(program_id, accounts_iter)?;
 
-            if state.data().game_key() != game.key() {
-                return Err(Error::StateAccountMismatch);
-            }
-
-            debug_assert_eq!(state.key(), game.state_key());
             let events = Container::extract(event_container, accounts_iter)?;
 
-            unsafe {
-                // SAFETY: It was checked, that this state belongs to this game.
-                state.add_events(state_step, &events)?;
-            }
+            state.add_events(&player, &game, state_step, &events)?;
 
             Bundle::pack(state)?;
         }
         Instruction::LeaveGame => {
             let mut player = Player::unpack(program_id, accounts_iter)?;
             let mut game = Game::unpack(program_id, accounts_iter)?;
-            game.remove_player(player.data_mut())?;
+
+            game.remove_player(&mut player)?;
+
             Bundle::pack(player)?;
             Bundle::pack(game)?;
         }

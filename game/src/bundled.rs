@@ -10,10 +10,12 @@ pub struct Bundled<'s, 't0, T> {
 }
 
 impl<'s, 't0, T> Bundled<'s, 't0, T> {
+    #[must_use]
     pub unsafe fn new(data: T, account: &'s AccountInfo<'t0>) -> Self {
         Self { data, account }
     }
 
+    #[must_use]
     pub unsafe fn release(self) -> (T, &'s AccountInfo<'t0>) {
         (self.data, self.account)
     }

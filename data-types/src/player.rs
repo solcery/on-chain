@@ -57,6 +57,9 @@ impl Player {
         self.game.as_ref().map(|game| game.game_key)
     }
 
+    /// # Safety
+    ///
+    /// Game and player structs must be changed syncroniusly
     pub unsafe fn set_game(&mut self, game_key: Pubkey, player_id: NonZeroU32) {
         self.game = Some(GameInfo {
             player_id,
@@ -64,6 +67,9 @@ impl Player {
         });
     }
 
+    /// # Safety
+    ///
+    /// Game and player structs must be changed syncroniusly
     pub unsafe fn leave_game(&mut self) {
         self.game = None;
     }
