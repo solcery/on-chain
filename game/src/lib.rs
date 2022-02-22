@@ -75,6 +75,11 @@ pub enum Instruction {
         event_container: Container<Vec<Event>>,
         state_step: u32,
     },
+    /// Accounts expected:
+    ///
+    /// 0. `[signer]` The account of the person, who will be playing.
+    /// 1. `[writable]` Player account with correct PDA
+    /// 3. `[writable]` Game account
     LeaveGame,
 }
 
