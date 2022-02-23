@@ -74,7 +74,7 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for State {
             _ => {}
         }
 
-        let state = State::init(game_info);
+        let state = unsafe { State::init(game_info) };
         Ok(unsafe { Bundled::new(state, game_state) })
     }
 

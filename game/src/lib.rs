@@ -71,6 +71,12 @@ pub enum Instruction {
     SetGameStatus {
         new_game_status: GameStatus,
     },
+    /// Accounts expected:
+    ///
+    /// 0. `[signer]` The account of the person, who will be playing.
+    /// 1. `[]` Player account with correct PDA
+    /// 3. `[writable]` Game account
+    /// 4. `[]` (Optional) Event account
     AddEvent {
         event_container: Container<Vec<Event>>,
         state_step: u32,

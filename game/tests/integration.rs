@@ -13,12 +13,13 @@ use std::iter;
 use std::num::NonZeroU32;
 
 use solcery_data_types::{
+    container::Container,
     game::{
         Game, Player as GamePlayer, Project, Status, CURRENT_GAME_PROJECT_VERSION,
         CURRENT_GAME_VERSION,
     },
     player::{Player, CURRENT_PLAYER_VERSION},
-    state::{State, CURRENT_GAME_STATE_VERSION},
+    state::{Event, State, CURRENT_GAME_STATE_VERSION},
 };
 use solcery_game::{process_instruction, Instruction as GameInstruction};
 
@@ -146,7 +147,7 @@ async fn create_game() {
     let (state_ver, state) = <(u32, State)>::deserialize(&mut state_info.data.as_slice()).unwrap();
 
     // Preparing expected data
-    let expected_state = State::init(game_id);
+    let expected_state = unsafe { State::init(game_id) };
     let expected_game = unsafe { Game::init(game_project_id, game_state_id, 1, 0) };
 
     // Assertions
@@ -475,4 +476,123 @@ async fn leave_game() {
 
     assert_eq!(game, expected_game);
     assert_eq!(player, expected_player);
+}
+
+#[tokio::test]
+async fn add_event() {
+    let player_id = Keypair::new();
+    dbg!(player_id.pubkey());
+
+    let program_id = dbg!(Pubkey::new_unique());
+    let game_id = dbg!(Pubkey::new_unique());
+    let game_project_id = dbg!(Pubkey::new_unique());
+    let game_state_id = dbg!(Pubkey::new_unique());
+    let container_id = dbg!(Pubkey::new_unique());
+
+    let mut player_info = AccountSharedData::new(1_000, 1024, &program_id);
+    let mut game_info = AccountSharedData::new(1_000, 1024, &program_id);
+    let mut state_info = AccountSharedData::new(1_000, 1024, &program_id);
+    let mut container_info = AccountSharedData::new(1_000, 1024, &program_id);
+
+    let mut player = Player::from_pubkey(player_id.pubkey());
+
+    unsafe {
+        player.set_game(game_id, NonZeroU32::new_unchecked(1));
+    }
+    let player_data = (CURRENT_PLAYER_VERSION, player);
+
+    let game = unsafe {
+        Game::from_raw_parts(
+            game_project_id,
+            Status::Started,
+            game_state_id,
+            vec![GamePlayer::from_raw_parts(
+                NonZeroU32::new_unchecked(1),
+                player_id.pubkey(),
+                vec![],
+            )],
+        )
+    };
+    let game_data = (CURRENT_GAME_VERSION, game);
+
+    let state = unsafe { State::init(game_id) };
+    let state_data = (CURRENT_GAME_STATE_VERSION, state);
+
+    let event = Event::PlayerUsedObject {
+        player_id: 1,
+        object_id: 1,
+    };
+    let container_data = vec![event];
+
+    // Accounts have to be larger
+    let zero_repeater = iter::repeat(0).take(1000);
+    let mut player_data = player_data.try_to_vec().unwrap();
+    player_data.extend(zero_repeater);
+
+    let zero_repeater = iter::repeat(0).take(1000);
+    let mut game_data = game_data.try_to_vec().unwrap();
+    game_data.extend(zero_repeater);
+
+    let zero_repeater = iter::repeat(0).take(1000);
+    let mut state_data = state_data.try_to_vec().unwrap();
+    state_data.extend(zero_repeater);
+
+    let zero_repeater = iter::repeat(0).take(1000);
+    let mut container_data = container_data.try_to_vec().unwrap();
+    container_data.extend(zero_repeater);
+
+    player_info.set_data(player_data);
+    game_info.set_data(game_data);
+    state_info.set_data(state_data);
+    container_info.set_data(container_data);
+
+    let (player_info_pda, _) =
+        Pubkey::find_program_address(&[b"player", player_id.pubkey().as_ref()], &program_id);
+
+    let mut program = ProgramTest::new("solcery_game", program_id, processor!(process_instruction));
+    program.add_account(player_info_pda, Account::from(player_info));
+    program.add_account(game_id, Account::from(game_info));
+    program.add_account(game_state_id, Account::from(state_info));
+    program.add_account(container_id, Account::from(container_info));
+
+    let (mut banks_client, payer, recent_blockhash) = program.start().await;
+
+    let mut transaction = Transaction::new_with_payer(
+        &[SolanaInstruction::new_with_borsh(
+            program_id,
+            &GameInstruction::AddEvent {
+                state_step: 0,
+                event_container: Container::InAccount(container_id),
+            },
+            vec![
+                AccountMeta::new_readonly(player_id.pubkey(), true),
+                AccountMeta::new_readonly(player_info_pda, false),
+                AccountMeta::new(game_id, false),
+                AccountMeta::new(game_state_id, false),
+                AccountMeta::new(container_id, false),
+            ],
+        )],
+        Some(&payer.try_pubkey().unwrap()),
+    );
+
+    transaction.sign(&[&payer, &player_id], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+
+    // Retrieving accounts
+    let state_info = banks_client
+        .get_account(game_state_id)
+        .await
+        .unwrap()
+        .unwrap();
+
+    // Deserializing data
+    let (state_ver, state) = <(u32, State)>::deserialize(&mut state_info.data.as_slice()).unwrap();
+
+    // Preparing expected data
+    let expected_state = unsafe { State::from_raw_parts(vec![event], 1, game_id) };
+
+    // Assertions
+    assert_eq!(state_ver, CURRENT_GAME_STATE_VERSION);
+
+    assert_eq!(state, expected_state);
 }

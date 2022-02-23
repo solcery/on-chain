@@ -22,10 +22,14 @@ impl<T> Container<T>
 where
     T: Clone + Eq + PartialEq + Ord + PartialOrd + Debug + BorshSerialize + BorshDeserialize,
 {
-    pub fn extract(
+    pub fn extract<'short, 'long, AccountIter>(
         containered_data: Self,
-        accounts_iter: &mut std::slice::Iter<'_, AccountInfo<'_>>,
-    ) -> Result<T, ProgramError> {
+        accounts_iter: &mut AccountIter,
+    ) -> Result<T, ProgramError>
+    where
+        AccountIter: Iterator<Item = &'short AccountInfo<'long>>,
+        'long: 'short,
+    {
         match containered_data {
             Container::InPlace(data) => Ok(data),
             Container::InAccount(pubkey) => {
