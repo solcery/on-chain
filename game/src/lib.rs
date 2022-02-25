@@ -48,10 +48,7 @@ pub enum Instruction {
     //TODO: we should probably provide a way to create this account
     /// 3. `[writable]` Game account
     /// 4. `[writable]` GameState account
-    CreateGame {
-        num_players: u32,
-        max_items: u32,
-    },
+    CreateGame { num_players: u32, max_items: u32 },
     /// Add (Player)[Player] to the existing (Game)[Game].
     ///
     /// Accounts expected:
@@ -60,17 +57,21 @@ pub enum Instruction {
     /// 1. `[writable]` Player account with correct PDA
     /// 3. `[writable]` Game account
     JoinGame,
-    AddItems {
-        num_items: u32,
-    },
+    /// Accounts expected:
+    ///
+    /// 0. `[signer]` The account of the person, who will be playing.
+    /// 1. `[writable]` Player account with correct PDA
+    /// 3. `[writable]` Game account
+    /// for each NFT this accounts should be provided:
+    /// 1. `[]` token account
+    /// 2. `[]` mint account
+    AddItems { num_items: u32 },
     /// Accounts expected:
     ///
     /// 0. `[signer]` The account of the person, who will be playing.
     /// 1. `[]` Player account with correct PDA
     /// 3. `[writable]` Game account
-    SetGameStatus {
-        new_game_status: GameStatus,
-    },
+    SetGameStatus { new_game_status: GameStatus },
     /// Accounts expected:
     ///
     /// 0. `[signer]` The account of the person, who will be playing.
