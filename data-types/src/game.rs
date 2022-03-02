@@ -206,6 +206,7 @@ pub struct Player {
     key: Pubkey,
     items: Vec<Item>,
 }
+
 impl Player {
     pub unsafe fn from_raw_parts(id: NonZeroU32, key: Pubkey, items: Vec<Item>) -> Self {
         Self { id, key, items }
@@ -216,6 +217,12 @@ impl Player {
 pub struct Item {
     id: NonZeroU32,
     token: Pubkey,
+}
+
+impl Item {
+    pub unsafe fn from_raw_parts(id: NonZeroU32, token: Pubkey) -> Self {
+        Self { id, token }
+    }
 }
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]

@@ -1,7 +1,7 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use pretty_assertions::assert_eq;
 use solana_program::{
-    instruction::Instruction as SolanaInstruction, pubkey::Pubkey,
+    instruction::Instruction as SolanaInstruction, program_pack::Pack, pubkey::Pubkey,
     system_instruction::SystemInstruction, system_program::ID as SystemID,
 };
 use solana_program_test::{processor, tokio, ProgramTest};
@@ -11,17 +11,21 @@ use solana_sdk::{
     program_option::COption,
     signature::Signer,
     signer::keypair::Keypair,
-    sysvar::ID as RentSysvar,
+    sysvar::rent::ID as RentSysvar,
     transaction::Transaction,
 };
-use spl_token::{instruction::TokenInstruction, ID as TokenID};
+use spl_token::{
+    instruction::{AuthorityType, TokenInstruction},
+    state::{Account as TokenAccount, Mint},
+    ID as TokenID,
+};
 use std::iter;
 use std::num::NonZeroU32;
 
 use solcery_data_types::{
     container::Container,
     game::{
-        Game, Player as GamePlayer, Project, Status, CURRENT_GAME_PROJECT_VERSION,
+        Game, Item, Player as GamePlayer, Project, Status, CURRENT_GAME_PROJECT_VERSION,
         CURRENT_GAME_VERSION,
     },
     player::{Player, CURRENT_PLAYER_VERSION},
@@ -604,7 +608,6 @@ async fn add_event() {
 }
 
 #[tokio::test]
-#[ignore]
 async fn add_item() {
     let player_id = Keypair::new();
     dbg!(player_id.pubkey());
@@ -612,15 +615,16 @@ async fn add_item() {
     let mint_id = Keypair::new();
     dbg!(mint_id.pubkey());
 
+    let token_id = Keypair::new();
+    dbg!(token_id.pubkey());
+
     let program_id = dbg!(Pubkey::new_unique());
     let game_id = dbg!(Pubkey::new_unique());
     let game_project_id = dbg!(Pubkey::new_unique());
     let game_state_id = dbg!(Pubkey::new_unique());
-    let token_id = dbg!(Pubkey::new_unique());
 
     let mut player_info = AccountSharedData::new(1_000, 1024, &program_id);
     let mut game_info = AccountSharedData::new(1_000, 1024, &program_id);
-    let token_info = AccountSharedData::new(1_000, 1024, &program_id);
 
     let mut player = Player::from_pubkey(player_id.pubkey());
 
@@ -632,7 +636,10 @@ async fn add_item() {
     let game = unsafe {
         Game::from_raw_parts(
             game_project_id,
-            Status::Started,
+            Status::Initialization {
+                remaining_players: 0,
+                max_items: 1,
+            },
             game_state_id,
             vec![GamePlayer::from_raw_parts(
                 NonZeroU32::new_unchecked(1),
@@ -661,24 +668,23 @@ async fn add_item() {
     let mut program = ProgramTest::new("solcery_game", program_id, processor!(process_instruction));
     program.add_account(player_info_pda, Account::from(player_info));
     program.add_account(game_id, Account::from(game_info));
-    program.add_account(token_id, Account::from(token_info));
 
     let (mut banks_client, payer, recent_blockhash) = program.start().await;
 
+    // Create and init Mint account
     let init_mint_instruction = TokenInstruction::InitializeMint {
         decimals: 0,
         mint_authority: payer.pubkey(),
         freeze_authority: COption::None,
     };
 
-    let nft_inst_data = init_mint_instruction.pack();
-    let mut nft_transaction = Transaction::new_with_payer(
+    let mut mint_transaction = Transaction::new_with_payer(
         &[
             SolanaInstruction::new_with_bincode(
                 SystemID,
                 &SystemInstruction::CreateAccount {
                     lamports: 5_000_000_000,
-                    space: 1000,
+                    space: Mint::get_packed_len() as u64,
                     owner: spl_token::ID,
                 },
                 vec![
@@ -688,7 +694,7 @@ async fn add_item() {
             ),
             SolanaInstruction::new_with_bytes(
                 TokenID,
-                &nft_inst_data,
+                &init_mint_instruction.pack(),
                 vec![
                     AccountMeta::new(mint_id.pubkey(), false),
                     AccountMeta::new_readonly(RentSysvar, false),
@@ -698,45 +704,118 @@ async fn add_item() {
         Some(&payer.try_pubkey().unwrap()),
     );
 
-    nft_transaction.sign(&[&payer, &mint_id], recent_blockhash);
+    mint_transaction.sign(&[&payer, &mint_id], recent_blockhash);
     banks_client
-        .process_transaction(nft_transaction)
+        .process_transaction(mint_transaction)
         .await
         .unwrap();
 
-    //let mut transaction = Transaction::new_with_payer(
-    //&[SolanaInstruction::new_with_borsh(
-    //,
-    //&SystemInstruction::CreateAccount { lamports: 50, space: 1000, owner: spl_token::ID },
-    //vec![
-    //AccountMeta::new(payer, true),
-    //AccountMeta::new(mint_id, true),
-    //],
-    //),
-    //SolanaInstruction::new_with_borsh(
-    //program_id,
-    //&GameInstruction::AddItems { num_items: 1 },
-    //vec![
-    //AccountMeta::new_readonly(player_id.pubkey(), true),
-    //AccountMeta::new(player_info_pda, false),
-    //AccountMeta::new(game_id, false),
-    //AccountMeta::new_readonly(token_id, false),
-    //AccountMeta::new_readonly(mint_id, false),
-    //],
-    //)],
-    //Some(&payer.try_pubkey().unwrap()),
-    //);
+    // Create, init mint Token account
+    let mint_instruction = TokenInstruction::MintTo { amount: 1 };
 
-    //transaction.sign(&[&payer, &player_id], recent_blockhash);
-    //banks_client.process_transaction(transaction).await.unwrap();
+    // Revoke minting priveleges
+    let revoke_instruction = TokenInstruction::SetAuthority {
+        authority_type: AuthorityType::MintTokens,
+        new_authority: COption::None,
+    };
+    let mut token_transaction = Transaction::new_with_payer(
+        &[
+            SolanaInstruction::new_with_bincode(
+                SystemID,
+                &SystemInstruction::CreateAccount {
+                    lamports: 5_000_000_000,
+                    space: TokenAccount::get_packed_len() as u64,
+                    owner: spl_token::ID,
+                },
+                vec![
+                    AccountMeta::new(payer.pubkey(), true),
+                    AccountMeta::new(token_id.pubkey(), true),
+                ],
+            ),
+            SolanaInstruction::new_with_bytes(
+                TokenID,
+                &TokenInstruction::InitializeAccount.pack(),
+                vec![
+                    AccountMeta::new(token_id.pubkey(), false),
+                    AccountMeta::new_readonly(mint_id.pubkey(), false),
+                    AccountMeta::new_readonly(player_id.pubkey(), false),
+                    AccountMeta::new_readonly(RentSysvar, false),
+                ],
+            ),
+            SolanaInstruction::new_with_bytes(
+                TokenID,
+                &mint_instruction.pack(),
+                vec![
+                    AccountMeta::new(mint_id.pubkey(), false),
+                    AccountMeta::new(token_id.pubkey(), false),
+                    AccountMeta::new(payer.pubkey(), true),
+                ],
+            ),
+            SolanaInstruction::new_with_bytes(
+                TokenID,
+                &revoke_instruction.pack(),
+                vec![
+                    AccountMeta::new(mint_id.pubkey(), false),
+                    AccountMeta::new_readonly(payer.pubkey(), true),
+                ],
+            ),
+        ],
+        Some(&payer.try_pubkey().unwrap()),
+    );
+
+    token_transaction.sign(&[&payer, &token_id], recent_blockhash);
+    banks_client
+        .process_transaction(token_transaction)
+        .await
+        .unwrap();
+
+    let mut transaction = Transaction::new_with_payer(
+        &[SolanaInstruction::new_with_borsh(
+            program_id,
+            &GameInstruction::AddItems { num_items: 1 },
+            vec![
+                AccountMeta::new_readonly(player_id.pubkey(), true),
+                AccountMeta::new(player_info_pda, false),
+                AccountMeta::new(game_id, false),
+                AccountMeta::new_readonly(token_id.pubkey(), false),
+                AccountMeta::new_readonly(mint_id.pubkey(), false),
+            ],
+        )],
+        Some(&payer.try_pubkey().unwrap()),
+    );
+
+    transaction.sign(&[&payer, &player_id], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
 
     // Retrieving accounts
+    let game_info = banks_client.get_account(game_id).await.unwrap().unwrap();
 
     // Deserializing data
+    let (game_ver, game): (u32, Game) =
+        <(u32, Game)>::deserialize(&mut game_info.data.as_slice()).unwrap();
 
     // Preparing expected data
+    let expected_game = unsafe {
+        Game::from_raw_parts(
+            game_project_id,
+            Status::Initialization {
+                remaining_players: 0,
+                max_items: 1,
+            },
+            game_state_id,
+            vec![GamePlayer::from_raw_parts(
+                NonZeroU32::new_unchecked(1),
+                player_id.pubkey(),
+                vec![Item::from_raw_parts(
+                    NonZeroU32::new(1).unwrap(),
+                    token_id.pubkey(),
+                )],
+            )],
+        )
+    };
 
     // Assertions
+    assert_eq!(game_ver, CURRENT_GAME_VERSION);
 
-    todo!();
+    assert_eq!(game, expected_game);
 }
