@@ -31,7 +31,7 @@ use solcery_data_types::{
     player::{Player, CURRENT_PLAYER_VERSION},
     state::{Event, State, CURRENT_GAME_STATE_VERSION},
 };
-use solcery_game::{process_instruction, Instruction as GameInstruction};
+use solcery_game::{process_instruction_bytes, Instruction as GameInstruction};
 
 #[tokio::test]
 async fn create_player() {
@@ -43,7 +43,11 @@ async fn create_player() {
     let (player_info_pda, _) =
         Pubkey::find_program_address(&[b"player", player_id.pubkey().as_ref()], &program_id);
 
-    let mut program = ProgramTest::new("solcery_game", program_id, processor!(process_instruction));
+    let mut program = ProgramTest::new(
+        "solcery_game",
+        program_id,
+        processor!(process_instruction_bytes),
+    );
     program.add_account(player_info_pda, Account::from(player_info));
 
     let (mut banks_client, payer, recent_blockhash) = program.start().await;
@@ -112,7 +116,11 @@ async fn create_game() {
     let (player_info_pda, _) =
         Pubkey::find_program_address(&[b"player", player_id.pubkey().as_ref()], &program_id);
 
-    let mut program = ProgramTest::new("solcery_game", program_id, processor!(process_instruction));
+    let mut program = ProgramTest::new(
+        "solcery_game",
+        program_id,
+        processor!(process_instruction_bytes),
+    );
     program.add_account(player_info_pda, Account::from(player_info));
     program.add_account(game_id, Account::from(game_info));
     program.add_account(game_project_id, Account::from(game_project));
@@ -205,7 +213,11 @@ async fn join_game() {
     let (player_info_pda, _) =
         Pubkey::find_program_address(&[b"player", player_id.pubkey().as_ref()], &program_id);
 
-    let mut program = ProgramTest::new("solcery_game", program_id, processor!(process_instruction));
+    let mut program = ProgramTest::new(
+        "solcery_game",
+        program_id,
+        processor!(process_instruction_bytes),
+    );
     program.add_account(player_info_pda, Account::from(player_info));
     program.add_account(game_id, Account::from(game_info));
 
@@ -328,7 +340,11 @@ async fn set_status() {
     let (player_info_pda, _) =
         Pubkey::find_program_address(&[b"player", player_id.pubkey().as_ref()], &program_id);
 
-    let mut program = ProgramTest::new("solcery_game", program_id, processor!(process_instruction));
+    let mut program = ProgramTest::new(
+        "solcery_game",
+        program_id,
+        processor!(process_instruction_bytes),
+    );
     program.add_account(player_info_pda, Account::from(player_info));
     program.add_account(game_id, Account::from(game_info));
 
@@ -430,7 +446,11 @@ async fn leave_game() {
     let (player_info_pda, _) =
         Pubkey::find_program_address(&[b"player", player_id.pubkey().as_ref()], &program_id);
 
-    let mut program = ProgramTest::new("solcery_game", program_id, processor!(process_instruction));
+    let mut program = ProgramTest::new(
+        "solcery_game",
+        program_id,
+        processor!(process_instruction_bytes),
+    );
     program.add_account(player_info_pda, Account::from(player_info));
     program.add_account(game_id, Account::from(game_info));
 
@@ -559,7 +579,11 @@ async fn add_event() {
     let (player_info_pda, _) =
         Pubkey::find_program_address(&[b"player", player_id.pubkey().as_ref()], &program_id);
 
-    let mut program = ProgramTest::new("solcery_game", program_id, processor!(process_instruction));
+    let mut program = ProgramTest::new(
+        "solcery_game",
+        program_id,
+        processor!(process_instruction_bytes),
+    );
     program.add_account(player_info_pda, Account::from(player_info));
     program.add_account(game_id, Account::from(game_info));
     program.add_account(game_state_id, Account::from(state_info));
@@ -665,7 +689,11 @@ async fn add_item() {
     let (player_info_pda, _) =
         Pubkey::find_program_address(&[b"player", player_id.pubkey().as_ref()], &program_id);
 
-    let mut program = ProgramTest::new("solcery_game", program_id, processor!(process_instruction));
+    let mut program = ProgramTest::new(
+        "solcery_game",
+        program_id,
+        processor!(process_instruction_bytes),
+    );
     program.add_account(player_info_pda, Account::from(player_info));
     program.add_account(game_id, Account::from(game_info));
 

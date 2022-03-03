@@ -12,10 +12,8 @@ use crate::{
     error::Error,
     player::Player as PlayerInfo,
 };
-//FIXME: remove unneeded pub's
-pub use solcery_data_types::game::{
-    Game, Item, Player, Project, Status, CURRENT_GAME_PROJECT_VERSION, CURRENT_GAME_VERSION,
-};
+pub use solcery_data_types::game::{Game, Status};
+use solcery_data_types::game::{Project, CURRENT_GAME_PROJECT_VERSION, CURRENT_GAME_VERSION};
 use solcery_data_types::state::State;
 
 impl<'s, 't0> Bundled<'s, 't0, Game> {

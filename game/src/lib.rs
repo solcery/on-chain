@@ -90,8 +90,8 @@ pub enum Instruction {
     LeaveGame,
 }
 
-entrypoint!(process_instruction);
-pub fn process_instruction(
+entrypoint!(process_instruction_bytes);
+pub fn process_instruction_bytes(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     instruction_data: &[u8],
@@ -99,11 +99,10 @@ pub fn process_instruction(
     let mut buf = instruction_data;
     let instruction = Instruction::deserialize(&mut buf)?;
 
-    dbg!(process(program_id, accounts, instruction)).map_err(ProgramError::from)
+    dbg!(process_instruction(program_id, accounts, instruction)).map_err(ProgramError::from)
 }
 
-fn process(
-    //FIXME: Needs a better name!
+fn process_instruction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     instruction: Instruction,
