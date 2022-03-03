@@ -224,3 +224,6 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for Game {
             .map_err(|e| Error::ProgramError(ProgramError::from(e)))
     }
 }
+
+#[cfg(test)]
+mod tests;
