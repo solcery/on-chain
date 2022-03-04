@@ -109,4 +109,4 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, ()> for Player {
 }
 
 #[cfg(test)]
-mod tests;
+mod new;

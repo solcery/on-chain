@@ -226,4 +226,4 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for Game {
 }
 
 #[cfg(test)]
-mod tests;
+mod add_items;

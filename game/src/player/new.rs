@@ -24,8 +24,7 @@ fn correct_input() {
 
     let player = Player::from_pubkey(signer_key);
 
-    let account_data_expected = (CURRENT_PLAYER_VERSION, player).try_to_vec().unwrap();
-    let mut player_account_data = vec![0; account_data_expected.len()];
+    let mut player_account_data = vec![0; 1000];
     let mut player_balance = 10;
     let player_account_info = AccountInfo::new(
         &pda,
@@ -44,9 +43,12 @@ fn correct_input() {
     let player_info = Player::new(&program_id, &mut account_iter, ()).unwrap();
     Bundle::pack(player_info).unwrap();
 
-    let account_data: &[u8] = &accounts[1].data.borrow();
+    let mut data: &[u8] = &accounts[1].data.borrow();
+    let account_data = <(u32, Player)>::deserialize(&mut data).unwrap();
 
-    assert_eq!(account_data_expected.as_slice(), account_data);
+    let account_data_expected = (CURRENT_PLAYER_VERSION, player);
+
+    assert_eq!(account_data, account_data_expected);
 }
 
 #[test]
