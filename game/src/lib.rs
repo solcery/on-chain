@@ -21,14 +21,12 @@ use player::Player;
 use state::{Event, State};
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, BorshSerialize, BorshDeserialize)]
-//TODO: Add conversion tests
 pub enum Instruction {
     /// Fill a special [Player](Player) account for signer, where all the metainformation will be stored.
     ///
     /// Accounts expected:
     ///
     /// 0. `[signer]` The account of the person, who will be playing.
-    //TODO: we should probably provide a way to create this account
     /// 1. `[writable]` Player account with correct PDA
     CreatePlayerAccount,
     /// Updates [Player](Player) account from old version.
@@ -45,7 +43,6 @@ pub enum Instruction {
     /// 0. `[signer]` The account of the person, who will be playing.
     /// 1. `[]` Player account with correct PDA
     /// 2. `[]` GameProject account
-    //TODO: we should probably provide a way to create this account
     /// 3. `[writable]` Game account
     /// 4. `[writable]` GameState account
     CreateGame { num_players: u32, max_items: u32 },

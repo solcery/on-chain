@@ -164,21 +164,8 @@ impl Game {
             let mut item_id = NonZeroU32::new_unchecked(self.item_count() as u32 + 1);
 
             for token in items.into_iter() {
-                // Check, that the player has not already added this NFT
-                let player_info = &mut self.players[player_index];
-
-                for item in player_info.items.iter() {
-                    // Here we check only in the player's items, because we require, that the token
-                    // is owned by that player.
-
-                    // EXPLOIT: Player1 add item, transfer ownership to Player2, than Player2 is
-                    // able to add the same item.
-
-                    // FIXME: We should implemet a function, that check NFTs against all the items
-                    // in the game
-                    if &item.token == token {
-                        return Err(Error::TokenAlreadyInGame);
-                    }
+                if self.token_in_game(token) {
+                    return Err(Error::TokenAlreadyInGame);
                 }
 
                 let new_item = Item {
@@ -186,7 +173,7 @@ impl Game {
                     token: *token,
                 };
 
-                player_info.items.push(new_item);
+                self.players[player_index].items.push(new_item);
                 item_id = NonZeroU32::new_unchecked(u32::from(item_id) + 1);
             }
             Ok(())
@@ -197,6 +184,17 @@ impl Game {
 
     pub fn state_key(&self) -> Pubkey {
         self.state
+    }
+
+    pub fn token_in_game(&self, token: &Pubkey) -> bool {
+        for player_info in &self.players {
+            for item in player_info.items.iter() {
+                if &item.token == token {
+                    return true;
+                }
+            }
+        }
+        false
     }
 }
 
