@@ -174,10 +174,10 @@ fn authority_present() {
 
 #[test]
 fn oversupplied() {
-    add_item(true, true, true, 2, 0, true, Err(Error::NotAnNFT));
+    add_item(true, true, false, 2, 0, true, Err(Error::NotAnNFT));
 }
 
 #[test]
 fn decimals() {
-    add_item(true, true, true, 1, 2, true, Err(Error::NotAnNFT));
+    add_item(true, true, false, 1, 2, true, Err(Error::NotAnNFT));
 }
