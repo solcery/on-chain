@@ -96,7 +96,12 @@ pub fn process_instruction_bytes(
     let mut buf = instruction_data;
     let instruction = Instruction::deserialize(&mut buf)?;
 
-    dbg!(process_instruction(program_id, accounts, instruction)).map_err(ProgramError::from)
+    // TODO: We probaly need a special feature for debug printing
+    if cfg!(debug_assertions) {
+        dbg!(process_instruction(program_id, accounts, instruction)).map_err(ProgramError::from)
+    } else {
+        process_instruction(program_id, accounts, instruction).map_err(ProgramError::from)
+    }
 }
 
 fn process_instruction(
@@ -124,7 +129,7 @@ fn process_instruction(
             }
             let game = Game::new(program_id, accounts_iter, (num_players, max_items))?;
 
-            //both game and state use the same accounts, so acoount_iter have to be "restarted"
+            //both game and state use the same accounts, so account_iter have to be "restarted"
             let accounts_iter = &mut accounts.iter().skip(4);
 
             let state = State::new(program_id, accounts_iter, game.key())?;
