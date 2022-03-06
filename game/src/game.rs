@@ -167,7 +167,19 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for Game {
                 Game::deserialize(&mut buf)
                     //Error occurs if account was already initialized
                     .map_or(Ok(()), |_| Err(Error::AlreadyCreated))?;
-                let mut state_data: &[u8] = &game_info.data.borrow();
+            }
+            Ok(_) => {
+                return Err(Error::WrongAccountVersion);
+            }
+            _ => {}
+        }
+
+        let mut state_data: &[u8] = &game_state.data.borrow();
+
+        let version = <u32>::deserialize(&mut state_data);
+        match version {
+            Ok(0) => {} // Default value
+            Ok(1) => {
                 State::deserialize(&mut state_data)
                     //Error occurs if account was already initialized
                     .map_or(Ok(()), |_| Err(Error::AlreadyCreated))?;
