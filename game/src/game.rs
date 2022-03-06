@@ -239,3 +239,6 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for Game {
 
 #[cfg(test)]
 mod add_items;
+
+#[cfg(test)]
+mod new;
