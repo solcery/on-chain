@@ -63,13 +63,8 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for State {
         let version = <u32>::deserialize(&mut buf);
         match version {
             Ok(0) => {} // Default value
-            Ok(1) => {
-                State::deserialize(&mut buf)
-                    //Error occurs if account was already initialized
-                    .map_or(Ok(()), |_| Err(Error::AlreadyCreated))?;
-            }
             Ok(_) => {
-                return Err(Error::WrongAccountVersion);
+                return Err(Error::AlreadyInUse);
             }
             _ => {}
         }

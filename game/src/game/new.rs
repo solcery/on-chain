@@ -166,3 +166,18 @@ fn wrong_account_version() {
 fn already_created_state() {
     new(1, true, 1, 0, true, 0, false, 1, Err(Error::AlreadyInUse));
 }
+
+#[test]
+fn wrong_players_number() {
+    new(
+        1,
+        true,
+        2,
+        0,
+        true,
+        0,
+        true,
+        0,
+        Err(Error::WrongPlayerNumber),
+    );
+}
