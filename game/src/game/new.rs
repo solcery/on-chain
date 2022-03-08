@@ -1,7 +1,18 @@
 use super::*;
 use pretty_assertions::assert_eq;
+use solcery_data_types::game_state::GameState;
 
-fn new(num_players: u32, max_items: u32, expected_result: Result<(), Error>) {
+fn new(
+    project_ver: u32,
+    correct_project_owner: bool,
+    num_players: u32,
+    max_items: u32,
+    empty_game: bool,
+    game_ver: u32,
+    empty_game_state: bool,
+    game_state_ver: u32,
+    expected_result: Result<(), Error>,
+) {
     let payer_key = Pubkey::new_unique();
     dbg!(&payer_key);
     let player_id = Pubkey::new_unique();
@@ -18,7 +29,7 @@ fn new(num_players: u32, max_items: u32, expected_result: Result<(), Error>) {
     // Game Project preparation
     let mut game_project_balance = 10;
     let mut game_project_data = (
-        CURRENT_GAME_PROJECT_VERSION,
+        project_ver,
         Project {
             min_players: 1,
             max_players: 1,
@@ -33,14 +44,26 @@ fn new(num_players: u32, max_items: u32, expected_result: Result<(), Error>) {
         true,
         &mut game_project_balance,
         &mut game_project_data,
-        &program_id,
+        if correct_project_owner {
+            &program_id
+        } else {
+            &payer_key
+        },
         false,
         0,
     );
 
     // Game preparation
     let mut game_balance = 10;
-    let mut game_data = vec![0; 10000];
+    let mut game_data = if empty_game {
+        vec![0; 10000]
+    } else {
+        (game_ver, unsafe {
+            Game::init(game_project_id, game_state_id, num_players, max_items)
+        })
+            .try_to_vec()
+            .unwrap()
+    };
 
     let game_account_info = AccountInfo::new(
         &game_id,
@@ -55,7 +78,11 @@ fn new(num_players: u32, max_items: u32, expected_result: Result<(), Error>) {
 
     // Game State preparation
     let mut game_state_balance = 10;
-    let mut game_state_data = vec![0; 10000];
+    let mut game_state_data = if empty_game_state {
+        vec![0; 10000]
+    } else {
+        (game_state_ver, GameState::new()).try_to_vec().unwrap()
+    };
 
     let game_state_account_info = AccountInfo::new(
         &game_state_id,
@@ -92,5 +119,50 @@ fn new(num_players: u32, max_items: u32, expected_result: Result<(), Error>) {
 
 #[test]
 fn correct_input() {
-    new(1, 0, Ok(()));
+    new(1, true, 1, 0, true, 0, true, 0, Ok(()));
+}
+
+#[test]
+fn wrong_project_version() {
+    new(
+        0,
+        true,
+        1,
+        0,
+        true,
+        0,
+        true,
+        0,
+        Err(Error::WrongProjectVersion),
+    );
+}
+
+#[test]
+fn wrong_project_owner() {
+    new(
+        0,
+        false,
+        1,
+        0,
+        true,
+        0,
+        true,
+        0,
+        Err(Error::WrongAccountOwner),
+    );
+}
+
+#[test]
+fn game_info_already_created() {
+    new(1, true, 1, 0, false, 1, true, 0, Err(Error::AlreadyInUse));
+}
+
+#[test]
+fn wrong_account_version() {
+    new(1, true, 1, 0, false, 2, true, 0, Err(Error::AlreadyInUse));
+}
+
+#[test]
+fn already_created_state() {
+    new(1, true, 1, 0, true, 0, false, 1, Err(Error::AlreadyInUse));
 }

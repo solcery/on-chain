@@ -8,6 +8,8 @@ pub enum Error {
     AlreadyCreated,
     #[error("Player is already participating in another game")]
     AlreadyInGame,
+    #[error("Attempted to use already initialized account")]
+    AlreadyInUse,
     #[error("Account data corrupted")]
     CorruptedAccount,
     #[error("Account contain no data")]

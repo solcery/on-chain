@@ -14,7 +14,6 @@ use crate::{
 };
 pub use solcery_data_types::game::{Game, Status};
 use solcery_data_types::game::{Project, CURRENT_GAME_PROJECT_VERSION, CURRENT_GAME_VERSION};
-use solcery_data_types::state::State;
 
 impl<'s, 't0> Bundled<'s, 't0, Game> {
     pub fn add_player<'a, 'b>(
@@ -144,10 +143,6 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for Game {
         let (project_ver, project_struct) = <(u32, Project)>::deserialize(&mut project_buf)
             .map_err(|_| Error::WrongProjectAccount)?;
 
-        if project_ver == 0 {
-            return Err(Error::WrongProjectAccount);
-        }
-
         if project.owner != program_id {
             return Err(Error::WrongAccountOwner);
         }
@@ -163,13 +158,8 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for Game {
         let version = <u32>::deserialize(&mut buf);
         match version {
             Ok(0) => {} // Default value
-            Ok(1) => {
-                Game::deserialize(&mut buf)
-                    //Error occurs if account was already initialized
-                    .map_or(Ok(()), |_| Err(Error::AlreadyCreated))?;
-            }
             Ok(_) => {
-                return Err(Error::WrongAccountVersion);
+                return Err(Error::AlreadyInUse);
             }
             _ => {}
         }
@@ -179,13 +169,8 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for Game {
         let version = <u32>::deserialize(&mut state_data);
         match version {
             Ok(0) => {} // Default value
-            Ok(1) => {
-                State::deserialize(&mut state_data)
-                    //Error occurs if account was already initialized
-                    .map_or(Ok(()), |_| Err(Error::AlreadyCreated))?;
-            }
             Ok(_) => {
-                return Err(Error::WrongAccountVersion);
+                return Err(Error::AlreadyInUse);
             }
             _ => {}
         }
