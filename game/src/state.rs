@@ -40,6 +40,8 @@ impl<'s, 't0> Bundled<'s, 't0, State> {
     }
 }
 
+// FIXME: Actually, this is unsafe, because we rely on the assumption, that this is indeed game_info
+// pubkey
 type InitializationArgs = Pubkey; // game_info address
 
 impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for State {
@@ -55,6 +57,10 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for State {
     {
         let game_info = initialization_args;
         let game_state = next_account_info(accounts_iter)?;
+
+        if game_state.owner != program_id {
+            return Err(Error::WrongAccountOwner);
+        }
 
         let data: &[u8] = &game_state.data.borrow();
         let mut buf = &*data;

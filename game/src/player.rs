@@ -27,6 +27,10 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, ()> for Player {
         let (pda, _bump_seed) =
             Pubkey::find_program_address(&[b"player", signer.key.as_ref()], program_id);
 
+        if player_info.owner != program_id {
+            return Err(Error::WrongAccountOwner);
+        }
+
         let data: &[u8] = &player_info.data.borrow();
         let mut buf = &*data;
 

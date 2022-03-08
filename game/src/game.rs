@@ -130,12 +130,15 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for Game {
     where
         AccountIter: Iterator<Item = &'s AccountInfo<'t0>>,
     {
-        // How to use max_items?
         let (num_players, max_items) = initialization_args;
 
         let project = next_account_info(accounts_iter)?;
         let game_info = next_account_info(accounts_iter)?;
         let game_state = next_account_info(accounts_iter)?;
+
+        if game_info.owner != program_id {
+            return Err(Error::WrongAccountOwner);
+        }
 
         let project_data: &[u8] = &project.data.borrow();
         let mut project_buf = &*project_data;
