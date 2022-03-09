@@ -32,7 +32,7 @@ fn correct_input() {
         true,
         &mut player_balance,
         &mut player_account_data,
-        &spl_token::ID,
+        &program_id,
         false,
         0,
     );
@@ -80,7 +80,7 @@ fn player_account_too_small() {
         true,
         &mut player_balance,
         &mut player_account_data,
-        &spl_token::ID,
+        &program_id,
         false,
         0,
     );
@@ -128,7 +128,7 @@ fn not_signed() {
         true,
         &mut player_balance,
         &mut player_account_data,
-        &spl_token::ID,
+        &program_id,
         false,
         0,
     );
@@ -172,7 +172,7 @@ fn wrong_player_account() {
         true,
         &mut player_balance,
         &mut player_account_data,
-        &spl_token::ID,
+        &program_id,
         false,
         0,
     );

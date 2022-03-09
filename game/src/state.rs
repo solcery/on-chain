@@ -48,7 +48,7 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for State {
     type Error = Error;
 
     fn new<AccountIter>(
-        _program_id: &'r Pubkey,
+        program_id: &'r Pubkey,
         accounts_iter: &mut AccountIter,
         initialization_args: InitializationArgs,
     ) -> Result<Bundled<'s, 't0, Self>, Self::Error>
