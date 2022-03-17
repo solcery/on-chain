@@ -6,6 +6,7 @@ members = [
 	"game",
 	"object",
 	"project",
+	"slice-btree",
 	"storage",
 	"template",
 	"vm",
