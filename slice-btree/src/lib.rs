@@ -1,4 +1,24 @@
-use bytemuck::{Pod, Zeroable};
+//! # In-slice allocator for BTree
+//! Data layout inside the slice is the following: [Root](Root) struct + raw nodes data
+//!
+//! There are two types of nodes: [InternalNode](InternalNode) and [LeafNode](LeafNode), which
+//! occupy different space.
+//!
+//! For effectively allocating nodes inside slice we use a fusion of double-ended stack allocator
+//! and pool allocator.
+//!
+//! Allocator state consists of stack pointer and `Option<head node pointer>` for both node types.
+//!
+//! ## Allocate
+//! if Some(head pointer), then copy pointer from that node to new head pointer and return the
+//! node else check that stack pointer + node size is less than other node's stack pointer.
+//! if it is true, increment stack pointer and return the node
+//! else return error
+//!
+//! ## Deallocate
+//! if the node to deallocate is on the top of the stack, than decrement the stack pointer
+//! else write the contents of head node pointer to the begining of the node and write `Some(node
+//! offset)` to the head ode pointer.
 use bytemuck_derive::{Pod, Zeroable};
 
 #[repr(C)]
