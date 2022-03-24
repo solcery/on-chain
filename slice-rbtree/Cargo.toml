@@ -6,4 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bitvec = "1.0.0"
+#bitvec = "1.0.0"
+bytemuck = {version = "1.7.2", features = ['derive','min_const_generics']}
+borsh = "0.9.1"
