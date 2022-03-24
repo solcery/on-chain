@@ -9,3 +9,6 @@ edition = "2021"
 #bitvec = "1.0.0"
 bytemuck = {version = "1.7.2", features = ['derive','min_const_generics']}
 borsh = "0.9.1"
+
+[dev-dependencies]
+pretty_assertions = "0.6.1"

@@ -2137,6 +2137,7 @@ version = "0.1.0"
 dependencies = [
  "borsh",
  "bytemuck",
+ "pretty_assertions",
 ]
 
 [[package]]
