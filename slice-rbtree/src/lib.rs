@@ -1,5 +1,6 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use bytemuck::{cast_mut, cast_slice_mut};
+use std::borrow::Borrow;
 use std::cmp::Ord;
 use std::cmp::Ordering;
 use std::marker::PhantomData;
@@ -100,6 +101,83 @@ where
             }
             None => None,
         }
+    }
+
+    pub fn clear(&mut self) {
+        unsafe {
+            // Allocator reinitialization
+            self.nodes[0].set_parent(None);
+
+            for (i, node) in self.nodes.iter_mut().enumerate().skip(1) {
+                node.set_parent(Some((i - 1) as u32));
+            }
+
+            self.header.set_root(None);
+            self.header.set_head(Some((self.nodes.len() - 1) as u32));
+        }
+    }
+
+    pub fn contains_key<Q>(&self, key: &Q) -> bool
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
+        //self.get(key).is_some()
+        unimplemented!();
+    }
+
+    pub fn get_key_value<Q>(&self, k: &Q) -> Option<(K, V)>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
+        unimplemented!();
+    }
+
+    pub fn get<Q>(&self, k: &Q) -> Option<V>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
+        unimplemented!();
+    }
+
+    pub fn insert(&mut self, key: K, value: V) -> Result<V, Error>
+    where
+        K: Ord,
+    {
+        unimplemented!();
+    }
+
+    pub fn is_empty(&self) -> bool {
+        !self.header.root().is_some()
+    }
+
+    pub fn remove<Q>(&mut self, key: &Q) -> Option<V>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
+        self.remove_entry(key).map(|(_, v)| v)
+    }
+
+    pub fn remove_entry<Q>(&mut self, key: &Q) -> Option<(K, V)>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
+        unimplemented!();
+    }
+
+    /// Deletes entry without deserializing the value.
+    ///
+    /// Return `true` if there was a value with the given `key`.
+    pub fn delete<Q>(&mut self, key: &Q) -> bool
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
+        unimplemented!();
     }
 }
 
