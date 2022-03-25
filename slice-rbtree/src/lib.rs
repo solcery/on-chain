@@ -1,15 +1,15 @@
-mod header;
-mod node;
-
-use header::Header;
-use node::Node;
-
 use borsh::{BorshDeserialize, BorshSerialize};
 use bytemuck::{cast_mut, cast_slice_mut};
 use std::cmp::Ord;
 use std::cmp::Ordering;
 use std::marker::PhantomData;
 use std::mem;
+
+mod header;
+mod node;
+
+use header::Header;
+use node::Node;
 
 pub struct RBtree<'a, K, V, const KSIZE: usize, const VSIZE: usize>
 where

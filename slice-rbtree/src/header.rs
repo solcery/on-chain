@@ -17,6 +17,27 @@ pub struct Header {
 }
 
 impl Header {
+    pub fn k_size(&self) -> u32 {
+        u32::from_be_bytes(self.k_size)
+    }
+
+    pub fn v_size(&self) -> u32 {
+        u32::from_be_bytes(self.v_size)
+    }
+
+    pub fn max_nodes(&self) -> u32 {
+        u32::from_be_bytes(self.max_nodes)
+    }
+
+    pub fn root(&self) -> Option<u32> {
+        // bit position of the flag is 0
+        if self.flags & 0b0001 != 0 {
+            Some(u32::from_be_bytes(self.root))
+        } else {
+            None
+        }
+    }
+
     pub fn head(&self) -> Option<u32> {
         // bit position of the flag is 1
         if self.flags & 0b0010 != 0 {
@@ -54,27 +75,24 @@ impl Header {
         }
     }
 
-    fn k_size(&self) -> u32 {
-        u32::from_be_bytes(self.k_size)
+    /// This function guarantees, that the header will be initialized in fully known state
+    pub unsafe fn fill(
+        &mut self,
+        k_size: u32,
+        v_size: u32,
+        max_nodes: u32,
+        root: Option<u32>,
+        head: Option<u32>,
+    ) {
+        self.k_size = u32::to_be_bytes(k_size);
+        self.v_size = u32::to_be_bytes(v_size);
+        self.max_nodes = u32::to_be_bytes(max_nodes);
+        self.flags = 0b00;
+        self.set_head(head);
+        self.set_root(root);
     }
 
-    fn v_size(&self) -> u32 {
-        u32::from_be_bytes(self.v_size)
-    }
-
-    fn max_nodes(&self) -> u32 {
-        u32::from_be_bytes(self.max_nodes)
-    }
-
-    fn root(&self) -> Option<u32> {
-        // bit position of the flag is 0
-        if self.flags & 0b0001 != 0 {
-            Some(u32::from_be_bytes(self.root))
-        } else {
-            None
-        }
-    }
-
+    #[cfg(test)]
     unsafe fn from_raw_parts(
         k_size: u32,
         v_size: u32,
@@ -110,23 +128,6 @@ impl Header {
             head,
             flags,
         }
-    }
-
-    /// This function guarantees, that the header will be initialized in fully known state
-    pub unsafe fn fill(
-        &mut self,
-        k_size: u32,
-        v_size: u32,
-        max_nodes: u32,
-        root: Option<u32>,
-        head: Option<u32>,
-    ) {
-        self.k_size = u32::to_be_bytes(k_size);
-        self.v_size = u32::to_be_bytes(v_size);
-        self.max_nodes = u32::to_be_bytes(max_nodes);
-        self.flags = 0b00;
-        self.set_head(head);
-        self.set_root(root);
     }
 }
 
