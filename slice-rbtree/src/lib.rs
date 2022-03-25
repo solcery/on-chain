@@ -1,9 +1,8 @@
+use borsh::{BorshDeserialize, BorshSerialize};
+use bytemuck::{Pod, Zeroable};
 use std::cmp::Ord;
 use std::cmp::Ordering;
 use std::marker::PhantomData;
-//use bitvec::array::BitArray;
-use borsh::{BorshDeserialize, BorshSerialize};
-use bytemuck::{Pod, Zeroable};
 
 #[repr(C)]
 #[derive(Clone, Copy, Zeroable)]
@@ -172,86 +171,49 @@ impl<const KSIZE: usize, const VSIZE: usize> Node<KSIZE, VSIZE> {
 #[cfg(test)]
 mod node_tests {
     use super::*;
+    use paste::paste;
     use pretty_assertions::assert_eq;
 
-    #[test]
-    fn left() {
-        let mut node =
-            unsafe { Node::<1, 1>::from_raw_parts([1], [2], 3, None, None, None, false) };
-        assert_eq!(node.left(), None);
+    macro_rules! option_test {
+        ($method:ident) => {
+            #[test]
+            fn $method() {
+                let mut node =
+                    unsafe { Node::<1, 1>::from_raw_parts([1], [2], 3, None, None, None, false) };
 
-        unsafe {
-            node.set_left(Some(1));
-        }
-        assert_eq!(node.left(), Some(1));
+                unsafe {
+                    paste! {
+                        node.[<set_ $method>](Some(1));
+                    }
+                }
+                assert_eq!(node.$method(), Some(1));
 
-        unsafe {
-            node.set_left(Some(2));
-        }
-        assert_eq!(node.left(), Some(2));
+                unsafe {
+                    paste! {
+                        node.[<set_ $method>](Some(2));
+                    }
+                }
+                assert_eq!(node.$method(), Some(2));
+                unsafe {
+                    paste! {
+                        node.[<set_ $method>](None);
+                    }
+                }
 
-        // check other values
-
-        assert_eq!(node.key, [1]);
-        assert_eq!(node.value, [2]);
-        assert_eq!(node.size(), 3);
-        assert_eq!(node.right(), None);
-        assert_eq!(node.parent(), None);
-        assert_eq!(node.is_red(), false);
+                assert_eq!(node.key, [1]);
+                assert_eq!(node.value, [2]);
+                assert_eq!(node.size(), 3);
+                assert_eq!(node.left(), None);
+                assert_eq!(node.right(), None);
+                assert_eq!(node.parent(), None);
+                assert_eq!(node.is_red(), false);
+            }
+        };
     }
 
-    #[test]
-    fn right() {
-        let mut node =
-            unsafe { Node::<1, 1>::from_raw_parts([1], [2], 3, None, None, None, false) };
-        assert_eq!(node.right(), None);
-
-        unsafe {
-            node.set_right(Some(1));
-        }
-        dbg!(&node.right);
-        dbg!(&node.flags);
-        assert_eq!(node.right(), Some(1));
-
-        unsafe {
-            node.set_right(Some(2));
-        }
-        assert_eq!(node.right(), Some(2));
-
-        // check other values
-
-        assert_eq!(node.key, [1]);
-        assert_eq!(node.value, [2]);
-        assert_eq!(node.size(), 3);
-        assert_eq!(node.left(), None);
-        assert_eq!(node.parent(), None);
-        assert_eq!(node.is_red(), false);
-    }
-    #[test]
-    fn parent() {
-        let mut node =
-            unsafe { Node::<1, 1>::from_raw_parts([1], [2], 3, None, None, None, false) };
-        assert_eq!(node.parent(), None);
-
-        unsafe {
-            node.set_parent(Some(1));
-        }
-        assert_eq!(node.parent(), Some(1));
-
-        unsafe {
-            node.set_parent(Some(2));
-        }
-        assert_eq!(node.parent(), Some(2));
-
-        // check other values
-
-        assert_eq!(node.key, [1]);
-        assert_eq!(node.value, [2]);
-        assert_eq!(node.size(), 3);
-        assert_eq!(node.right(), None);
-        assert_eq!(node.right(), None);
-        assert_eq!(node.is_red(), false);
-    }
+    option_test!(left);
+    option_test!(right);
+    option_test!(parent);
 }
 
 #[repr(C)]
@@ -283,18 +245,18 @@ impl Header {
         u32::from_be_bytes(self.max_nodes)
     }
 
-    fn root_index(&self) -> Option<u32> {
+    fn root(&self) -> Option<u32> {
         // bit position of the flag is 0
-        if self.flags & 0b0001 == 1 {
+        if self.flags & 0b0001 != 0 {
             Some(u32::from_be_bytes(self.root))
         } else {
             None
         }
     }
 
-    fn head_index(&self) -> Option<u32> {
+    fn head(&self) -> Option<u32> {
         // bit position of the flag is 1
-        if self.flags & 0b0010 == 1 {
+        if self.flags & 0b0010 != 0 {
             Some(u32::from_be_bytes(self.head))
         } else {
             None
@@ -365,6 +327,48 @@ impl Header {
             flags,
         }
     }
+#[cfg(test)]
+mod header_tests {
+    use super::*;
+    use paste::paste;
+    use pretty_assertions::assert_eq;
+
+    macro_rules! option_test {
+        ($method:ident) => {
+            #[test]
+            fn $method() {
+                let mut head = unsafe { Header::from_raw_parts(1, 2, 3, None, None) };
+
+                unsafe {
+                    paste! {
+                        head.[<set_ $method>](Some(1));
+                    }
+                }
+                assert_eq!(head.$method(), Some(1));
+
+                unsafe {
+                    paste! {
+                        head.[<set_ $method>](Some(2));
+                    }
+                }
+                assert_eq!(head.$method(), Some(2));
+                unsafe {
+                    paste! {
+                        head.[<set_ $method>](None);
+                    }
+                }
+
+                assert_eq!(head.k_size(), 1);
+                assert_eq!(head.v_size(), 2);
+                assert_eq!(head.max_nodes(), 3);
+                assert_eq!(head.root(), None);
+                assert_eq!(head.head(), None);
+            }
+        };
+    }
+
+    option_test!(root);
+    option_test!(head);
 }
 
 pub struct RBtree<'a, K, V, const KSIZE: usize, const VSIZE: usize>

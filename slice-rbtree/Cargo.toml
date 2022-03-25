@@ -12,3 +12,4 @@ borsh = "0.9.1"
 
 [dev-dependencies]
 pretty_assertions = "0.6.1"
+paste = "1.0"
