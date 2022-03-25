@@ -131,7 +131,21 @@ where
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
-        unimplemented!();
+        let mut maybe_id = self.header.root();
+        while let Some(id) = maybe_id {
+            let node = &self.nodes[id as usize];
+            let node_key = K::deserialize(&mut node.key.as_slice()).unwrap();
+            match k.cmp(node_key.borrow()) {
+                Ordering::Equal => {
+                    let node_value = V::deserialize(&mut node.value.as_slice()).unwrap();
+                    return Some((node_key, node_value));
+                }
+                Ordering::Less => maybe_id = node.left(),
+                Ordering::Greater => maybe_id = node.right(),
+            }
+        }
+
+        None
     }
 
     pub fn get<Q>(&self, k: &Q) -> Option<V>
@@ -139,7 +153,7 @@ where
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
-        unimplemented!();
+        self.get_key_value(k).map(|(_, v)| v)
     }
 
     pub fn insert(&mut self, key: K, value: V) -> Result<V, Error>

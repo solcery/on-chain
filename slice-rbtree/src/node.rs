@@ -22,6 +22,29 @@ pub struct Node<const KSIZE: usize, const VSIZE: usize> {
 unsafe impl<const KSIZE: usize, const VSIZE: usize> Pod for Node<KSIZE, VSIZE> {}
 
 impl<const KSIZE: usize, const VSIZE: usize> Node<KSIZE, VSIZE> {
+    pub fn size(&self) -> u32 {
+        u32::from_be_bytes(self.size)
+    }
+
+    // TODO: reimplement this functions with macros to avoid code duplication
+    pub fn left(&self) -> Option<u32> {
+        // bit position of the flag is 0
+        if self.flags & 0b0001 == 1 {
+            Some(u32::from_be_bytes(self.left))
+        } else {
+            None
+        }
+    }
+
+    pub fn right(&self) -> Option<u32> {
+        // bit position of the flag is 1
+        if self.flags & 0b0010 != 0 {
+            Some(u32::from_be_bytes(self.right))
+        } else {
+            None
+        }
+    }
+
     pub fn parent(&self) -> Option<u32> {
         // bit position of the flag is 2
         if self.flags & 0b0100 != 0 {
@@ -31,39 +54,16 @@ impl<const KSIZE: usize, const VSIZE: usize> Node<KSIZE, VSIZE> {
         }
     }
 
-    fn size(&self) -> u32 {
-        u32::from_be_bytes(self.size)
-    }
-
-    // TODO: reimplement this functions with macros to avoid code duplication
-    fn left(&self) -> Option<u32> {
-        // bit position of the flag is 0
-        if self.flags & 0b0001 == 1 {
-            Some(u32::from_be_bytes(self.left))
-        } else {
-            None
-        }
-    }
-
-    fn right(&self) -> Option<u32> {
-        // bit position of the flag is 1
-        if self.flags & 0b0010 != 0 {
-            Some(u32::from_be_bytes(self.right))
-        } else {
-            None
-        }
-    }
-
-    fn is_red(&self) -> bool {
+    pub fn is_red(&self) -> bool {
         // bit position of the flag is 3
         self.flags & 0b1000 != 0
     }
 
-    unsafe fn set_size(&mut self, size: u32) {
+    pub unsafe fn set_size(&mut self, size: u32) {
         self.left = u32::to_be_bytes(size);
     }
 
-    unsafe fn set_left(&mut self, left: Option<u32>) {
+    pub unsafe fn set_left(&mut self, left: Option<u32>) {
         // bit position of the flag is 0
         match left {
             Some(idx) => {
@@ -77,7 +77,7 @@ impl<const KSIZE: usize, const VSIZE: usize> Node<KSIZE, VSIZE> {
         }
     }
 
-    unsafe fn set_right(&mut self, right: Option<u32>) {
+    pub unsafe fn set_right(&mut self, right: Option<u32>) {
         // bit position of the flag is 1
         match right {
             Some(idx) => {
@@ -105,7 +105,7 @@ impl<const KSIZE: usize, const VSIZE: usize> Node<KSIZE, VSIZE> {
         }
     }
 
-    unsafe fn set_color(&mut self, is_red: bool) {
+    pub unsafe fn set_color(&mut self, is_red: bool) {
         if is_red {
             self.flags = self.flags | 0b1000;
         } else {
@@ -113,6 +113,7 @@ impl<const KSIZE: usize, const VSIZE: usize> Node<KSIZE, VSIZE> {
         }
     }
 
+    #[cfg(test)]
     unsafe fn from_raw_parts(
         key: [u8; KSIZE],
         value: [u8; VSIZE],
