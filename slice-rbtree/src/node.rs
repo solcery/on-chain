@@ -105,7 +105,7 @@ impl<const KSIZE: usize, const VSIZE: usize> Node<KSIZE, VSIZE> {
         }
     }
 
-    pub unsafe fn set_color(&mut self, is_red: bool) {
+    pub unsafe fn set_is_red(&mut self, is_red: bool) {
         if is_red {
             self.flags = self.flags | 0b1000;
         } else {

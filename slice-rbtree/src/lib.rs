@@ -121,12 +121,14 @@ where
     /// This function does nothing but allocation. The returned node (if present) is
     /// completely unlinked from the tree and is in the unknown state. The caller must fill the
     /// node with correct data.
-    unsafe fn allocate_node(&mut self) -> Option<usize> {
+    fn allocate_node(&mut self) -> Option<usize> {
         let allocator_head = self.header.head();
         match allocator_head {
             Some(index) => {
                 let new_head = self.nodes[index as usize].parent();
-                self.header.set_head(new_head);
+                unsafe {
+                    self.header.set_head(new_head);
+                }
                 Some(index as usize)
             }
             None => None,
@@ -196,11 +198,23 @@ where
         self.get_key_value(k).map(|(_, v)| v)
     }
 
-    pub fn insert(&mut self, key: K, value: V) -> Result<V, Error>
+    pub fn insert(&mut self, key: K, value: V) -> Result<Option<V>, Error>
     where
         K: Ord,
     {
-        unimplemented!();
+        let result = self.put(self.header.root(), None, key, value);
+        match result {
+            Ok((id, old_val)) => {
+                unsafe {
+                    self.header.set_root(Some(id));
+                    self.nodes[id as usize].set_is_red(false);
+                }
+                return Ok(old_val);
+            }
+            Err(e) => {
+                return Err(e);
+            }
+        }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -242,12 +256,181 @@ where
         }
     }
 
-    fn free_node_available(&self) -> bool {
-        self.header.head().is_some()
+    fn put(
+        &mut self,
+        maybe_id: Option<u32>,
+        parent: Option<u32>,
+        key: K,
+        value: V,
+    ) -> Result<(u32, Option<V>), Error> {
+        if let Some(mut id) = maybe_id {
+            let old_val;
+            let node = &self.nodes[id as usize];
+            let node_key = K::deserialize(&mut node.key.as_slice()).unwrap();
+            match key.cmp(node_key.borrow()) {
+                Ordering::Less => {
+                    let left_result =
+                        self.put(self.nodes[id as usize].left(), Some(id), key, value);
+                    match left_result {
+                        Ok((id, val)) => {
+                            old_val = val;
+                            unsafe {
+                                self.nodes[id as usize].set_left(Some(id));
+                            }
+                        }
+                        Err(e) => return Err(e),
+                    }
+                }
+                Ordering::Greater => {
+                    let right_result =
+                        self.put(self.nodes[id as usize].right(), Some(id), key, value);
+                    match right_result {
+                        Ok((id, val)) => {
+                            old_val = val;
+                            unsafe {
+                                self.nodes[id as usize].set_right(Some(id));
+                            }
+                        }
+                        Err(e) => return Err(e),
+                    }
+                }
+                Ordering::Equal => {
+                    old_val = V::deserialize(&mut self.nodes[id as usize].value.as_slice()).ok();
+                    let serialization_result =
+                        value.serialize(&mut self.nodes[id as usize].value.as_mut_slice());
+                    if let Err(e) = serialization_result {
+                        return Err(Error::ValueSerializationError(e));
+                    }
+                }
+            }
+            unsafe {
+                self.nodes[id as usize].set_size(
+                    (self.size(self.nodes[id as usize].left())
+                        + self.size(self.nodes[id as usize].right())
+                        + 1) as u32,
+                );
+
+                if self.is_red(self.nodes[id as usize].right())
+                    && !self.is_red(self.nodes[id as usize].left())
+                {
+                    id = self.rotate_left(id);
+                }
+
+                if self.is_red(self.nodes[id as usize].left())
+                    && self
+                        .is_red(self.nodes[self.nodes[id as usize].left().unwrap() as usize].left())
+                {
+                    id = self.rotate_right(id);
+                }
+
+                if self.is_red(self.nodes[id as usize].right())
+                    && self.is_red(self.nodes[id as usize].left())
+                {
+                    let left_id = self.nodes[id as usize].left().unwrap() as usize;
+                    let right_id = self.nodes[id as usize].right().unwrap() as usize;
+
+                    self.nodes[left_id].set_is_red(!self.nodes[left_id].is_red());
+                    self.nodes[right_id].set_is_red(!self.nodes[right_id].is_red());
+                    self.nodes[id as usize].set_is_red(!self.nodes[id as usize].is_red());
+                }
+            }
+
+            Ok((id, old_val))
+        } else {
+            let new_id = match self.allocate_node() {
+                Some(id) => id,
+                None => return Err(Error::NoNodesLeft),
+            };
+            let new_node = &mut self.nodes[new_id];
+
+            if let Err(e) = value.serialize(&mut new_node.value.as_mut_slice()) {
+                unsafe {
+                    // SAFETY: We are deleting previously allocated empty node, so no invariants
+                    // are changed.
+                    self.delete_node(new_id);
+                }
+                return Err(Error::ValueSerializationError(e));
+            }
+
+            if let Err(e) = key.serialize(&mut new_node.key.as_mut_slice()) {
+                unsafe {
+                    // SAFETY: We are deleting previously allocated empty node, so no invariants
+                    // are changed.
+                    self.delete_node(new_id);
+                }
+                return Err(Error::KeySerializationError(e));
+            }
+            unsafe {
+                new_node.set_parent(parent);
+            }
+
+            Ok((new_id as u32, None))
+        }
+    }
+    fn is_red(&self, maybe_id: Option<u32>) -> bool {
+        match maybe_id {
+            Some(id) => self.nodes[id as usize].is_red(),
+            None => false,
+        }
+    }
+
+    unsafe fn rotate_left(&mut self, h: u32) -> u32 {
+        let x = self.nodes[h as usize].right().unwrap();
+
+        self.nodes[h as usize].set_right(self.nodes[x as usize].left());
+        self.nodes[x as usize].set_left(Some(h));
+        self.nodes[x as usize].set_is_red(self.nodes[h as usize].is_red());
+        self.nodes[h as usize].set_is_red(true);
+
+        // fix parents
+        self.nodes[x as usize].set_parent(self.nodes[h as usize].parent());
+        self.nodes[h as usize].set_parent(Some(x));
+        if let Some(right) = self.nodes[h as usize].right() {
+            self.nodes[right as usize].set_parent(Some(h));
+        }
+
+        // fix size
+        self.nodes[x as usize].set_size(self.nodes[h as usize].size());
+        self.nodes[h as usize].set_size(
+            (self.size(self.nodes[h as usize].left())
+                + self.size(self.nodes[h as usize].right())
+                + 1) as u32,
+        );
+
+        x
+    }
+
+    unsafe fn rotate_right(&mut self, h: u32) -> u32 {
+        let x = self.nodes[h as usize].left().unwrap();
+
+        self.nodes[h as usize].set_left(self.nodes[x as usize].right());
+        self.nodes[x as usize].set_right(Some(h));
+        self.nodes[x as usize].set_is_red(self.nodes[h as usize].is_red());
+        self.nodes[h as usize].set_is_red(true);
+
+        // fix parents
+        self.nodes[x as usize].set_parent(self.nodes[h as usize].parent());
+        self.nodes[h as usize].set_parent(Some(x));
+        if let Some(left) = self.nodes[h as usize].left() {
+            self.nodes[left as usize].set_parent(Some(h));
+        }
+
+        // fix size
+        self.nodes[x as usize].set_size(self.nodes[h as usize].size());
+        self.nodes[h as usize].set_size(
+            (self.size(self.nodes[h as usize].right())
+                + self.size(self.nodes[h as usize].left())
+                + 1) as u32,
+        );
+
+        x
     }
 }
 
 pub enum Error {
     TooSmall,
     WrongNodePoolSize,
+    NoNodesLeft,
+    ValueSerializationError(std::io::Error),
+    KeySerializationError(std::io::Error),
 }
