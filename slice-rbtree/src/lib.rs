@@ -70,6 +70,36 @@ where
         })
     }
 
+    pub unsafe fn from_slice(slice: &'a mut [u8]) -> Result<Self, Error> {
+        if slice.len() <= mem::size_of::<Header>() {
+            return Err(Error::TooSmall);
+        }
+
+        let (header, nodes) = slice.split_at_mut(mem::size_of::<Header>());
+
+        if nodes.len() == 0 {
+            return Err(Error::TooSmall);
+        }
+
+        if nodes.len() % mem::size_of::<Node<KSIZE, VSIZE>>() != 0 {
+            return Err(Error::WrongNodePoolSize);
+        }
+        let nodes: &mut [Node<KSIZE, VSIZE>] = cast_slice_mut(nodes);
+        let header: &mut [[u8; mem::size_of::<Header>()]] = cast_slice_mut(header);
+        let header: &mut Header = cast_mut(&mut header[0]);
+
+        Ok(Self {
+            header,
+            nodes,
+            _phantom_key: PhantomData::<K>,
+            _phantom_value: PhantomData::<V>,
+        })
+    }
+
+    pub fn len(&self) -> usize {
+        self.size(self.header.root())
+    }
+
     /// Deallocates a node
     ///
     /// # Safety
@@ -117,13 +147,24 @@ where
         }
     }
 
-    pub fn contains_key<Q>(&self, key: &Q) -> bool
+    pub fn contains_key<Q>(&self, k: &Q) -> bool
     where
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
-        //self.get(key).is_some()
-        unimplemented!();
+        let mut maybe_id = self.header.root();
+        while let Some(id) = maybe_id {
+            let node = &self.nodes[id as usize];
+            let node_key = K::deserialize(&mut node.key.as_slice()).unwrap();
+            match k.cmp(node_key.borrow()) {
+                Ordering::Equal => {
+                    return true;
+                }
+                Ordering::Less => maybe_id = node.left(),
+                Ordering::Greater => maybe_id = node.right(),
+            }
+        }
+        false
     }
 
     pub fn get_key_value<Q>(&self, k: &Q) -> Option<(K, V)>
@@ -144,7 +185,6 @@ where
                 Ordering::Greater => maybe_id = node.right(),
             }
         }
-
         None
     }
 
@@ -192,6 +232,18 @@ where
         Q: Ord + ?Sized,
     {
         unimplemented!();
+    }
+
+    fn size(&self, maybe_id: Option<u32>) -> usize {
+        if let Some(id) = maybe_id {
+            self.nodes[id as usize].size() as usize
+        } else {
+            0
+        }
+    }
+
+    fn free_node_available(&self) -> bool {
+        self.header.head().is_some()
     }
 }
 
