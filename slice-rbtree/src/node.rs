@@ -1,4 +1,5 @@
 use bytemuck::{Pod, Zeroable};
+use std::fmt;
 
 #[repr(C)]
 #[derive(Clone, Copy, Zeroable)]
@@ -163,6 +164,20 @@ impl<const KSIZE: usize, const VSIZE: usize> Node<KSIZE, VSIZE> {
             parent,
             flags,
         }
+    }
+}
+
+impl<const KSIZE: usize, const VSIZE: usize> fmt::Debug for Node<KSIZE, VSIZE> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Node")
+            .field("key", &self.key)
+            .field("value", &self.value)
+            .field("size", &self.size())
+            .field("left", &self.left())
+            .field("right", &self.right())
+            .field("parent", &self.parent())
+            .field("is_red", &self.is_red())
+            .finish()
     }
 }
 

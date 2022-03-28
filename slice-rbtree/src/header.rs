@@ -1,4 +1,5 @@
 use bytemuck::{Pod, Zeroable};
+use std::fmt;
 
 #[repr(C)]
 #[derive(Pod, Clone, Copy, Zeroable)]
@@ -128,6 +129,18 @@ impl Header {
             head,
             flags,
         }
+    }
+}
+
+impl fmt::Debug for Header {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Header")
+            .field("k_size", &self.k_size())
+            .field("v_size", &self.v_size())
+            .field("max_nodes", &self.max_nodes())
+            .field("root", &self.root())
+            .field("head", &self.head())
+            .finish()
     }
 }
 

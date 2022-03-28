@@ -12,6 +12,7 @@ mod node;
 use header::Header;
 use node::Node;
 
+#[derive(Debug)]
 pub struct RBtree<'a, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,
@@ -84,9 +85,18 @@ where
         if nodes.len() % mem::size_of::<Node<KSIZE, VSIZE>>() != 0 {
             return Err(Error::WrongNodePoolSize);
         }
+
         let nodes: &mut [Node<KSIZE, VSIZE>] = cast_slice_mut(nodes);
         let header: &mut [[u8; mem::size_of::<Header>()]] = cast_slice_mut(header);
         let header: &mut Header = cast_mut(&mut header[0]);
+
+        if header.k_size() as usize != KSIZE {
+            return Err(Error::WrongKeySize);
+        }
+
+        if header.v_size() as usize != VSIZE {
+            return Err(Error::WrongValueSize);
+        }
 
         Ok(Self {
             header,
@@ -198,10 +208,7 @@ where
         self.get_key_value(k).map(|(_, v)| v)
     }
 
-    pub fn insert(&mut self, key: K, value: V) -> Result<Option<V>, Error>
-    where
-        K: Ord,
-    {
+    pub fn insert(&mut self, key: K, value: V) -> Result<Option<V>, Error> {
         let result = self.put(self.header.root(), None, key, value);
         match result {
             Ok((id, old_val)) => {
@@ -298,8 +305,8 @@ where
                     old_val = V::deserialize(&mut self.nodes[id as usize].value.as_slice()).ok();
                     let serialization_result =
                         value.serialize(&mut self.nodes[id as usize].value.as_mut_slice());
-                    if let Err(e) = serialization_result {
-                        return Err(Error::ValueSerializationError(e));
+                    if serialization_result.is_err() {
+                        return Err(Error::ValueSerializationError);
                     }
                 }
             }
@@ -343,22 +350,22 @@ where
             };
             let new_node = &mut self.nodes[new_id];
 
-            if let Err(e) = value.serialize(&mut new_node.value.as_mut_slice()) {
+            if value.serialize(&mut new_node.value.as_mut_slice()).is_err() {
                 unsafe {
                     // SAFETY: We are deleting previously allocated empty node, so no invariants
                     // are changed.
                     self.delete_node(new_id);
                 }
-                return Err(Error::ValueSerializationError(e));
+                return Err(Error::ValueSerializationError);
             }
 
-            if let Err(e) = key.serialize(&mut new_node.key.as_mut_slice()) {
+            if key.serialize(&mut new_node.key.as_mut_slice()).is_err() {
                 unsafe {
                     // SAFETY: We are deleting previously allocated empty node, so no invariants
                     // are changed.
                     self.delete_node(new_id);
                 }
-                return Err(Error::KeySerializationError(e));
+                return Err(Error::KeySerializationError);
             }
             unsafe {
                 new_node.set_parent(parent);
@@ -367,6 +374,7 @@ where
             Ok((new_id as u32, None))
         }
     }
+
     fn is_red(&self, maybe_id: Option<u32>) -> bool {
         match maybe_id {
             Some(id) => self.nodes[id as usize].is_red(),
@@ -427,10 +435,13 @@ where
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     TooSmall,
     WrongNodePoolSize,
     NoNodesLeft,
-    ValueSerializationError(std::io::Error),
-    KeySerializationError(std::io::Error),
+    ValueSerializationError,
+    KeySerializationError,
+    WrongKeySize,
+    WrongValueSize,
 }
