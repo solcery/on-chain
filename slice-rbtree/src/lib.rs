@@ -445,3 +445,47 @@ pub enum Error {
     WrongKeySize,
     WrongValueSize,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    fn create_vec(k_size: usize, v_size: usize, num_entries: usize) -> Vec<u8> {
+        let len = mem::size_of::<Header>()
+            + (mem::size_of::<Node<0, 0>>() + k_size + v_size) * num_entries;
+        vec![0; len]
+    }
+
+    #[test]
+    #[ignore]
+    fn init() {
+        let mut vec = create_vec(4, 4, 5);
+
+        let mut tree = RBtree::<i32, u32, 4, 4>::init_slice(vec.as_mut_slice()).unwrap();
+        assert!(tree.is_empty());
+
+        assert_eq!(tree.insert(12, 32), Ok(None));
+        dbg!(&tree);
+        assert_eq!(tree.get(&12), Some(32));
+
+        assert_eq!(tree.insert(32, 44), Ok(None));
+        dbg!(&tree);
+        assert_eq!(tree.get(&32), Some(44));
+
+        assert_eq!(tree.insert(123, 321), Ok(None));
+        assert_eq!(tree.get(&123), Some(321));
+
+        assert_eq!(tree.insert(123, 322), Ok(Some(321)));
+        assert_eq!(tree.get(&123), Some(322));
+
+        assert_eq!(tree.insert(14, 32), Ok(None));
+        assert_eq!(tree.get(&14), Some(32));
+
+        assert_eq!(tree.insert(1, 2), Ok(None));
+        assert_eq!(tree.insert(1, 4), Ok(Some(4)));
+        assert_eq!(tree.insert(3, 4), Err(Error::NoNodesLeft));
+
+        assert_eq!(tree.len(), 5);
+    }
+}
