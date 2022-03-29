@@ -61,7 +61,7 @@ impl<const KSIZE: usize, const VSIZE: usize> Node<KSIZE, VSIZE> {
     }
 
     pub unsafe fn set_size(&mut self, size: u32) {
-        self.left = u32::to_be_bytes(size);
+        self.size = u32::to_be_bytes(size);
     }
 
     pub unsafe fn set_left(&mut self, left: Option<u32>) {
@@ -112,6 +112,19 @@ impl<const KSIZE: usize, const VSIZE: usize> Node<KSIZE, VSIZE> {
         } else {
             self.flags = self.flags & 0b0111;
         }
+    }
+
+    pub unsafe fn init_node(&mut self, parent: Option<u32>) {
+        self.size = u32::to_be_bytes(1);
+        // Flags set:
+        // left = None
+        // right = None
+        // parent = None
+        // is_red = true
+        self.flags = 0b1000;
+        self.set_parent(parent);
+        self.key.fill(0);
+        self.value.fill(0);
     }
 
     #[cfg(test)]
@@ -227,4 +240,38 @@ mod node_tests {
     option_test!(left);
     option_test!(right);
     option_test!(parent);
+
+    #[test]
+    fn init_node() {
+        let mut node =
+            unsafe { Node::<1, 1>::from_raw_parts([1], [2], 3, None, None, None, false) };
+
+        unsafe {
+            node.init_node(Some(1));
+        }
+
+        assert_eq!(node.size(), 1);
+        assert_eq!(node.left(), None);
+        assert_eq!(node.right(), None);
+        assert_eq!(node.parent(), Some(1));
+        assert_eq!(node.is_red(), true);
+
+        unsafe {
+            node.init_node(None);
+        }
+        assert_eq!(node.size(), 1);
+        assert_eq!(node.left(), None);
+        assert_eq!(node.right(), None);
+        assert_eq!(node.parent(), None);
+        assert_eq!(node.is_red(), true);
+
+        unsafe {
+            node.init_node(Some(54));
+        }
+        assert_eq!(node.size(), 1);
+        assert_eq!(node.left(), None);
+        assert_eq!(node.right(), None);
+        assert_eq!(node.parent(), Some(54));
+        assert_eq!(node.is_red(), true);
+    }
 }

@@ -279,10 +279,10 @@ where
                     let left_result =
                         self.put(self.nodes[id as usize].left(), Some(id), key, value);
                     match left_result {
-                        Ok((id, val)) => {
+                        Ok((child_id, val)) => {
                             old_val = val;
                             unsafe {
-                                self.nodes[id as usize].set_left(Some(id));
+                                self.nodes[id as usize].set_left(Some(child_id));
                             }
                         }
                         Err(e) => return Err(e),
@@ -292,10 +292,10 @@ where
                     let right_result =
                         self.put(self.nodes[id as usize].right(), Some(id), key, value);
                     match right_result {
-                        Ok((id, val)) => {
+                        Ok((child_id, val)) => {
                             old_val = val;
                             unsafe {
-                                self.nodes[id as usize].set_right(Some(id));
+                                self.nodes[id as usize].set_right(Some(child_id));
                             }
                         }
                         Err(e) => return Err(e),
@@ -303,10 +303,17 @@ where
                 }
                 Ordering::Equal => {
                     old_val = V::deserialize(&mut self.nodes[id as usize].value.as_slice()).ok();
+                    // This is needed to check if the value fits in the slice
+                    // Otherwise we can invalidate data in the node
+                    let mut serialization_container = [0; VSIZE];
                     let serialization_result =
-                        value.serialize(&mut self.nodes[id as usize].value.as_mut_slice());
-                    if serialization_result.is_err() {
-                        return Err(Error::ValueSerializationError);
+                        value.serialize(&mut serialization_container.as_mut_slice());
+
+                    match serialization_result {
+                        Ok(()) => self.nodes[id as usize]
+                            .value
+                            .copy_from_slice(&serialization_container),
+                        Err(_) => return Err(Error::ValueSerializationError),
                     }
                 }
             }
@@ -350,6 +357,12 @@ where
             };
             let new_node = &mut self.nodes[new_id];
 
+            unsafe {
+                new_node.init_node(parent);
+            }
+
+            // Here it is ok to write directly to slice, because in case of error the node
+            // will be deallocated anyway,
             if value.serialize(&mut new_node.value.as_mut_slice()).is_err() {
                 unsafe {
                     // SAFETY: We are deleting previously allocated empty node, so no invariants
@@ -361,14 +374,9 @@ where
 
             if key.serialize(&mut new_node.key.as_mut_slice()).is_err() {
                 unsafe {
-                    // SAFETY: We are deleting previously allocated empty node, so no invariants
-                    // are changed.
                     self.delete_node(new_id);
                 }
                 return Err(Error::KeySerializationError);
-            }
-            unsafe {
-                new_node.set_parent(parent);
             }
 
             Ok((new_id as u32, None))
@@ -458,7 +466,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn init() {
         let mut vec = create_vec(4, 4, 5);
 
@@ -466,26 +473,105 @@ mod tests {
         assert!(tree.is_empty());
 
         assert_eq!(tree.insert(12, 32), Ok(None));
-        dbg!(&tree);
         assert_eq!(tree.get(&12), Some(32));
+        assert_eq!(tree.len(), 1);
 
         assert_eq!(tree.insert(32, 44), Ok(None));
-        dbg!(&tree);
         assert_eq!(tree.get(&32), Some(44));
+        assert_eq!(tree.len(), 2);
 
         assert_eq!(tree.insert(123, 321), Ok(None));
         assert_eq!(tree.get(&123), Some(321));
+        assert_eq!(tree.len(), 3);
 
         assert_eq!(tree.insert(123, 322), Ok(Some(321)));
         assert_eq!(tree.get(&123), Some(322));
+        assert_eq!(tree.len(), 3);
 
         assert_eq!(tree.insert(14, 32), Ok(None));
         assert_eq!(tree.get(&14), Some(32));
+        assert_eq!(tree.len(), 4);
 
         assert_eq!(tree.insert(1, 2), Ok(None));
-        assert_eq!(tree.insert(1, 4), Ok(Some(4)));
+        assert_eq!(tree.insert(1, 4), Ok(Some(2)));
         assert_eq!(tree.insert(3, 4), Err(Error::NoNodesLeft));
 
+        assert_eq!(tree.get(&15), None);
+
         assert_eq!(tree.len(), 5);
+    }
+
+    #[test]
+    fn test_tree_strings() {
+        let mut vec = create_vec(4, 10, 10);
+
+        let mut tree = RBtree::<i32, String, 4, 10>::init_slice(vec.as_mut_slice()).unwrap();
+        assert!(tree.is_empty());
+
+        assert_eq!(tree.insert(12, "val".to_string()), Ok(None));
+        assert_eq!(tree.insert(32, "44".to_string()), Ok(None));
+        assert_eq!(tree.insert(123, "321".to_string()), Ok(None));
+        assert_eq!(
+            tree.insert(123, "321".to_string()),
+            Ok(Some("321".to_string()))
+        );
+        assert_eq!(tree.insert(1, "2".to_string()), Ok(None));
+        assert_eq!(tree.insert(14, "32".to_string()), Ok(None));
+        assert_eq!(tree.insert(20, "41".to_string()), Ok(None));
+        assert_eq!(tree.insert(6, "64".to_string()), Ok(None));
+        assert_eq!(tree.insert(41, "22".to_string()), Ok(None));
+        assert_eq!(tree.insert(122, "14".to_string()), Ok(None));
+        assert_eq!(
+            tree.insert(41, "99".to_string()),
+            Ok(Some("22".to_string()))
+        );
+        assert_eq!(
+            tree.insert(12, "very long value".to_string()),
+            Err(Error::ValueSerializationError)
+        );
+
+        assert_eq!(tree.get(&41).unwrap(), "99".to_string());
+        assert_eq!(tree.get(&12).unwrap(), "val".to_string());
+        assert_eq!(tree.len(), 9);
+    }
+
+    #[test]
+    fn test_tree_string_keys() {
+        let mut vec = create_vec(10, 10, 10);
+
+        let mut tree = RBtree::<String, String, 10, 10>::init_slice(vec.as_mut_slice()).unwrap();
+        assert!(tree.is_empty());
+
+        assert_eq!(tree.insert("12".to_string(), "val".to_string()), Ok(None));
+        assert_eq!(tree.insert("32".to_string(), "44".to_string()), Ok(None));
+        assert_eq!(tree.insert("123".to_string(), "321".to_string()), Ok(None));
+        assert_eq!(
+            tree.insert("123".to_string(), "321".to_string()),
+            Ok(Some("321".to_string()))
+        );
+        assert_eq!(tree.insert("1".to_string(), "2".to_string()), Ok(None));
+        assert_eq!(tree.insert("14".to_string(), "32".to_string()), Ok(None));
+        assert_eq!(tree.insert("20".to_string(), "41".to_string()), Ok(None));
+        assert_eq!(tree.insert("6".to_string(), "64".to_string()), Ok(None));
+        assert_eq!(tree.insert("41".to_string(), "22".to_string()), Ok(None));
+        assert_eq!(tree.insert("122".to_string(), "14".to_string()), Ok(None));
+        assert_eq!(
+            tree.insert("41".to_string(), "99".to_string()),
+            Ok(Some("22".to_string()))
+        );
+
+        assert_eq!(
+            tree.insert("12".to_string(), "very long value".to_string()),
+            Err(Error::ValueSerializationError)
+        );
+
+        assert_eq!(
+            tree.insert("very long key".to_string(), "1".to_string()),
+            Err(Error::KeySerializationError)
+        );
+
+        assert_eq!(tree.get(&"41".to_string()).unwrap(), "99".to_string());
+        assert_eq!(tree.get(&"12".to_string()).unwrap(), "val".to_string());
+        assert_eq!(tree.len(), 9);
     }
 }
