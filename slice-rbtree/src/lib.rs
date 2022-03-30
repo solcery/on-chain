@@ -116,7 +116,7 @@ where
     ///
     /// This function does nothing but deallocation. It should be checked, that the node is
     /// completely unlinked from the tree.
-    unsafe fn delete_node(&mut self, index: usize) {
+    unsafe fn deallocate_node(&mut self, index: usize) {
         let allocator_head = self.header.head();
         let node_index = Some(index as u32);
 
@@ -330,22 +330,26 @@ where
                     id = self.rotate_left(id);
                 }
 
-                if self.is_red(self.nodes[id as usize].left())
-                    && self
-                        .is_red(self.nodes[self.nodes[id as usize].left().unwrap() as usize].left())
-                {
+                let left_subnode = match self.nodes[id as usize].left() {
+                    Some(sub_id) => self.nodes[sub_id as usize].left(),
+                    None => None,
+                };
+
+                if self.is_red(self.nodes[id as usize].left()) && self.is_red(left_subnode) {
                     id = self.rotate_right(id);
                 }
 
                 if self.is_red(self.nodes[id as usize].right())
                     && self.is_red(self.nodes[id as usize].left())
                 {
+                    // If nodes are red, they are not Option::None, so unwrap will never fail
                     let left_id = self.nodes[id as usize].left().unwrap() as usize;
                     let right_id = self.nodes[id as usize].right().unwrap() as usize;
 
-                    self.nodes[left_id].set_is_red(!self.nodes[left_id].is_red());
-                    self.nodes[right_id].set_is_red(!self.nodes[right_id].is_red());
-                    self.nodes[id as usize].set_is_red(!self.nodes[id as usize].is_red());
+                    // Color swap
+                    self.nodes[left_id].set_is_red(false);
+                    self.nodes[right_id].set_is_red(false);
+                    self.nodes[id as usize].set_is_red(true);
                 }
             }
 
@@ -367,14 +371,14 @@ where
                 unsafe {
                     // SAFETY: We are deleting previously allocated empty node, so no invariants
                     // are changed.
-                    self.delete_node(new_id);
+                    self.deallocate_node(new_id);
                 }
                 return Err(Error::ValueSerializationError);
             }
 
             if key.serialize(&mut new_node.key.as_mut_slice()).is_err() {
                 unsafe {
-                    self.delete_node(new_id);
+                    self.deallocate_node(new_id);
                 }
                 return Err(Error::KeySerializationError);
             }
