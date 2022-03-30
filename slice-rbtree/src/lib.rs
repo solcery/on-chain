@@ -49,10 +49,10 @@ where
 
         unsafe {
             // Allocator initialization
-            nodes[0].set_parent(None);
+            nodes[0].set_left(None);
 
             for (i, node) in nodes.iter_mut().enumerate().skip(1) {
-                node.set_parent(Some((i - 1) as u32));
+                node.set_left(Some((i - 1) as u32));
             }
 
             header.fill(
@@ -116,11 +116,11 @@ where
     ///
     /// This function does nothing but deallocation. It should be checked, that the node is
     /// completely unlinked from the tree.
-    unsafe fn delete_node(&mut self, index: usize) {
+    unsafe fn deallocate_node(&mut self, index: usize) {
         let allocator_head = self.header.head();
         let node_index = Some(index as u32);
 
-        self.nodes[index].set_parent(allocator_head);
+        self.nodes[index].set_left(allocator_head);
         self.header.set_head(node_index);
     }
 
@@ -135,7 +135,7 @@ where
         let allocator_head = self.header.head();
         match allocator_head {
             Some(index) => {
-                let new_head = self.nodes[index as usize].parent();
+                let new_head = self.nodes[index as usize].left();
                 unsafe {
                     self.header.set_head(new_head);
                 }
@@ -148,10 +148,10 @@ where
     pub fn clear(&mut self) {
         unsafe {
             // Allocator reinitialization
-            self.nodes[0].set_parent(None);
+            self.nodes[0].set_left(None);
 
             for (i, node) in self.nodes.iter_mut().enumerate().skip(1) {
-                node.set_parent(Some((i - 1) as u32));
+                node.set_left(Some((i - 1) as u32));
             }
 
             self.header.set_root(None);
@@ -209,7 +209,7 @@ where
     }
 
     pub fn insert(&mut self, key: K, value: V) -> Result<Option<V>, Error> {
-        let result = self.put(self.header.root(), None, key, value);
+        let result = self.put(self.header.root(), key, value);
         match result {
             Ok((id, old_val)) => {
                 unsafe {
@@ -263,21 +263,14 @@ where
         }
     }
 
-    fn put(
-        &mut self,
-        maybe_id: Option<u32>,
-        parent: Option<u32>,
-        key: K,
-        value: V,
-    ) -> Result<(u32, Option<V>), Error> {
+    fn put(&mut self, maybe_id: Option<u32>, key: K, value: V) -> Result<(u32, Option<V>), Error> {
         if let Some(mut id) = maybe_id {
             let old_val;
             let node = &self.nodes[id as usize];
             let node_key = K::deserialize(&mut node.key.as_slice()).unwrap();
             match key.cmp(node_key.borrow()) {
                 Ordering::Less => {
-                    let left_result =
-                        self.put(self.nodes[id as usize].left(), Some(id), key, value);
+                    let left_result = self.put(self.nodes[id as usize].left(), key, value);
                     match left_result {
                         Ok((child_id, val)) => {
                             old_val = val;
@@ -289,8 +282,7 @@ where
                     }
                 }
                 Ordering::Greater => {
-                    let right_result =
-                        self.put(self.nodes[id as usize].right(), Some(id), key, value);
+                    let right_result = self.put(self.nodes[id as usize].right(), key, value);
                     match right_result {
                         Ok((child_id, val)) => {
                             old_val = val;
@@ -362,7 +354,7 @@ where
             let new_node = &mut self.nodes[new_id];
 
             unsafe {
-                new_node.init_node(parent);
+                new_node.init_node();
             }
 
             // Here it is ok to write directly to slice, because in case of error the node
@@ -371,14 +363,14 @@ where
                 unsafe {
                     // SAFETY: We are deleting previously allocated empty node, so no invariants
                     // are changed.
-                    self.delete_node(new_id);
+                    self.deallocate_node(new_id);
                 }
                 return Err(Error::ValueSerializationError);
             }
 
             if key.serialize(&mut new_node.key.as_mut_slice()).is_err() {
                 unsafe {
-                    self.delete_node(new_id);
+                    self.deallocate_node(new_id);
                 }
                 return Err(Error::KeySerializationError);
             }
@@ -402,13 +394,6 @@ where
         self.nodes[x as usize].set_is_red(self.nodes[h as usize].is_red());
         self.nodes[h as usize].set_is_red(true);
 
-        // fix parents
-        self.nodes[x as usize].set_parent(self.nodes[h as usize].parent());
-        self.nodes[h as usize].set_parent(Some(x));
-        if let Some(right) = self.nodes[h as usize].right() {
-            self.nodes[right as usize].set_parent(Some(h));
-        }
-
         // fix size
         self.nodes[x as usize].set_size(self.nodes[h as usize].size());
         self.nodes[h as usize].set_size(
@@ -427,13 +412,6 @@ where
         self.nodes[x as usize].set_right(Some(h));
         self.nodes[x as usize].set_is_red(self.nodes[h as usize].is_red());
         self.nodes[h as usize].set_is_red(true);
-
-        // fix parents
-        self.nodes[x as usize].set_parent(self.nodes[h as usize].parent());
-        self.nodes[h as usize].set_parent(Some(x));
-        if let Some(left) = self.nodes[h as usize].left() {
-            self.nodes[left as usize].set_parent(Some(h));
-        }
 
         // fix size
         self.nodes[x as usize].set_size(self.nodes[h as usize].size());
