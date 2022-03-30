@@ -330,22 +330,26 @@ where
                     id = self.rotate_left(id);
                 }
 
-                if self.is_red(self.nodes[id as usize].left())
-                    && self
-                        .is_red(self.nodes[self.nodes[id as usize].left().unwrap() as usize].left())
-                {
+                let left_subnode = match self.nodes[id as usize].left() {
+                    Some(sub_id) => self.nodes[sub_id as usize].left(),
+                    None => None,
+                };
+
+                if self.is_red(self.nodes[id as usize].left()) && self.is_red(left_subnode) {
                     id = self.rotate_right(id);
                 }
 
                 if self.is_red(self.nodes[id as usize].right())
                     && self.is_red(self.nodes[id as usize].left())
                 {
+                    // If nodes are red, they are not Option::None, so unwrap will never fail
                     let left_id = self.nodes[id as usize].left().unwrap() as usize;
                     let right_id = self.nodes[id as usize].right().unwrap() as usize;
 
-                    self.nodes[left_id].set_is_red(!self.nodes[left_id].is_red());
-                    self.nodes[right_id].set_is_red(!self.nodes[right_id].is_red());
-                    self.nodes[id as usize].set_is_red(!self.nodes[id as usize].is_red());
+                    // Color swap
+                    self.nodes[left_id].set_is_red(false);
+                    self.nodes[right_id].set_is_red(false);
+                    self.nodes[id as usize].set_is_red(true);
                 }
             }
 
