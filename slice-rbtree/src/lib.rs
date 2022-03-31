@@ -164,19 +164,7 @@ where
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
-        let mut maybe_id = self.header.root();
-        while let Some(id) = maybe_id {
-            let node = &self.nodes[id as usize];
-            let node_key = K::deserialize(&mut node.key.as_slice()).unwrap();
-            match k.cmp(node_key.borrow()) {
-                Ordering::Equal => {
-                    return true;
-                }
-                Ordering::Less => maybe_id = node.left(),
-                Ordering::Greater => maybe_id = node.right(),
-            }
-        }
-        false
+        self.get_key_index(k).is_some()
     }
 
     pub fn get_key_value<Q>(&self, k: &Q) -> Option<(K, V)>
@@ -184,20 +172,12 @@ where
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
-        let mut maybe_id = self.header.root();
-        while let Some(id) = maybe_id {
+        self.get_key_index(k).map(|id| {
             let node = &self.nodes[id as usize];
             let node_key = K::deserialize(&mut node.key.as_slice()).unwrap();
-            match k.cmp(node_key.borrow()) {
-                Ordering::Equal => {
-                    let node_value = V::deserialize(&mut node.value.as_slice()).unwrap();
-                    return Some((node_key, node_value));
-                }
-                Ordering::Less => maybe_id = node.left(),
-                Ordering::Greater => maybe_id = node.right(),
-            }
-        }
-        None
+            let node_value = V::deserialize(&mut node.value.as_slice()).unwrap();
+            (node_key, node_value)
+        })
     }
 
     pub fn get<Q>(&self, k: &Q) -> Option<V>
@@ -205,7 +185,11 @@ where
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
-        self.get_key_value(k).map(|(_, v)| v)
+        self.get_key_index(k).map(|id| {
+            let node = &self.nodes[id as usize];
+            let node_value = V::deserialize(&mut node.value.as_slice()).unwrap();
+            node_value
+        })
     }
 
     pub fn insert(&mut self, key: K, value: V) -> Result<Option<V>, Error> {
@@ -392,6 +376,26 @@ where
             Some(id) => self.nodes[id as usize].is_red(),
             None => false,
         }
+    }
+
+    fn get_key_index<Q>(&self, k: &Q) -> Option<usize>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
+        let mut maybe_id = self.header.root();
+        while let Some(id) = maybe_id {
+            let node = &self.nodes[id as usize];
+            let node_key = K::deserialize(&mut node.key.as_slice()).unwrap();
+            match k.cmp(node_key.borrow()) {
+                Ordering::Equal => {
+                    return Some(id as usize);
+                }
+                Ordering::Less => maybe_id = node.left(),
+                Ordering::Greater => maybe_id = node.right(),
+            }
+        }
+        None
     }
 
     unsafe fn rotate_left(&mut self, h: u32) -> u32 {
