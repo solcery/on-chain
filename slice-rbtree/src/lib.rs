@@ -225,7 +225,10 @@ where
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
-        unimplemented!();
+        match self.get_key_index(key) {
+            Some(id) => unsafe { self.delete_node(id) },
+            None => None,
+        }
     }
 
     /// Deletes entry without deserializing the value.
@@ -449,6 +452,189 @@ where
 
         x
     }
+
+    unsafe fn delete_node<Q>(&mut self, id: usize) -> Option<(K, V)>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
+        if self.nodes[id].left().is_some() && self.nodes[id].right().is_some() {
+            self.swap_max_left(id);
+        }
+
+        match (self.nodes[id].left(), self.nodes[id].right()) {
+            (Some(left), Some(right)) => {
+                // Ureachable due to previously checked properties
+                unreachable!("swap_max_left() returned a node with two children")
+            }
+            (Some(left), None) => {
+                debug_assert!(self.nodes[left as usize].is_red());
+                self.swap_nodes(id, left as usize);
+
+                let key = K::deserialize(&mut self.nodes[id].key.as_slice()).unwrap();
+                let value = V::deserialize(&mut self.nodes[id].value.as_slice()).unwrap();
+
+                self.deallocate_node(id);
+
+                return Some((key, value));
+            }
+            (None, Some(right)) => {
+                debug_assert!(self.nodes[right as usize].is_red());
+                self.swap_nodes(id, right as usize);
+
+                let key = K::deserialize(&mut self.nodes[id].key.as_slice()).unwrap();
+                let value = V::deserialize(&mut self.nodes[id].value.as_slice()).unwrap();
+
+                self.deallocate_node(id);
+
+                return Some((key, value));
+            }
+            (None, None) => {
+                if self.nodes[id].is_red() {
+                    let parent_id = self.nodes[id].parent().unwrap();
+                    let parent_node = &mut self.nodes[parent_id as usize];
+                    if parent_node.left() == Some(id as u32) {
+                        parent_node.set_left(None);
+                    } else {
+                        debug_assert_eq!(parent_node.right(), Some(id as u32));
+
+                        parent_node.set_right(None);
+                    }
+
+                    let key = K::deserialize(&mut self.nodes[id].key.as_slice()).unwrap();
+                    let value = V::deserialize(&mut self.nodes[id].value.as_slice()).unwrap();
+
+                    self.deallocate_node(id);
+
+                    return Some((key, value));
+                } else {
+                    todo!("Ч0");
+                }
+            }
+        }
+    }
+
+    /// Swaps two nodes inplace without copying key and value
+    unsafe fn swap_max_left(&mut self, id: usize) {
+        let mut max_id = self.nodes[id].left().unwrap() as usize;
+        while let Some(maybe_max) = self.nodes[max_id].right() {
+            max_id = maybe_max as usize;
+        }
+
+        debug_assert_ne!(id, max_id);
+        self.swap_nodes(id, max_id);
+    }
+
+    unsafe fn swap_nodes(&mut self, node_to_delete: usize, other: usize) {
+        // swap links in parents
+        if let Some(parent_id) = self.nodes[node_to_delete].parent() {
+            if self.nodes[parent_id as usize].left() == Some(node_to_delete as u32) {
+                self.nodes[parent_id as usize].set_left(Some(other as u32));
+            } else {
+                debug_assert_eq!(
+                    self.nodes[parent_id as usize].right(),
+                    Some(node_to_delete as u32)
+                );
+
+                self.nodes[parent_id as usize].set_right(Some(other as u32));
+            }
+        }
+
+        if let Some(parent_id) = self.nodes[other].parent() {
+            if self.nodes[parent_id as usize].left() == Some(other as u32) {
+                self.nodes[parent_id as usize].set_left(Some(node_to_delete as u32));
+            } else {
+                debug_assert_eq!(self.nodes[parent_id as usize].right(), Some(other as u32));
+
+                self.nodes[parent_id as usize].set_right(Some(node_to_delete as u32));
+            }
+        }
+
+        // swap links in children
+        if let Some(child_id) = self.nodes[node_to_delete].left() {
+            debug_assert_eq!(
+                self.nodes[child_id as usize].parent(),
+                Some(node_to_delete as u32)
+            );
+
+            self.nodes[child_id as usize].set_parent(Some(other as u32));
+        }
+
+        if let Some(child_id) = self.nodes[node_to_delete].right() {
+            debug_assert_eq!(
+                self.nodes[child_id as usize].parent(),
+                Some(node_to_delete as u32)
+            );
+
+            self.nodes[child_id as usize].set_parent(Some(other as u32));
+        }
+
+        if let Some(child_id) = self.nodes[other].left() {
+            debug_assert_eq!(self.nodes[child_id as usize].parent(), Some(other as u32));
+
+            self.nodes[child_id as usize].set_parent(Some(node_to_delete as u32));
+        }
+
+        if let Some(child_id) = self.nodes[other].right() {
+            debug_assert_eq!(self.nodes[child_id as usize].parent(), Some(other as u32));
+
+            self.nodes[child_id as usize].set_parent(Some(node_to_delete as u32));
+        }
+
+        // swap nodes
+        let tmp_size = self.nodes[node_to_delete].size();
+        self.nodes[node_to_delete].set_size(self.nodes[other].size());
+        self.nodes[other].set_size(tmp_size);
+
+        let tmp_left = self.nodes[node_to_delete].left();
+        self.nodes[node_to_delete].set_left(self.nodes[other].left());
+        self.nodes[other].set_left(tmp_left);
+
+        let tmp_right = self.nodes[node_to_delete].right();
+        self.nodes[node_to_delete].set_right(self.nodes[other].right());
+        self.nodes[other].set_right(tmp_right);
+
+        let tmp_parent = self.nodes[node_to_delete].parent();
+        self.nodes[node_to_delete].set_parent(self.nodes[other].parent());
+        self.nodes[other].set_parent(tmp_parent);
+
+        let tmp_is_red = self.nodes[node_to_delete].is_red();
+        self.nodes[node_to_delete].set_is_red(self.nodes[other].is_red());
+        self.nodes[other].set_is_red(tmp_is_red);
+    }
+
+    #[cfg(test)]
+    fn is_balanced(&self) -> bool {
+        let mut black = 0;
+        let mut node = self.header.root();
+        while let Some(id) = node {
+            if !self.nodes[id as usize].is_red() {
+                black += 1;
+            }
+            node = self.nodes[id as usize].left();
+        }
+        self.node_balanced(self.header.root(), black)
+    }
+
+    #[cfg(test)]
+    fn node_balanced(&self, maybe_id: Option<u32>, black: u32) -> bool {
+        if let Some(id) = maybe_id {
+            let id = id as usize;
+            if self.nodes[id].is_red() {
+                let is_left_balanced = self.node_balanced(self.nodes[id].left(), black);
+                let is_right_balanced = self.node_balanced(self.nodes[id].right(), black);
+
+                is_left_balanced && is_right_balanced
+            } else {
+                let is_left_balanced = self.node_balanced(self.nodes[id].left(), black - 1);
+                let is_right_balanced = self.node_balanced(self.nodes[id].right(), black - 1);
+
+                is_left_balanced && is_right_balanced
+            }
+        } else {
+            black == 0
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -471,6 +657,22 @@ mod tests {
         let len = mem::size_of::<Header>()
             + (mem::size_of::<Node<0, 0>>() + k_size + v_size) * num_entries;
         vec![0; len]
+    }
+
+    fn assert_rm<'a, K, V, const KSIZE: usize, const VSIZE: usize>(
+        val: K,
+        tree: &mut RBtree<'a, K, V, KSIZE, VSIZE>,
+        size: usize,
+    ) where
+        K: Ord + BorshDeserialize + BorshSerialize,
+        V: BorshDeserialize + BorshSerialize,
+    {
+        assert!(tree.is_balanced());
+        assert!(tree.contains_key(&val));
+        assert!(tree.remove_entry(&val).is_some());
+        assert!(!tree.contains_key(&val));
+        assert!(tree.is_balanced());
+        assert_eq!(tree.len(), size);
     }
 
     #[test]
@@ -581,5 +783,29 @@ mod tests {
         assert_eq!(tree.get(&"41".to_string()).unwrap(), "99".to_string());
         assert_eq!(tree.get(&"12".to_string()).unwrap(), "val".to_string());
         assert_eq!(tree.len(), 9);
+    }
+
+    #[test]
+    #[ignore]
+    fn delete() {
+        let mut vec = create_vec(4, 4, 5);
+
+        let mut tree = RBtree::<i32, u32, 4, 4>::init_slice(vec.as_mut_slice()).unwrap();
+        assert!(tree.is_empty());
+
+        assert_eq!(tree.insert(12, 32), Ok(None));
+        assert_eq!(tree.insert(32, 44), Ok(None));
+        assert_eq!(tree.insert(123, 321), Ok(None));
+        assert_eq!(tree.insert(14, 32), Ok(None));
+        assert_eq!(tree.insert(1, 2), Ok(None));
+
+        assert_eq!(tree.len(), 5);
+
+        assert_rm(12, &mut tree, 4);
+        assert_rm(32, &mut tree, 3);
+        assert_rm(123, &mut tree, 2);
+        assert_rm(14, &mut tree, 1);
+        assert_rm(1, &mut tree, 0);
+        assert!(tree.is_empty());
     }
 }
