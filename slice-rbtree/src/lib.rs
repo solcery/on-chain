@@ -493,6 +493,7 @@ where
                 if self.nodes[id].is_red() {
                     let parent_id = self.nodes[id].parent().unwrap();
                     let parent_node = &mut self.nodes[parent_id as usize];
+
                     if parent_node.left() == Some(id as u32) {
                         parent_node.set_left(None);
                     } else {
@@ -602,8 +603,14 @@ where
         self.nodes[node_to_delete].set_is_red(self.nodes[other].is_red());
         self.nodes[other].set_is_red(tmp_is_red);
     }
+}
 
-    #[cfg(test)]
+#[cfg(test)]
+impl<'a, K, V, const KSIZE: usize, const VSIZE: usize> RBtree<'a, K, V, KSIZE, VSIZE>
+where
+    K: Eq + Ord + BorshDeserialize + BorshSerialize,
+    V: Eq + BorshDeserialize + BorshSerialize,
+{
     fn is_balanced(&self) -> bool {
         let mut black = 0;
         let mut node = self.header.root();
@@ -616,7 +623,6 @@ where
         self.node_balanced(self.header.root(), black)
     }
 
-    #[cfg(test)]
     fn node_balanced(&self, maybe_id: Option<u32>, black: u32) -> bool {
         if let Some(id) = maybe_id {
             let id = id as usize;
@@ -633,6 +639,52 @@ where
             }
         } else {
             black == 0
+        }
+    }
+
+    unsafe fn set_node(&mut self, id: usize, node: &Node<KSIZE, VSIZE>) {
+        self.nodes[id] = *node;
+    }
+
+    unsafe fn set_root(&mut self, id: usize, root: Option<u32>) {
+        self.header.set_root(root);
+    }
+
+    unsafe fn set_head(&mut self, id: usize, head: Option<u32>) {
+        self.header.set_head(head);
+    }
+
+    fn struct_eq(&self, other: &Self) -> bool {
+        self.node_eq(self.header.root(), other.header.root())
+    }
+
+    fn node_eq(&self, a: Option<u32>, b: Option<u32>) -> bool {
+        match (a, b) {
+            (Some(self_id), Some(other_id)) => {
+                let self_id = self_id as usize;
+                let other_id = other_id as usize;
+
+                if self.nodes[self_id].is_red() ^ self.nodes[self_id].is_red() {
+                    return false;
+                }
+
+                let self_key = K::deserialize(&mut self.nodes[self_id].key.as_slice()).unwrap();
+                let other_key = K::deserialize(&mut self.nodes[other_id].key.as_slice()).unwrap();
+
+                if self_key != other_key {
+                    return false;
+                }
+
+                let self_left = self.nodes[self_id].left();
+                let other_left = self.nodes[other_id].left();
+
+                let self_right = self.nodes[self_id].right();
+                let other_right = self.nodes[other_id].right();
+
+                self.node_eq(self_left, other_left) && self.node_eq(self_right, other_right)
+            }
+            (None, None) => true,
+            _ => false,
         }
     }
 }
@@ -652,28 +704,6 @@ pub enum Error {
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
-
-    fn create_vec(k_size: usize, v_size: usize, num_entries: usize) -> Vec<u8> {
-        let len = mem::size_of::<Header>()
-            + (mem::size_of::<Node<0, 0>>() + k_size + v_size) * num_entries;
-        vec![0; len]
-    }
-
-    fn assert_rm<'a, K, V, const KSIZE: usize, const VSIZE: usize>(
-        val: K,
-        tree: &mut RBtree<'a, K, V, KSIZE, VSIZE>,
-        size: usize,
-    ) where
-        K: Ord + BorshDeserialize + BorshSerialize,
-        V: BorshDeserialize + BorshSerialize,
-    {
-        assert!(tree.is_balanced());
-        assert!(tree.contains_key(&val));
-        assert!(tree.remove_entry(&val).is_some());
-        assert!(!tree.contains_key(&val));
-        assert!(tree.is_balanced());
-        assert_eq!(tree.len(), size);
-    }
 
     #[test]
     fn init() {
@@ -709,6 +739,160 @@ mod tests {
         assert_eq!(tree.get(&15), None);
 
         assert_eq!(tree.len(), 5);
+    }
+
+    #[test]
+    fn swap_nodes() {
+        let mut vec = create_vec(4, 4, 6);
+
+        let mut tree = RBtree::<i32, u32, 4, 4>::init_slice(vec.as_mut_slice()).unwrap();
+        // Initial structure
+        //          parent
+        //           /
+        // black-> swap1
+        //        /   \
+        //red-> swap2 node1 <-red
+        //      /
+        //  node2            <-black
+        unsafe {
+            let parent = Node::from_raw_parts(
+                // 0
+                u32::to_be_bytes(1),
+                u32::to_be_bytes(4),
+                3,
+                Some(1),
+                None,
+                None,
+                false,
+            );
+
+            let swap1 = Node::from_raw_parts(
+                // 1
+                u32::to_be_bytes(2),
+                u32::to_be_bytes(5),
+                2,
+                Some(2),
+                Some(3),
+                Some(0),
+                false,
+            );
+
+            let swap2 = Node::from_raw_parts(
+                // 2
+                u32::to_be_bytes(3),
+                u32::to_be_bytes(6),
+                2,
+                Some(4),
+                None,
+                Some(1),
+                true,
+            );
+
+            let node1 = Node::from_raw_parts(
+                // 3
+                u32::to_be_bytes(7),
+                u32::to_be_bytes(9),
+                2,
+                None,
+                None,
+                Some(1),
+                true,
+            );
+
+            let node2 = Node::from_raw_parts(
+                // 4
+                u32::to_be_bytes(8),
+                u32::to_be_bytes(8),
+                2,
+                None,
+                None,
+                Some(2),
+                false,
+            );
+
+            tree.set_node(0, &parent);
+            tree.set_node(1, &swap1);
+            tree.set_node(2, &swap2);
+            tree.set_node(3, &node1);
+            tree.set_node(4, &node2);
+        }
+
+        let mut expected_vec = create_vec(4, 4, 6);
+
+        let mut expected_tree =
+            RBtree::<i32, u32, 4, 4>::init_slice(expected_vec.as_mut_slice()).unwrap();
+        // Final structure
+        //          parent
+        //           /
+        // black-> swap2
+        //        /   \
+        //red-> swap1 node1 <-red
+        //      /
+        //  node2            <-black
+        unsafe {
+            let parent = Node::from_raw_parts(
+                // 0
+                u32::to_be_bytes(1),
+                u32::to_be_bytes(4),
+                3,
+                Some(1),
+                None,
+                None,
+                false,
+            );
+
+            let swap2 = Node::from_raw_parts(
+                // 1
+                u32::to_be_bytes(2),
+                u32::to_be_bytes(5),
+                2,
+                Some(4),
+                None,
+                Some(1),
+                true,
+            );
+
+            let swap1 = Node::from_raw_parts(
+                // 2
+                u32::to_be_bytes(3),
+                u32::to_be_bytes(6),
+                2,
+                Some(2),
+                Some(3),
+                Some(0),
+                false,
+            );
+
+            let node1 = Node::from_raw_parts(
+                // 3
+                u32::to_be_bytes(7),
+                u32::to_be_bytes(9),
+                2,
+                None,
+                None,
+                Some(1),
+                true,
+            );
+
+            let node2 = Node::from_raw_parts(
+                // 4
+                u32::to_be_bytes(8),
+                u32::to_be_bytes(8),
+                2,
+                None,
+                None,
+                Some(2),
+                false,
+            );
+
+            expected_tree.set_node(0, &parent);
+            expected_tree.set_node(1, &swap2);
+            expected_tree.set_node(2, &swap1);
+            expected_tree.set_node(3, &node1);
+            expected_tree.set_node(4, &node2);
+        }
+
+        assert!(tree.struct_eq(&expected_tree));
     }
 
     #[test]
@@ -799,6 +983,8 @@ mod tests {
         assert_eq!(tree.insert(14, 32), Ok(None));
         assert_eq!(tree.insert(1, 2), Ok(None));
 
+        dbg!(&tree);
+
         assert_eq!(tree.len(), 5);
 
         assert_rm(12, &mut tree, 4);
@@ -807,5 +993,27 @@ mod tests {
         assert_rm(14, &mut tree, 1);
         assert_rm(1, &mut tree, 0);
         assert!(tree.is_empty());
+    }
+
+    fn create_vec(k_size: usize, v_size: usize, num_entries: usize) -> Vec<u8> {
+        let len = mem::size_of::<Header>()
+            + (mem::size_of::<Node<0, 0>>() + k_size + v_size) * num_entries;
+        vec![0; len]
+    }
+
+    fn assert_rm<'a, K, V, const KSIZE: usize, const VSIZE: usize>(
+        val: K,
+        tree: &mut RBtree<'a, K, V, KSIZE, VSIZE>,
+        size: usize,
+    ) where
+        K: Eq + Ord + BorshDeserialize + BorshSerialize,
+        V: Eq + BorshDeserialize + BorshSerialize,
+    {
+        assert!(tree.is_balanced());
+        assert!(tree.contains_key(&val));
+        assert!(tree.remove_entry(&val).is_some());
+        assert!(!tree.contains_key(&val));
+        assert!(tree.is_balanced());
+        //assert_eq!(tree.len(), size);
     }
 }

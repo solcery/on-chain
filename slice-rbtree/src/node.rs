@@ -128,7 +128,7 @@ impl<const KSIZE: usize, const VSIZE: usize> Node<KSIZE, VSIZE> {
     }
 
     #[cfg(test)]
-    unsafe fn from_raw_parts(
+    pub unsafe fn from_raw_parts(
         key: [u8; KSIZE],
         value: [u8; VSIZE],
         size: u32,
