@@ -453,13 +453,13 @@ where
         x
     }
 
-    unsafe fn delete_node<Q>(&mut self, id: usize) -> Option<(K, V)>
+    unsafe fn delete_node<Q>(&mut self, mut id: usize) -> Option<(K, V)>
     where
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
         if self.nodes[id].left().is_some() && self.nodes[id].right().is_some() {
-            self.swap_max_left(id);
+            id = self.swap_max_left(id);
         }
 
         match (self.nodes[id].left(), self.nodes[id].right()) {
@@ -509,14 +509,22 @@ where
 
                     return Some((key, value));
                 } else {
-                    todo!("Ч0");
+                    let key = K::deserialize(&mut self.nodes[id].key.as_slice()).unwrap();
+                    let value = V::deserialize(&mut self.nodes[id].value.as_slice()).unwrap();
+
+                    self.deallocate_node(id);
+
+                    if let Some(parent_id) = self.nodes[id].parent() {
+                        self.balance_subtree(parent_id as usize);
+                    }
+
+                    return Some((key, value));
                 }
             }
         }
     }
 
-    /// Swaps two nodes inplace without copying key and value
-    unsafe fn swap_max_left(&mut self, id: usize) {
+    unsafe fn swap_max_left(&mut self, id: usize) -> usize {
         let mut max_id = self.nodes[id].left().unwrap() as usize;
         while let Some(maybe_max) = self.nodes[max_id].right() {
             max_id = maybe_max as usize;
@@ -524,84 +532,26 @@ where
 
         debug_assert_ne!(id, max_id);
         self.swap_nodes(id, max_id);
+        max_id
     }
 
-    unsafe fn swap_nodes(&mut self, node_to_delete: usize, other: usize) {
-        // swap links in parents
-        if let Some(parent_id) = self.nodes[node_to_delete].parent() {
-            if self.nodes[parent_id as usize].left() == Some(node_to_delete as u32) {
-                self.nodes[parent_id as usize].set_left(Some(other as u32));
-            } else {
-                debug_assert_eq!(
-                    self.nodes[parent_id as usize].right(),
-                    Some(node_to_delete as u32)
-                );
+    unsafe fn swap_nodes(&mut self, a: usize, b: usize) {
+        let tmp_key = self.nodes[a].key;
+        self.nodes[a].key = self.nodes[b].key;
+        self.nodes[b].key = tmp_key;
 
-                self.nodes[parent_id as usize].set_right(Some(other as u32));
-            }
-        }
+        let tmp_value = self.nodes[a].value;
+        self.nodes[a].value = self.nodes[b].value;
+        self.nodes[b].value = tmp_value;
+    }
 
-        if let Some(parent_id) = self.nodes[other].parent() {
-            if self.nodes[parent_id as usize].left() == Some(other as u32) {
-                self.nodes[parent_id as usize].set_left(Some(node_to_delete as u32));
-            } else {
-                debug_assert_eq!(self.nodes[parent_id as usize].right(), Some(other as u32));
+    // id of the parent node of subtree to be balanced
+    unsafe fn balance_subtree(&mut self, id: usize) {
+        let left_child = self.nodes[id].left();
+        let right_child = self.nodes[id].right();
+        debug_assert_ne!(self.size(left_child), self.size(right_child));
 
-                self.nodes[parent_id as usize].set_right(Some(node_to_delete as u32));
-            }
-        }
-
-        // swap links in children
-        if let Some(child_id) = self.nodes[node_to_delete].left() {
-            debug_assert_eq!(
-                self.nodes[child_id as usize].parent(),
-                Some(node_to_delete as u32)
-            );
-
-            self.nodes[child_id as usize].set_parent(Some(other as u32));
-        }
-
-        if let Some(child_id) = self.nodes[node_to_delete].right() {
-            debug_assert_eq!(
-                self.nodes[child_id as usize].parent(),
-                Some(node_to_delete as u32)
-            );
-
-            self.nodes[child_id as usize].set_parent(Some(other as u32));
-        }
-
-        if let Some(child_id) = self.nodes[other].left() {
-            debug_assert_eq!(self.nodes[child_id as usize].parent(), Some(other as u32));
-
-            self.nodes[child_id as usize].set_parent(Some(node_to_delete as u32));
-        }
-
-        if let Some(child_id) = self.nodes[other].right() {
-            debug_assert_eq!(self.nodes[child_id as usize].parent(), Some(other as u32));
-
-            self.nodes[child_id as usize].set_parent(Some(node_to_delete as u32));
-        }
-
-        // swap nodes
-        let tmp_size = self.nodes[node_to_delete].size();
-        self.nodes[node_to_delete].set_size(self.nodes[other].size());
-        self.nodes[other].set_size(tmp_size);
-
-        let tmp_left = self.nodes[node_to_delete].left();
-        self.nodes[node_to_delete].set_left(self.nodes[other].left());
-        self.nodes[other].set_left(tmp_left);
-
-        let tmp_right = self.nodes[node_to_delete].right();
-        self.nodes[node_to_delete].set_right(self.nodes[other].right());
-        self.nodes[other].set_right(tmp_right);
-
-        let tmp_parent = self.nodes[node_to_delete].parent();
-        self.nodes[node_to_delete].set_parent(self.nodes[other].parent());
-        self.nodes[other].set_parent(tmp_parent);
-
-        let tmp_is_red = self.nodes[node_to_delete].is_red();
-        self.nodes[node_to_delete].set_is_red(self.nodes[other].is_red());
-        self.nodes[other].set_is_red(tmp_is_red);
+        todo!("Ч0");
     }
 }
 
