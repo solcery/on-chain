@@ -464,28 +464,37 @@ where
 
         match (self.nodes[id].left(), self.nodes[id].right()) {
             (Some(left), Some(right)) => {
-                // Ureachable due to previously checked properties
-                unreachable!("swap_max_left() returned a node with two children")
+                unreachable!("swap_max_left() returned a node with two children");
             }
             (Some(left), None) => {
-                debug_assert!(self.nodes[left as usize].is_red());
-                self.swap_nodes(id, left as usize);
+                let left_id = left as usize;
+                // This node has to be black, its child has to be red
+                debug_assert!(!self.nodes[id].is_red());
+                debug_assert!(self.nodes[left_id].is_red());
 
-                let key = K::deserialize(&mut self.nodes[id].key.as_slice()).unwrap();
-                let value = V::deserialize(&mut self.nodes[id].value.as_slice()).unwrap();
+                self.swap_nodes(id, left_id);
 
-                self.deallocate_node(id);
+                let key = K::deserialize(&mut self.nodes[left_id].key.as_slice()).unwrap();
+                let value = V::deserialize(&mut self.nodes[left_id].value.as_slice()).unwrap();
+
+                self.nodes[id].set_left(None);
+                self.deallocate_node(left_id);
 
                 return Some((key, value));
             }
             (None, Some(right)) => {
-                debug_assert!(self.nodes[right as usize].is_red());
-                self.swap_nodes(id, right as usize);
+                let right_id = right as usize;
+                // This node has to be black, its child has to be red
+                debug_assert!(!self.nodes[id].is_red());
+                debug_assert!(self.nodes[right_id].is_red());
 
-                let key = K::deserialize(&mut self.nodes[id].key.as_slice()).unwrap();
-                let value = V::deserialize(&mut self.nodes[id].value.as_slice()).unwrap();
+                self.swap_nodes(id, right_id);
 
-                self.deallocate_node(id);
+                let key = K::deserialize(&mut self.nodes[right_id].key.as_slice()).unwrap();
+                let value = V::deserialize(&mut self.nodes[right_id].value.as_slice()).unwrap();
+
+                self.nodes[id].set_right(None);
+                self.deallocate_node(right_id);
 
                 return Some((key, value));
             }
@@ -512,11 +521,20 @@ where
                     let key = K::deserialize(&mut self.nodes[id].key.as_slice()).unwrap();
                     let value = V::deserialize(&mut self.nodes[id].value.as_slice()).unwrap();
 
-                    self.deallocate_node(id);
-
                     if let Some(parent_id) = self.nodes[id].parent() {
+                        let parent_node = &mut self.nodes[parent_id as usize];
+                        if parent_node.left() == Some(id as u32) {
+                            parent_node.set_left(None);
+                        } else {
+                            debug_assert_eq!(parent_node.right(), Some(id as u32));
+
+                            parent_node.set_right(None);
+                        }
+
                         self.balance_subtree(parent_id as usize);
                     }
+
+                    self.deallocate_node(id);
 
                     return Some((key, value));
                 }
@@ -547,13 +565,95 @@ where
 
     // id of the parent node of subtree to be balanced
     unsafe fn balance_subtree(&mut self, id: usize) {
+        #[cfg(test)]
+        {
+            dbg!(id);
+            self.child_parent_link_test();
+        }
+
         let left_child = self.nodes[id].left();
         let right_child = self.nodes[id].right();
-        debug_assert_ne!(self.size(left_child), self.size(right_child));
+        let left_size = self.size(left_child);
+        let right_size = self.size(right_child);
+        match left_size.cmp(&right_size) {
+            Ordering::Greater => {
+                let left_id = left_child.unwrap() as usize;
+                if self.nodes[id].is_red() {
+                    debug_assert!(!self.nodes[left_id].is_red());
+                    let left_grandchild = self.nodes[left_id].left();
+                    let right_grandchild = self.nodes[left_id].right();
+                    match (self.is_red(left_grandchild), self.is_red(right_grandchild)) {
+                        (false, false) => {
+                            self.nodes[id].set_is_red(false);
+                            self.nodes[left_id].set_is_red(true);
+                        }
+                        (true, _) => {
+                            self.rotate_right(id as u32);
 
-        todo!("Ч0");
+                            self.nodes[id].set_is_red(false);
+                            self.nodes[left_id].set_is_red(true);
+                            self.nodes[left_grandchild.unwrap() as usize].set_is_red(false);
+                        }
+                        (false, true) => unimplemented!(),
+                    }
+                } else {
+                    if self.nodes[left_id].is_red() {
+                        unimplemented!();
+                    } else {
+                        let left_grandchild = self.nodes[left_id].left();
+                        let right_grandchild = self.nodes[left_id].right();
+
+                        match (self.is_red(left_grandchild), self.is_red(right_grandchild)) {
+                            (false, false) => {
+                                self.nodes[left_id].set_is_red(true);
+                                self.balance_subtree(self.nodes[id].parent().unwrap() as usize);
+                            },
+                            (_, true) => {
+                                self.nodes[right_grandchild.unwrap() as usize].set_is_red(false);
+                                self.rotate_left(left_id as u32);
+                                self.rotate_left(id as u32);
+                            },
+                            (true, false) => {
+                                unimplemented!();
+                            },
+                        }
+                    }
+                }
+            },
+            Ordering::Less => {
+                unimplemented!();
+            },
+            Ordering::Equal => unreachable!("balance_subtree() should only be called in non ballanced situations. It could be a signa, that the tree was no prewiously balanced."),
+        }
+    }
+
+    #[cfg(test)]
+    fn child_parent_link_test(&self) {
+        if let Some(id) = self.header.root() {
+            //println!("Testing root id={}", id);
+            assert_eq!(self.nodes[id as usize].parent(), None);
+            self.node_link_test(id as usize);
+        }
+    }
+
+    #[cfg(test)]
+    fn node_link_test(&self, id: usize) {
+        if let Some(left_id) = self.nodes[id].left() {
+            assert_eq!(self.nodes[left_id as usize].parent(), Some(id as u32));
+            //println!("Testing left sub_tree of id={}", left_id);
+            self.node_link_test(left_id as usize);
+        }
+
+        if let Some(right_id) = self.nodes[id].right() {
+            assert_eq!(self.nodes[right_id as usize].parent(), Some(id as u32));
+            //println!("Testing right sub_tree of id={}", right_id);
+            self.node_link_test(right_id as usize);
+        }
     }
 }
+
+#[cfg(test)]
+use std::fmt::Debug;
 
 #[cfg(test)]
 impl<'a, K, V, const KSIZE: usize, const VSIZE: usize> RBtree<'a, K, V, KSIZE, VSIZE>
@@ -622,6 +722,14 @@ where
                 let other_key = K::deserialize(&mut self.nodes[other_id].key.as_slice()).unwrap();
 
                 if self_key != other_key {
+                    return false;
+                }
+
+                let self_value = V::deserialize(&mut self.nodes[self_id].value.as_slice()).unwrap();
+                let other_value =
+                    V::deserialize(&mut self.nodes[other_id].value.as_slice()).unwrap();
+
+                if self_value != other_value {
                     return false;
                 }
 
@@ -936,10 +1044,11 @@ mod tests {
         dbg!(&tree);
 
         assert_eq!(tree.len(), 5);
+        tree.child_parent_link_test();
 
-        assert_rm(12, &mut tree, 4);
+        assert_rm(12, &mut tree, 4); // Not implemented
         assert_rm(32, &mut tree, 3);
-        assert_rm(123, &mut tree, 2);
+        assert_rm(123, &mut tree, 2); // Not implemented
         assert_rm(14, &mut tree, 1);
         assert_rm(1, &mut tree, 0);
         assert!(tree.is_empty());
@@ -956,13 +1065,15 @@ mod tests {
         tree: &mut RBtree<'a, K, V, KSIZE, VSIZE>,
         size: usize,
     ) where
-        K: Eq + Ord + BorshDeserialize + BorshSerialize,
-        V: Eq + BorshDeserialize + BorshSerialize,
+        K: Eq + Ord + BorshDeserialize + BorshSerialize + Debug,
+        V: Eq + BorshDeserialize + BorshSerialize + Debug,
     {
+        dbg!(&val);
         assert!(tree.is_balanced());
         assert!(tree.contains_key(&val));
         assert!(tree.remove_entry(&val).is_some());
-        assert!(!tree.contains_key(&val));
+        tree.child_parent_link_test();
+        assert_eq!(tree.get_key_index(&val), None);
         assert!(tree.is_balanced());
         //assert_eq!(tree.len(), size);
     }
