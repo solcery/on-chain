@@ -487,7 +487,7 @@ where
         }
 
         match (self.nodes[id].left(), self.nodes[id].right()) {
-            (Some(left), Some(right)) => {
+            (Some(_), Some(_)) => {
                 unreachable!("swap_max_left() returned a node with two children");
             }
             (Some(left), None) => {
@@ -593,8 +593,8 @@ where
     unsafe fn balance_subtree(&mut self, id: usize) {
         let left_child = self.nodes[id].left();
         let right_child = self.nodes[id].right();
-        let left_depth = dbg!(self.black_depth(left_child));
-        let right_depth = dbg!(self.black_depth(right_child));
+        let left_depth = self.black_depth(left_child);
+        let right_depth = self.black_depth(right_child);
         match left_depth.cmp(&right_depth) {
             Ordering::Greater => {
                 let left_id = left_child.unwrap() as usize;
@@ -614,7 +614,7 @@ where
                             self.nodes[left_id].set_is_red(true);
                             self.nodes[left_grandchild.unwrap() as usize].set_is_red(false);
                         }
-                        (false, true) => unimplemented!(),
+                        (false, true) => unimplemented!("reversed ЧК4"),
                     }
                 } else {
                     if self.nodes[left_id].is_red() {
@@ -666,12 +666,12 @@ where
                                 self.nodes[left_grandchild.unwrap() as usize].set_is_red(false);
                                 self.rotate_right(id as u32);
                                 self.nodes[id].set_is_red(false);
-                                dbg!(
-                                    left_grandchild,
-                                    self.nodes[left_grandchild.unwrap() as usize]
-                                );
-                                dbg!(left_id, self.nodes[left_id]);
-                                dbg!(id, self.nodes[id]);
+                                //dbg!(
+                                //left_grandchild,
+                                //self.nodes[left_grandchild.unwrap() as usize]
+                                //);
+                                //dbg!(left_id, self.nodes[left_id]);
+                                //dbg!(id, self.nodes[id]);
                                 //todo!("Inverse ЧЧ5");
                             }
                         }
@@ -679,7 +679,86 @@ where
                 }
             }
             Ordering::Less => {
-                unimplemented!("Balance right subtree");
+                let right_id = right_child.unwrap() as usize;
+                if self.nodes[id].is_red() {
+                    debug_assert!(!self.nodes[right_id].is_red());
+                    let right_grandchild = self.nodes[right_id].right();
+                    let left_grandchild = self.nodes[right_id].left();
+                    match (self.is_red(right_grandchild), self.is_red(left_grandchild)) {
+                        (false, false) => {
+                            self.nodes[id].set_is_red(false);
+                            self.nodes[right_id].set_is_red(true);
+                        }
+                        (true, _) => {
+                            self.rotate_left(id as u32);
+
+                            self.nodes[id].set_is_red(false);
+                            self.nodes[right_id].set_is_red(true);
+                            self.nodes[right_grandchild.unwrap() as usize].set_is_red(false);
+                        }
+                        (false, true) => unreachable!("Or not?"),
+                    }
+                } else {
+                    if self.nodes[right_id].is_red() {
+                        debug_assert!(!self.is_red(self.nodes[right_id].right()));
+                        debug_assert!(!self.is_red(self.nodes[right_id].left()));
+                        // FIXME: Why unwrap?
+                        let left_grandchild = self.nodes[right_id].left().unwrap() as usize;
+                        let right_grandgrandchild = self.nodes[left_grandchild].right();
+                        let left_grandgrandchild = self.nodes[left_grandchild].left();
+
+                        match (
+                            self.is_red(right_grandgrandchild),
+                            self.is_red(left_grandgrandchild),
+                        ) {
+                            (false, false) => {
+                                self.nodes[right_id].set_is_red(false);
+                                self.rotate_left(id as u32);
+                                unimplemented!("ЧК3");
+                            }
+                            (true, _) => {
+                                self.rotate_right(right_id as u32);
+                                self.rotate_right(id as u32);
+                                unimplemented!("ЧК4");
+                            }
+                            (false, true) => {
+                                unreachable!("Or not?");
+                            }
+                        }
+                    } else {
+                        let right_grandchild = self.nodes[right_id].right();
+                        let left_grandchild = self.nodes[right_id].left();
+
+                        match (self.is_red(right_grandchild), self.is_red(left_grandchild)) {
+                            (false, false) => {
+                                self.nodes[right_id].set_is_red(true);
+                                if let Some(parent_id) = self.nodes[id].parent() {
+                                    self.balance_subtree(parent_id as usize);
+                                }
+                            }
+                            (_, true) => {
+                                self.nodes[left_grandchild.unwrap() as usize].set_is_red(false);
+                                self.rotate_right(right_id as u32);
+                                self.rotate_left(id as u32);
+                            }
+                            (true, false) => {
+                                //dbg!(right_grandchild, self.nodes[right_grandchild.unwrap() as usize]);
+                                //dbg!(right_id, self.nodes[right_id]);
+                                //dbg!(id, self.nodes[id]);
+                                self.nodes[right_grandchild.unwrap() as usize].set_is_red(false);
+                                self.rotate_left(id as u32);
+                                self.nodes[id].set_is_red(false);
+                                //dbg!(
+                                //right_grandchild,
+                                //self.nodes[right_grandchild.unwrap() as usize]
+                                //);
+                                //dbg!(right_id, self.nodes[right_id]);
+                                //dbg!(id, self.nodes[id]);
+                                //todo!("Inverse ЧЧ5");
+                            }
+                        }
+                    }
+                }
             }
             Ordering::Equal => {
                 eprintln!("Called balance_subtree on already balanced tree.");
@@ -692,7 +771,7 @@ where
     #[cfg(test)]
     fn child_parent_link_test(&self) {
         if let Some(id) = self.header.root() {
-            println!("Testing root id={}", id);
+            //println!("Testing root id={}", id);
             assert_eq!(self.nodes[id as usize].parent(), None);
             self.node_link_test(id as usize);
         }
@@ -702,13 +781,13 @@ where
     fn node_link_test(&self, id: usize) {
         if let Some(left_id) = self.nodes[id].left() {
             assert_eq!(self.nodes[left_id as usize].parent(), Some(id as u32));
-            println!("Testing left sub_tree of id={}", left_id);
+            //println!("Testing left sub_tree of id={}", left_id);
             self.node_link_test(left_id as usize);
         }
 
         if let Some(right_id) = self.nodes[id].right() {
             assert_eq!(self.nodes[right_id as usize].parent(), Some(id as u32));
-            println!("Testing right sub_tree of id={}", right_id);
+            //println!("Testing right sub_tree of id={}", right_id);
             self.node_link_test(right_id as usize);
         }
     }
@@ -775,11 +854,11 @@ where
         self.nodes[id] = *node;
     }
 
-    unsafe fn set_root(&mut self, id: usize, root: Option<u32>) {
+    unsafe fn set_root(&mut self, root: Option<u32>) {
         self.header.set_root(root);
     }
 
-    unsafe fn set_head(&mut self, id: usize, head: Option<u32>) {
+    unsafe fn set_head(&mut self, head: Option<u32>) {
         self.header.set_head(head);
     }
 
@@ -1107,38 +1186,102 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn delete() {
-        let mut vec = create_vec(4, 4, 20);
+        let mut vec = create_vec(1, 1, 256);
 
-        let mut tree = RBtree::<i32, u32, 4, 4>::init_slice(vec.as_mut_slice()).unwrap();
+        let insert_keys: Vec<u8> = vec![
+            123, 201, 112, 93, 21, 236, 41, 121, 42, 10, 147, 254, 220, 148, 76, 245, 94, 142, 75,
+            222, 132, 215, 86, 150, 31, 137, 60, 120, 14, 36, 77, 35, 192, 224, 204, 97, 129, 80,
+            252, 99, 79, 202, 196, 172, 221, 165, 185, 102, 157, 2, 138, 233, 164, 206, 12, 190,
+            105, 151, 33, 188, 56, 174, 71, 247, 128, 73, 65, 229, 5, 255, 109, 38, 200, 171, 49,
+            217, 232, 7, 43, 92, 24, 183, 67, 19, 149, 159, 238, 44, 198, 248, 69, 162, 34, 244,
+            203, 26, 101, 100, 143, 241, 187, 210, 126, 131, 87, 50, 59, 179, 32, 197, 55, 70, 113,
+            115, 82, 125, 64, 37, 230, 251, 184, 211, 47, 110, 133, 83, 72, 116, 68, 124, 156, 195,
+            89, 216, 178, 182, 45, 191, 114, 1, 228, 250, 30, 61, 189, 231, 27, 57, 235, 181, 11,
+            29, 239, 194, 40, 84, 160, 209, 106, 4, 205, 249, 74, 111, 9, 8, 81, 240, 173, 16, 154,
+            48, 46, 90, 54, 17, 166, 25, 225, 66, 155, 103, 168, 53, 212, 214, 161, 13, 186, 122,
+            52, 152, 15, 199, 28, 20, 104, 58, 253, 208, 176, 0, 237, 96, 163, 246, 226, 146, 223,
+            175, 22, 39, 88, 95, 207, 234, 130, 63, 219, 23, 243, 180, 3, 193, 119, 144, 98, 51,
+            218, 139, 18, 85, 170, 117, 107, 6, 158, 177, 145, 141, 78, 169, 118, 242, 136, 134,
+            91, 140, 62, 127, 167, 135, 108, 213, 227, 153,
+        ];
+
+        let mut tree = RBtree::<u8, u8, 1, 1>::init_slice(vec.as_mut_slice()).unwrap();
         assert!(tree.is_empty());
 
-        assert_eq!(tree.insert(12, 32), Ok(None));
-        assert_eq!(tree.insert(32, 44), Ok(None));
-        assert_eq!(tree.insert(123, 321), Ok(None));
-        assert_eq!(tree.insert(14, 32), Ok(None));
-        assert_eq!(tree.insert(1, 2), Ok(None));
-        assert_eq!(tree.insert(2, 2), Ok(None));
-        assert_eq!(tree.insert(3, 2), Ok(None));
-        assert_eq!(tree.insert(4, 2), Ok(None));
-        assert_eq!(tree.insert(122, 321), Ok(None));
-        assert_eq!(tree.insert(18, 32), Ok(None));
+        for key in insert_keys.iter() {
+            assert_eq!(tree.insert(*key, *key), Ok(None));
+        }
 
-        dbg!(&tree);
+        let tmp_excluded = vec![
+            23,  // ЧК3 on 635
+            21,  // ЧК3 on 635
+            236, // ЧК3 on 635
+            41,  // unbalanced
+            42,  // unreachable on 699
+            76,  // ЧК3 on 635
+            222, // unbalanced
+            120, // ЧК3 on 635
+            14,  // unbalanced
+            36,  // unbalanced
+            35,  // unbalanced
+            79,  // unreachable on 699
+            202, // unbalanced
+            185, // unbalanced
+            164, // ЧК3 on 635
+            12,  // unbalanced
+            56,  // unbalanced
+            71,  // ЧК3 on 635
+            255, // ЧК4 on 617
+            109, // ЧК3 on 635
+            38,  // unreachable on 699
+            49,  // unbalanced
+            7,   // unreachable on 699
+            43,  // unbalanced
+            149, // ЧК3 on 717
+            49,  // unbalanced
+            44,  // unbalanced
+            248, // ЧК4 on 617
+            34,  // unreachable on 699
+            24,  // unreachable on 699
+            187, // unbalanced
+            126, // unreachable on 699
+            197, // unwrap on 405
+            251, // ЧК4 on 617
+            184, // unreachable on 699
+            178, // ЧК4 on 617
+            114, // ЧК3 on 717
+            250, // ЧК4 on 617
+            181, // ЧК3 on 635
+            11,  // unreachable on 699
+            29,  // ЧК3 on 635
+            205, // ЧК3 on 717
+            168, // unbalanced
+            214, // unbalanced
+            52,  // ЧК3 on 717
+            208, // unbalanced
+            144, // unbalanced
+            98,  // unwrap on 405
+            6,   // ЧК3 on 717
+            127, // unbalanced
+            135, // unbalanced
+            153, // unbalanced
+        ];
+        for key in insert_keys.iter() {
+            assert_eq!(tree.get(key), Some(*key));
+        }
 
-        //assert_eq!(tree.len(), 7);
+        //dbg!(&tree);
+
         tree.child_parent_link_test();
 
-        assert_rm(12, &mut tree); // right subtree
-        assert_rm(32, &mut tree);
-        assert_rm(123, &mut tree); // Inverse ЧЧ5
-        assert_rm(14, &mut tree);
-        assert_rm(1, &mut tree); // right subtree
-        assert_rm(3, &mut tree);
-        assert_rm(4, &mut tree);
-        assert_rm(2, &mut tree);
-        assert!(tree.is_empty());
+        let mut len = insert_keys.len();
+        assert_eq!(tree.len(), len);
+        for key in insert_keys.iter().filter(|x| !tmp_excluded.contains(x)) {
+            assert_rm(*key, &mut tree);
+            len -= 1;
+            //assert_eq!(tree.len(), len);
+        }
     }
 
     fn create_vec(k_size: usize, v_size: usize, num_entries: usize) -> Vec<u8> {
