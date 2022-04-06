@@ -410,6 +410,18 @@ where
         self.nodes[h as usize].set_is_red(true);
 
         // fix parents
+        if let Some(parent_id) = self.nodes[h as usize].parent() {
+            let parent_node = &mut self.nodes[parent_id as usize];
+            if parent_node.left() == Some(h) {
+                parent_node.set_left(Some(x));
+            } else {
+                debug_assert_eq!(parent_node.right(), Some(h));
+
+                parent_node.set_right(Some(x));
+            }
+        } else {
+            self.header.set_root(Some(x));
+        }
         self.nodes[x as usize].set_parent(self.nodes[h as usize].parent());
         self.nodes[h as usize].set_parent(Some(x));
         if let Some(right) = self.nodes[h as usize].right() {
@@ -436,6 +448,18 @@ where
         self.nodes[h as usize].set_is_red(true);
 
         // fix parents
+        if let Some(parent_id) = self.nodes[h as usize].parent() {
+            let parent_node = &mut self.nodes[parent_id as usize];
+            if parent_node.left() == Some(h) {
+                parent_node.set_left(Some(x));
+            } else {
+                debug_assert_eq!(parent_node.right(), Some(h));
+
+                parent_node.set_right(Some(x));
+            }
+        } else {
+            self.header.set_root(Some(x));
+        }
         self.nodes[x as usize].set_parent(self.nodes[h as usize].parent());
         self.nodes[h as usize].set_parent(Some(x));
         if let Some(left) = self.nodes[h as usize].left() {
@@ -532,6 +556,8 @@ where
                         }
 
                         self.balance_subtree(parent_id as usize);
+                    } else {
+                        self.header.set_root(None);
                     }
 
                     self.deallocate_node(id);
@@ -565,17 +591,11 @@ where
 
     // id of the parent node of subtree to be balanced
     unsafe fn balance_subtree(&mut self, id: usize) {
-        #[cfg(test)]
-        {
-            dbg!(id);
-            self.child_parent_link_test();
-        }
-
         let left_child = self.nodes[id].left();
         let right_child = self.nodes[id].right();
-        let left_size = self.size(left_child);
-        let right_size = self.size(right_child);
-        match left_size.cmp(&right_size) {
+        let left_depth = dbg!(self.black_depth(left_child));
+        let right_depth = dbg!(self.black_depth(right_child));
+        match left_depth.cmp(&right_depth) {
             Ordering::Greater => {
                 let left_id = left_child.unwrap() as usize;
                 if self.nodes[id].is_red() {
@@ -598,7 +618,31 @@ where
                     }
                 } else {
                     if self.nodes[left_id].is_red() {
-                        unimplemented!();
+                        debug_assert!(!self.is_red(self.nodes[left_id].left()));
+                        debug_assert!(!self.is_red(self.nodes[left_id].right()));
+                        // FIXME: Why unwrap?
+                        let right_grandchild = self.nodes[left_id].right().unwrap() as usize;
+                        let left_grandgrandchild = self.nodes[right_grandchild].left();
+                        let right_grandgrandchild = self.nodes[right_grandchild].right();
+
+                        match (
+                            self.is_red(left_grandgrandchild),
+                            self.is_red(right_grandgrandchild),
+                        ) {
+                            (false, false) => {
+                                self.nodes[left_id].set_is_red(false);
+                                self.rotate_right(id as u32);
+                                unimplemented!("ЧК3");
+                            }
+                            (true, _) => {
+                                self.rotate_left(left_id as u32);
+                                self.rotate_left(id as u32);
+                                unimplemented!("ЧК4");
+                            }
+                            (false, true) => {
+                                unreachable!("Or not?");
+                            }
+                        }
                     } else {
                         let left_grandchild = self.nodes[left_id].left();
                         let right_grandchild = self.nodes[left_id].right();
@@ -606,31 +650,49 @@ where
                         match (self.is_red(left_grandchild), self.is_red(right_grandchild)) {
                             (false, false) => {
                                 self.nodes[left_id].set_is_red(true);
-                                self.balance_subtree(self.nodes[id].parent().unwrap() as usize);
-                            },
+                                if let Some(parent_id) = self.nodes[id].parent() {
+                                    self.balance_subtree(parent_id as usize);
+                                }
+                            }
                             (_, true) => {
                                 self.nodes[right_grandchild.unwrap() as usize].set_is_red(false);
                                 self.rotate_left(left_id as u32);
-                                self.rotate_left(id as u32);
-                            },
+                                self.rotate_right(id as u32);
+                            }
                             (true, false) => {
-                                unimplemented!();
-                            },
+                                //dbg!(left_grandchild, self.nodes[left_grandchild.unwrap() as usize]);
+                                //dbg!(left_id, self.nodes[left_id]);
+                                //dbg!(id, self.nodes[id]);
+                                self.nodes[left_grandchild.unwrap() as usize].set_is_red(false);
+                                self.rotate_right(id as u32);
+                                self.nodes[id].set_is_red(false);
+                                dbg!(
+                                    left_grandchild,
+                                    self.nodes[left_grandchild.unwrap() as usize]
+                                );
+                                dbg!(left_id, self.nodes[left_id]);
+                                dbg!(id, self.nodes[id]);
+                                //todo!("Inverse ЧЧ5");
+                            }
                         }
                     }
                 }
-            },
+            }
             Ordering::Less => {
-                unimplemented!();
-            },
-            Ordering::Equal => unreachable!("balance_subtree() should only be called in non ballanced situations. It could be a signa, that the tree was no prewiously balanced."),
+                unimplemented!("Balance right subtree");
+            }
+            Ordering::Equal => {
+                eprintln!("Called balance_subtree on already balanced tree.");
+                dbg!(self.nodes[id]);
+                //unreachable!("balance_subtree() should only be called on non ballanced trees. It could be a sign, that the tree was not previously balanced.");
+            }
         }
     }
 
     #[cfg(test)]
     fn child_parent_link_test(&self) {
         if let Some(id) = self.header.root() {
-            //println!("Testing root id={}", id);
+            println!("Testing root id={}", id);
             assert_eq!(self.nodes[id as usize].parent(), None);
             self.node_link_test(id as usize);
         }
@@ -640,15 +702,32 @@ where
     fn node_link_test(&self, id: usize) {
         if let Some(left_id) = self.nodes[id].left() {
             assert_eq!(self.nodes[left_id as usize].parent(), Some(id as u32));
-            //println!("Testing left sub_tree of id={}", left_id);
+            println!("Testing left sub_tree of id={}", left_id);
             self.node_link_test(left_id as usize);
         }
 
         if let Some(right_id) = self.nodes[id].right() {
             assert_eq!(self.nodes[right_id as usize].parent(), Some(id as u32));
-            //println!("Testing right sub_tree of id={}", right_id);
+            println!("Testing right sub_tree of id={}", right_id);
             self.node_link_test(right_id as usize);
         }
+    }
+
+    fn black_depth(&self, mut maybe_id: Option<u32>) -> usize {
+        let mut depth = 0;
+        while let Some(id) = maybe_id {
+            if !self.nodes[id as usize].is_red() {
+                depth += 1;
+            }
+            maybe_id = self.nodes[id as usize].left();
+        }
+        depth
+    }
+
+    unsafe fn fix_size(&mut self, id: usize) {
+        self.nodes[id].set_size(
+            (self.size(self.nodes[id].left()) + self.size(self.nodes[id].right())) as u32,
+        );
     }
 }
 
@@ -673,7 +752,7 @@ where
         self.node_balanced(self.header.root(), black)
     }
 
-    fn node_balanced(&self, maybe_id: Option<u32>, black: u32) -> bool {
+    fn node_balanced(&self, maybe_id: Option<u32>, black: i32) -> bool {
         if let Some(id) = maybe_id {
             let id = id as usize;
             if self.nodes[id].is_red() {
@@ -1030,7 +1109,7 @@ mod tests {
     #[test]
     #[ignore]
     fn delete() {
-        let mut vec = create_vec(4, 4, 5);
+        let mut vec = create_vec(4, 4, 20);
 
         let mut tree = RBtree::<i32, u32, 4, 4>::init_slice(vec.as_mut_slice()).unwrap();
         assert!(tree.is_empty());
@@ -1040,17 +1119,25 @@ mod tests {
         assert_eq!(tree.insert(123, 321), Ok(None));
         assert_eq!(tree.insert(14, 32), Ok(None));
         assert_eq!(tree.insert(1, 2), Ok(None));
+        assert_eq!(tree.insert(2, 2), Ok(None));
+        assert_eq!(tree.insert(3, 2), Ok(None));
+        assert_eq!(tree.insert(4, 2), Ok(None));
+        assert_eq!(tree.insert(122, 321), Ok(None));
+        assert_eq!(tree.insert(18, 32), Ok(None));
 
         dbg!(&tree);
 
-        assert_eq!(tree.len(), 5);
+        //assert_eq!(tree.len(), 7);
         tree.child_parent_link_test();
 
-        assert_rm(12, &mut tree, 4); // Not implemented
-        assert_rm(32, &mut tree, 3);
-        assert_rm(123, &mut tree, 2); // Not implemented
-        assert_rm(14, &mut tree, 1);
-        assert_rm(1, &mut tree, 0);
+        assert_rm(12, &mut tree); // right subtree
+        assert_rm(32, &mut tree);
+        assert_rm(123, &mut tree); // Inverse ЧЧ5
+        assert_rm(14, &mut tree);
+        assert_rm(1, &mut tree); // right subtree
+        assert_rm(3, &mut tree);
+        assert_rm(4, &mut tree);
+        assert_rm(2, &mut tree);
         assert!(tree.is_empty());
     }
 
@@ -1063,7 +1150,6 @@ mod tests {
     fn assert_rm<'a, K, V, const KSIZE: usize, const VSIZE: usize>(
         val: K,
         tree: &mut RBtree<'a, K, V, KSIZE, VSIZE>,
-        size: usize,
     ) where
         K: Eq + Ord + BorshDeserialize + BorshSerialize + Debug,
         V: Eq + BorshDeserialize + BorshSerialize + Debug,
@@ -1075,6 +1161,5 @@ mod tests {
         tree.child_parent_link_test();
         assert_eq!(tree.get_key_index(&val), None);
         assert!(tree.is_balanced());
-        //assert_eq!(tree.len(), size);
     }
 }
