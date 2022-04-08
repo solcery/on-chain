@@ -37,7 +37,7 @@ where
 
         let (header, nodes) = slice.split_at_mut(mem::size_of::<Header>());
 
-        if nodes.len() == 0 {
+        if nodes.is_empty() {
             return Err(Error::TooSmall);
         }
 
@@ -72,6 +72,7 @@ where
         })
     }
 
+    #[must_use]
     pub fn expected_size(k_size: usize, v_size: usize, num_entries: usize) -> usize {
         mem::size_of::<Header>() + (mem::size_of::<Node<0, 0>>() + k_size + v_size) * num_entries
     }
@@ -83,7 +84,7 @@ where
 
         let (header, nodes) = slice.split_at_mut(mem::size_of::<Header>());
 
-        if nodes.len() == 0 {
+        if nodes.is_empty() {
             return Err(Error::TooSmall);
         }
 
@@ -115,6 +116,7 @@ where
         })
     }
 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.size(self.header.root())
     }
@@ -174,16 +176,15 @@ where
                     self.header.set_root(Some(id));
                     self.nodes[id as usize].set_is_red(false);
                 }
-                return Ok(old_val);
+                Ok(old_val)
             }
-            Err(e) => {
-                return Err(e);
-            }
+            Err(e) => Err(e),
         }
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
-        !self.header.root().is_some()
+        self.header.root().is_none()
     }
 
     pub fn remove<Q>(&mut self, key: &Q) -> Option<V>
@@ -224,11 +225,8 @@ where
         Q: Ord + ?Sized,
     {
         self.get_key_index(key)
-            .map(|id| {
-                unsafe {
-                    self.delete_node(id);
-                }
-                ()
+            .map(|id| unsafe {
+                self.delete_node(id);
             })
             .is_some()
     }
@@ -479,7 +477,7 @@ where
                     self.deallocate_node(left_id);
                 }
 
-                return left_id;
+                left_id
             }
             (None, Some(right)) => {
                 let right_id = right as usize;
@@ -495,7 +493,7 @@ where
                     self.deallocate_node(right_id);
                 }
 
-                return right_id;
+                right_id
             }
             (None, None) => {
                 if self.nodes[id].is_red() {
@@ -515,7 +513,7 @@ where
                         self.deallocate_node(id);
                     }
 
-                    return id;
+                    id
                 } else {
                     if let Some(parent_id) = self.nodes[id].parent() {
                         let parent_node = &mut self.nodes[parent_id as usize];
@@ -540,7 +538,7 @@ where
                         self.deallocate_node(id);
                     }
 
-                    return id;
+                    id
                 }
             }
         }
@@ -599,67 +597,63 @@ where
                             self.nodes[right_grandchild.unwrap() as usize].set_is_red(false);
                         },
                     }
+                } else if self.nodes[left_id].is_red() {
+                    debug_assert!(!self.is_red(self.nodes[left_id].left()));
+                    debug_assert!(!self.is_red(self.nodes[left_id].right()));
+                    // FIXME: Why unwrap?
+                    let right_grandchild = self.nodes[left_id].right().unwrap() as usize;
+                    let left_grandgrandchild = self.nodes[right_grandchild].left();
+                    let right_grandgrandchild = self.nodes[right_grandchild].right();
+
+                    match (
+                        self.is_red(left_grandgrandchild),
+                        self.is_red(right_grandgrandchild),
+                    ) {
+                        (false, false) => unsafe {
+                            self.rotate_right(id as u32);
+                            self.nodes[id].set_is_red(false);
+                            self.nodes[right_grandchild].set_is_red(true);
+                        },
+                        (true, _) => unsafe {
+                            self.rotate_left(left_id as u32);
+                            self.rotate_right(id as u32);
+                            // FIXME: document unwrap
+                            self.nodes[left_grandgrandchild.unwrap() as usize].set_is_red(false);
+                            self.nodes[right_grandchild].set_is_red(false);
+                            self.nodes[id].set_is_red(false);
+                        },
+                        (false, true) => unsafe {
+                            self.rotate_left(right_grandchild as u32);
+                            self.rotate_left(left_id as u32);
+                            self.rotate_right(id as u32);
+                            // FIXME: document unwrap
+                            self.nodes[right_grandgrandchild.unwrap() as usize].set_is_red(false);
+                            self.nodes[right_grandchild].set_is_red(false);
+                            self.nodes[id].set_is_red(false);
+                        },
+                    }
                 } else {
-                    if self.nodes[left_id].is_red() {
-                        debug_assert!(!self.is_red(self.nodes[left_id].left()));
-                        debug_assert!(!self.is_red(self.nodes[left_id].right()));
-                        // FIXME: Why unwrap?
-                        let right_grandchild = self.nodes[left_id].right().unwrap() as usize;
-                        let left_grandgrandchild = self.nodes[right_grandchild].left();
-                        let right_grandgrandchild = self.nodes[right_grandchild].right();
+                    let left_grandchild = self.nodes[left_id].left();
+                    let right_grandchild = self.nodes[left_id].right();
 
-                        match (
-                            self.is_red(left_grandgrandchild),
-                            self.is_red(right_grandgrandchild),
-                        ) {
-                            (false, false) => unsafe {
-                                self.rotate_right(id as u32);
-                                self.nodes[id].set_is_red(false);
-                                self.nodes[right_grandchild].set_is_red(true);
-                            },
-                            (true, _) => unsafe {
-                                self.rotate_left(left_id as u32);
-                                self.rotate_right(id as u32);
-                                // FIXME: document unwrap
-                                self.nodes[left_grandgrandchild.unwrap() as usize]
-                                    .set_is_red(false);
-                                self.nodes[right_grandchild].set_is_red(false);
-                                self.nodes[id].set_is_red(false);
-                            },
-                            (false, true) => unsafe {
-                                self.rotate_left(right_grandchild as u32);
-                                self.rotate_left(left_id as u32);
-                                self.rotate_right(id as u32);
-                                // FIXME: document unwrap
-                                self.nodes[right_grandgrandchild.unwrap() as usize]
-                                    .set_is_red(false);
-                                self.nodes[right_grandchild].set_is_red(false);
-                                self.nodes[id].set_is_red(false);
-                            },
-                        }
-                    } else {
-                        let left_grandchild = self.nodes[left_id].left();
-                        let right_grandchild = self.nodes[left_id].right();
-
-                        match (self.is_red(left_grandchild), self.is_red(right_grandchild)) {
-                            (false, false) => unsafe {
-                                self.nodes[left_id].set_is_red(true);
-                                if let Some(parent_id) = self.nodes[id].parent() {
-                                    self.balance_subtree(parent_id as usize);
-                                }
-                            },
-                            (_, true) => unsafe {
-                                self.rotate_left(left_id as u32);
-                                self.rotate_right(id as u32);
-                                self.nodes[left_id].set_is_red(false);
-                                self.nodes[id].set_is_red(false);
-                            },
-                            (true, false) => unsafe {
-                                self.nodes[left_grandchild.unwrap() as usize].set_is_red(false);
-                                self.rotate_right(id as u32);
-                                self.nodes[id].set_is_red(false);
-                            },
-                        }
+                    match (self.is_red(left_grandchild), self.is_red(right_grandchild)) {
+                        (false, false) => unsafe {
+                            self.nodes[left_id].set_is_red(true);
+                            if let Some(parent_id) = self.nodes[id].parent() {
+                                self.balance_subtree(parent_id as usize);
+                            }
+                        },
+                        (_, true) => unsafe {
+                            self.rotate_left(left_id as u32);
+                            self.rotate_right(id as u32);
+                            self.nodes[left_id].set_is_red(false);
+                            self.nodes[id].set_is_red(false);
+                        },
+                        (true, false) => unsafe {
+                            self.nodes[left_grandchild.unwrap() as usize].set_is_red(false);
+                            self.rotate_right(id as u32);
+                            self.nodes[id].set_is_red(false);
+                        },
                     }
                 }
             }
@@ -687,67 +681,63 @@ where
                             self.nodes[left_grandchild.unwrap() as usize].set_is_red(false);
                         },
                     }
+                } else if self.nodes[right_id].is_red() {
+                    debug_assert!(!self.is_red(self.nodes[right_id].right()));
+                    debug_assert!(!self.is_red(self.nodes[right_id].left()));
+                    // FIXME: Why unwrap?
+                    let left_grandchild = self.nodes[right_id].left().unwrap() as usize;
+                    let right_grandgrandchild = self.nodes[left_grandchild].right();
+                    let left_grandgrandchild = self.nodes[left_grandchild].left();
+
+                    match (
+                        self.is_red(right_grandgrandchild),
+                        self.is_red(left_grandgrandchild),
+                    ) {
+                        (false, false) => unsafe {
+                            self.rotate_left(id as u32);
+                            self.nodes[id].set_is_red(false);
+                            self.nodes[left_grandchild].set_is_red(true);
+                        },
+                        (true, _) => unsafe {
+                            self.rotate_right(right_id as u32);
+                            self.rotate_left(id as u32);
+                            // FIXME: document unwrap
+                            self.nodes[right_grandgrandchild.unwrap() as usize].set_is_red(false);
+                            self.nodes[left_grandchild].set_is_red(false);
+                            self.nodes[id].set_is_red(false);
+                        },
+                        (false, true) => unsafe {
+                            self.rotate_right(left_grandchild as u32);
+                            self.rotate_right(right_id as u32);
+                            self.rotate_left(id as u32);
+                            // FIXME: document unwrap
+                            self.nodes[left_grandgrandchild.unwrap() as usize].set_is_red(false);
+                            self.nodes[left_grandchild].set_is_red(false);
+                            self.nodes[id].set_is_red(false);
+                        },
+                    }
                 } else {
-                    if self.nodes[right_id].is_red() {
-                        debug_assert!(!self.is_red(self.nodes[right_id].right()));
-                        debug_assert!(!self.is_red(self.nodes[right_id].left()));
-                        // FIXME: Why unwrap?
-                        let left_grandchild = self.nodes[right_id].left().unwrap() as usize;
-                        let right_grandgrandchild = self.nodes[left_grandchild].right();
-                        let left_grandgrandchild = self.nodes[left_grandchild].left();
+                    let right_grandchild = self.nodes[right_id].right();
+                    let left_grandchild = self.nodes[right_id].left();
 
-                        match (
-                            self.is_red(right_grandgrandchild),
-                            self.is_red(left_grandgrandchild),
-                        ) {
-                            (false, false) => unsafe {
-                                self.rotate_left(id as u32);
-                                self.nodes[id].set_is_red(false);
-                                self.nodes[left_grandchild].set_is_red(true);
-                            },
-                            (true, _) => unsafe {
-                                self.rotate_right(right_id as u32);
-                                self.rotate_left(id as u32);
-                                // FIXME: document unwrap
-                                self.nodes[right_grandgrandchild.unwrap() as usize]
-                                    .set_is_red(false);
-                                self.nodes[left_grandchild].set_is_red(false);
-                                self.nodes[id].set_is_red(false);
-                            },
-                            (false, true) => unsafe {
-                                self.rotate_right(left_grandchild as u32);
-                                self.rotate_right(right_id as u32);
-                                self.rotate_left(id as u32);
-                                // FIXME: document unwrap
-                                self.nodes[left_grandgrandchild.unwrap() as usize]
-                                    .set_is_red(false);
-                                self.nodes[left_grandchild].set_is_red(false);
-                                self.nodes[id].set_is_red(false);
-                            },
-                        }
-                    } else {
-                        let right_grandchild = self.nodes[right_id].right();
-                        let left_grandchild = self.nodes[right_id].left();
-
-                        match (self.is_red(right_grandchild), self.is_red(left_grandchild)) {
-                            (false, false) => unsafe {
-                                self.nodes[right_id].set_is_red(true);
-                                if let Some(parent_id) = self.nodes[id].parent() {
-                                    self.balance_subtree(parent_id as usize);
-                                }
-                            },
-                            (_, true) => unsafe {
-                                self.rotate_right(right_id as u32);
-                                self.rotate_left(id as u32);
-                                self.nodes[right_id].set_is_red(false);
-                                self.nodes[id].set_is_red(false);
-                            },
-                            (true, false) => unsafe {
-                                self.nodes[right_grandchild.unwrap() as usize].set_is_red(false);
-                                self.rotate_left(id as u32);
-                                self.nodes[id].set_is_red(false);
-                            },
-                        }
+                    match (self.is_red(right_grandchild), self.is_red(left_grandchild)) {
+                        (false, false) => unsafe {
+                            self.nodes[right_id].set_is_red(true);
+                            if let Some(parent_id) = self.nodes[id].parent() {
+                                self.balance_subtree(parent_id as usize);
+                            }
+                        },
+                        (_, true) => unsafe {
+                            self.rotate_right(right_id as u32);
+                            self.rotate_left(id as u32);
+                            self.nodes[right_id].set_is_red(false);
+                            self.nodes[id].set_is_red(false);
+                        },
+                        (true, false) => unsafe {
+                            self.nodes[right_grandchild.unwrap() as usize].set_is_red(false);
+                            self.rotate_left(id as u32);
+                            self.nodes[id].set_is_red(false);
+                        },
                     }
                 }
             }
@@ -1223,11 +1213,11 @@ mod tests {
         let mut tree = RBtree::<u8, u8, 1, 1>::init_slice(vec.as_mut_slice()).unwrap();
         assert!(tree.is_empty());
 
-        for key in insert_keys.iter() {
+        for key in &insert_keys {
             assert_eq!(tree.insert(*key, *key), Ok(None));
         }
 
-        for key in insert_keys.iter() {
+        for key in &insert_keys {
             assert_eq!(tree.get(key), Some(*key));
         }
 
@@ -1235,8 +1225,8 @@ mod tests {
 
         let mut len = insert_keys.len();
         assert_eq!(tree.len(), len);
-        for key in insert_keys.iter() {
-            assert_rm(*key, &mut tree);
+        for key in &insert_keys {
+            assert_rm(key, &mut tree);
             len -= 1;
             assert_eq!(tree.len(), len);
         }
@@ -1248,19 +1238,19 @@ mod tests {
         vec![0; len]
     }
 
-    fn assert_rm<'a, K, V, const KSIZE: usize, const VSIZE: usize>(
-        val: K,
-        tree: &mut RBtree<'a, K, V, KSIZE, VSIZE>,
+    fn assert_rm<K, V, const KSIZE: usize, const VSIZE: usize>(
+        val: &K,
+        tree: &mut RBtree<K, V, KSIZE, VSIZE>,
     ) where
         K: Eq + Ord + BorshDeserialize + BorshSerialize + Debug,
         V: Eq + BorshDeserialize + BorshSerialize + Debug,
     {
-        dbg!(&val);
+        dbg!(val);
         assert!(tree.is_balanced());
-        assert!(tree.contains_key(&val));
-        assert!(tree.remove_entry(&val).is_some());
+        assert!(tree.contains_key(val));
+        assert!(tree.remove_entry(val).is_some());
         tree.child_parent_link_test();
-        assert_eq!(tree.get_key_index(&val), None);
+        assert_eq!(tree.get_key_index(val), None);
         assert!(tree.is_balanced());
     }
 }

@@ -53,11 +53,11 @@ impl Header {
         match root {
             Some(idx) => {
                 self.root = u32::to_be_bytes(idx);
-                self.flags = self.flags | 0b0001;
+                self.flags |= 0b0001;
             }
             None => {
                 // All flags but 0th will remain the same, which will be set to 0.
-                self.flags = self.flags & 0b1110;
+                self.flags &= 0b1110;
             }
         }
     }
@@ -67,11 +67,11 @@ impl Header {
         match head {
             Some(idx) => {
                 self.head = u32::to_be_bytes(idx);
-                self.flags = self.flags | 0b0010;
+                self.flags |= 0b0010;
             }
             None => {
                 // All flags but 1st will remain the same, which will be set to 0.
-                self.flags = self.flags & 0b1101;
+                self.flags &= 0b1101;
             }
         }
     }
@@ -110,7 +110,7 @@ impl Header {
 
         let root = match root {
             Some(index) => {
-                flags = flags | 0b01;
+                flags |= 0b01;
                 u32::to_be_bytes(index)
             }
             None => u32::to_be_bytes(0),
@@ -118,7 +118,7 @@ impl Header {
 
         let head = match head {
             Some(index) => {
-                flags = flags | 0b10;
+                flags |= 0b10;
                 u32::to_be_bytes(index)
             }
             None => u32::to_be_bytes(0),
@@ -128,8 +128,8 @@ impl Header {
             v_size,
             max_nodes,
             root,
-            head,
             flags,
+            head,
         }
     }
 }

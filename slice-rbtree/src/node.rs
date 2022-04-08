@@ -60,11 +60,11 @@ impl<const KSIZE: usize, const VSIZE: usize> Node<KSIZE, VSIZE> {
         match left {
             Some(idx) => {
                 self.left = u32::to_be_bytes(idx);
-                self.flags = self.flags | 0b0001;
+                self.flags |= 0b0001;
             }
             None => {
                 // All flags but 0th will remain the same, which will be set to 0.
-                self.flags = self.flags & 0b1110;
+                self.flags &= 0b1110;
             }
         }
     }
@@ -74,11 +74,11 @@ impl<const KSIZE: usize, const VSIZE: usize> Node<KSIZE, VSIZE> {
         match right {
             Some(idx) => {
                 self.right = u32::to_be_bytes(idx);
-                self.flags = self.flags | 0b0010;
+                self.flags |= 0b0010;
             }
             None => {
                 // All flags but 1st will remain the same, which will be set to 0.
-                self.flags = self.flags & 0b1101;
+                self.flags &= 0b1101;
             }
         }
     }
@@ -88,20 +88,20 @@ impl<const KSIZE: usize, const VSIZE: usize> Node<KSIZE, VSIZE> {
         match parent {
             Some(idx) => {
                 self.parent = u32::to_be_bytes(idx);
-                self.flags = self.flags | 0b0100;
+                self.flags |= 0b0100;
             }
             None => {
                 // All flags but 2nd will remain the same, which will be set to 0.
-                self.flags = self.flags & 0b1011;
+                self.flags &= 0b1011;
             }
         }
     }
 
     pub unsafe fn set_is_red(&mut self, is_red: bool) {
         if is_red {
-            self.flags = self.flags | 0b1000;
+            self.flags |= 0b1000;
         } else {
-            self.flags = self.flags & 0b0111;
+            self.flags &= 0b0111;
         }
     }
 
@@ -132,7 +132,7 @@ impl<const KSIZE: usize, const VSIZE: usize> Node<KSIZE, VSIZE> {
 
         let left = match left {
             Some(index) => {
-                flags = flags | 0b0001;
+                flags |= 0b0001;
                 u32::to_be_bytes(index)
             }
             None => u32::to_be_bytes(0),
@@ -140,7 +140,7 @@ impl<const KSIZE: usize, const VSIZE: usize> Node<KSIZE, VSIZE> {
 
         let right = match right {
             Some(index) => {
-                flags = flags | 0b0010;
+                flags |= 0b0010;
                 u32::to_be_bytes(index)
             }
             None => u32::to_be_bytes(0),
@@ -148,14 +148,14 @@ impl<const KSIZE: usize, const VSIZE: usize> Node<KSIZE, VSIZE> {
 
         let parent = match parent {
             Some(index) => {
-                flags = flags | 0b0100;
+                flags |= 0b0100;
                 u32::to_be_bytes(index)
             }
             None => u32::to_be_bytes(0),
         };
 
         if is_red {
-            flags = flags | 0b1000;
+            flags |= 0b1000;
         }
 
         Self {
@@ -219,7 +219,7 @@ mod node_tests {
                 assert_eq!(node.left(), None);
                 assert_eq!(node.right(), None);
                 assert_eq!(node.parent(), None);
-                assert_eq!(node.is_red(), false);
+                assert!(!node.is_red());
             }
         };
     }
@@ -239,7 +239,7 @@ mod node_tests {
         assert_eq!(node.left(), None);
         assert_eq!(node.right(), None);
         assert_eq!(node.parent(), Some(1));
-        assert_eq!(node.is_red(), true);
+        assert!(node.is_red());
 
         unsafe {
             node.init_node(None);
@@ -247,7 +247,7 @@ mod node_tests {
         assert_eq!(node.left(), None);
         assert_eq!(node.right(), None);
         assert_eq!(node.parent(), None);
-        assert_eq!(node.is_red(), true);
+        assert!(node.is_red());
 
         unsafe {
             node.init_node(Some(54));
@@ -255,6 +255,6 @@ mod node_tests {
         assert_eq!(node.left(), None);
         assert_eq!(node.right(), None);
         assert_eq!(node.parent(), Some(54));
-        assert_eq!(node.is_red(), true);
+        assert!(node.is_red());
     }
 }
