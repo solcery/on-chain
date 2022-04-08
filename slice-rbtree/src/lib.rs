@@ -71,6 +71,10 @@ where
         })
     }
 
+    pub fn expected_size(k_size: usize, v_size: usize, num_entries: usize) -> usize {
+        mem::size_of::<Header>() + (mem::size_of::<Node<0, 0>>() + k_size + v_size) * num_entries
+    }
+
     pub unsafe fn from_slice(slice: &'a mut [u8]) -> Result<Self, Error> {
         if slice.len() <= mem::size_of::<Header>() {
             return Err(Error::TooSmall);
@@ -108,41 +112,6 @@ where
 
     pub fn len(&self) -> usize {
         self.size(self.header.root())
-    }
-
-    /// Deallocates a node
-    ///
-    /// # Safety
-    ///
-    /// This function does nothing but deallocation. It should be checked, that the node is
-    /// completely unlinked from the tree.
-    unsafe fn deallocate_node(&mut self, index: usize) {
-        let allocator_head = self.header.head();
-        let node_index = Some(index as u32);
-
-        self.nodes[index].set_parent(allocator_head);
-        self.header.set_head(node_index);
-    }
-
-    /// Allocates a node
-    ///
-    /// # Safety
-    ///
-    /// This function does nothing but allocation. The returned node (if present) is
-    /// completely unlinked from the tree and is in the unknown state. The caller must fill the
-    /// node with correct data.
-    fn allocate_node(&mut self) -> Option<usize> {
-        let allocator_head = self.header.head();
-        match allocator_head {
-            Some(index) => {
-                let new_head = self.nodes[index as usize].parent();
-                unsafe {
-                    self.header.set_head(new_head);
-                }
-                Some(index as usize)
-            }
-            None => None,
-        }
     }
 
     pub fn clear(&mut self) {
@@ -217,7 +186,13 @@ where
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
-        self.remove_entry(key).map(|(_, v)| v)
+        self.get_key_index(key).map(|id| {
+            let deallocated_node_id = unsafe { self.delete_node(id) };
+
+            let value =
+                V::deserialize(&mut self.nodes[deallocated_node_id].value.as_slice()).unwrap();
+            value
+        })
     }
 
     pub fn remove_entry<Q>(&mut self, key: &Q) -> Option<(K, V)>
@@ -225,10 +200,14 @@ where
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
-        match self.get_key_index(key) {
-            Some(id) => unsafe { self.delete_node(id) },
-            None => None,
-        }
+        self.get_key_index(key).map(|id| {
+            let deallocated_node_id = unsafe { self.delete_node(id) };
+
+            let key = K::deserialize(&mut self.nodes[deallocated_node_id].key.as_slice()).unwrap();
+            let value =
+                V::deserialize(&mut self.nodes[deallocated_node_id].value.as_slice()).unwrap();
+            (key, value)
+        })
     }
 
     /// Deletes entry without deserializing the value.
@@ -239,7 +218,14 @@ where
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
-        unimplemented!();
+        self.get_key_index(key)
+            .map(|id| {
+                unsafe {
+                    self.delete_node(id);
+                }
+                ()
+            })
+            .is_some()
     }
 
     fn size(&self, maybe_id: Option<u32>) -> usize {
@@ -456,7 +442,7 @@ where
         x
     }
 
-    unsafe fn delete_node<Q>(&mut self, mut id: usize) -> Option<(K, V)>
+    unsafe fn delete_node<Q>(&mut self, mut id: usize) -> usize
     where
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
@@ -477,13 +463,10 @@ where
 
                 self.swap_nodes(id, left_id);
 
-                let key = K::deserialize(&mut self.nodes[left_id].key.as_slice()).unwrap();
-                let value = V::deserialize(&mut self.nodes[left_id].value.as_slice()).unwrap();
-
                 self.nodes[id].set_left(None);
                 self.deallocate_node(left_id);
 
-                return Some((key, value));
+                return left_id;
             }
             (None, Some(right)) => {
                 let right_id = right as usize;
@@ -493,14 +476,11 @@ where
 
                 self.swap_nodes(id, right_id);
 
-                let key = K::deserialize(&mut self.nodes[right_id].key.as_slice()).unwrap();
-                let value = V::deserialize(&mut self.nodes[right_id].value.as_slice()).unwrap();
-
                 self.nodes[id].set_right(None);
 
                 self.deallocate_node(right_id);
 
-                return Some((key, value));
+                return right_id;
             }
             (None, None) => {
                 if self.nodes[id].is_red() {
@@ -516,16 +496,10 @@ where
                         parent_node.set_right(None);
                     }
 
-                    let key = K::deserialize(&mut self.nodes[id].key.as_slice()).unwrap();
-                    let value = V::deserialize(&mut self.nodes[id].value.as_slice()).unwrap();
-
                     self.deallocate_node(id);
 
-                    return Some((key, value));
+                    return id;
                 } else {
-                    let key = K::deserialize(&mut self.nodes[id].key.as_slice()).unwrap();
-                    let value = V::deserialize(&mut self.nodes[id].value.as_slice()).unwrap();
-
                     if let Some(parent_id) = self.nodes[id].parent() {
                         let parent_node = &mut self.nodes[parent_id as usize];
                         if parent_node.left() == Some(id as u32) {
@@ -543,7 +517,7 @@ where
 
                     self.deallocate_node(id);
 
-                    return Some((key, value));
+                    return id;
                 }
             }
         }
@@ -570,7 +544,6 @@ where
         self.nodes[b].value = tmp_value;
     }
 
-    // id of the parent node of subtree to be balanced
     unsafe fn balance_subtree(&mut self, id: usize) {
         let left_child = self.nodes[id].left();
         let right_child = self.nodes[id].right();
@@ -754,11 +727,20 @@ where
                 }
             }
             Ordering::Equal => {
-                eprintln!("Called balance_subtree on already balanced tree.");
-                dbg!(self.nodes[id]);
-                //unreachable!("balance_subtree() should only be called on non ballanced trees. It could be a sign, that the tree was not previously balanced.");
+                unreachable!("balance_subtree() should only be called on non ballanced trees. It could be a sign, that the tree was not previously balanced.");
             }
         }
+    }
+
+    fn black_depth(&self, mut maybe_id: Option<u32>) -> usize {
+        let mut depth = 0;
+        while let Some(id) = maybe_id {
+            if !self.nodes[id as usize].is_red() {
+                depth += 1;
+            }
+            maybe_id = self.nodes[id as usize].left();
+        }
+        depth
     }
 
     #[cfg(test)]
@@ -785,15 +767,39 @@ where
         }
     }
 
-    fn black_depth(&self, mut maybe_id: Option<u32>) -> usize {
-        let mut depth = 0;
-        while let Some(id) = maybe_id {
-            if !self.nodes[id as usize].is_red() {
-                depth += 1;
+    /// Deallocates a node
+    ///
+    /// # Safety
+    ///
+    /// This function does nothing but deallocation. It should be checked, that the node is
+    /// completely unlinked from the tree.
+    unsafe fn deallocate_node(&mut self, index: usize) {
+        let allocator_head = self.header.head();
+        let node_index = Some(index as u32);
+
+        self.nodes[index].set_parent(allocator_head);
+        self.header.set_head(node_index);
+    }
+
+    /// Allocates a node
+    ///
+    /// # Safety
+    ///
+    /// This function does nothing but allocation. The returned node (if present) is
+    /// completely unlinked from the tree and is in the unknown state. The caller must fill the
+    /// node with correct data.
+    fn allocate_node(&mut self) -> Option<usize> {
+        let allocator_head = self.header.head();
+        match allocator_head {
+            Some(index) => {
+                let new_head = self.nodes[index as usize].parent();
+                unsafe {
+                    self.header.set_head(new_head);
+                }
+                Some(index as usize)
             }
-            maybe_id = self.nodes[id as usize].left();
+            None => None,
         }
-        depth
     }
 }
 
