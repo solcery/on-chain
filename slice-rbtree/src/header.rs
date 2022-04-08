@@ -89,8 +89,10 @@ impl Header {
         self.v_size = u32::to_be_bytes(v_size);
         self.max_nodes = u32::to_be_bytes(max_nodes);
         self.flags = 0b00;
-        self.set_head(head);
-        self.set_root(root);
+        unsafe {
+            self.set_head(head);
+            self.set_root(root);
+        }
     }
 
     #[cfg(test)]

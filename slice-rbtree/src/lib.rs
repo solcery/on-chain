@@ -1,3 +1,4 @@
+#![deny(unsafe_op_in_unsafe_fn)]
 use borsh::{BorshDeserialize, BorshSerialize};
 use bytemuck::{cast_mut, cast_slice_mut};
 use std::borrow::Borrow;
@@ -100,6 +101,10 @@ where
 
         if header.v_size() as usize != VSIZE {
             return Err(Error::WrongValueSize);
+        }
+
+        if header.max_nodes() as usize != nodes.len() {
+            return Err(Error::WrongNodePoolSize);
         }
 
         Ok(Self {
@@ -385,28 +390,30 @@ where
     unsafe fn rotate_left(&mut self, h: u32) -> u32 {
         let x = self.nodes[h as usize].right().unwrap();
 
-        self.nodes[h as usize].set_right(self.nodes[x as usize].left());
-        self.nodes[x as usize].set_left(Some(h));
-        self.nodes[x as usize].set_is_red(self.nodes[h as usize].is_red());
-        self.nodes[h as usize].set_is_red(true);
+        unsafe {
+            self.nodes[h as usize].set_right(self.nodes[x as usize].left());
+            self.nodes[x as usize].set_left(Some(h));
+            self.nodes[x as usize].set_is_red(self.nodes[h as usize].is_red());
+            self.nodes[h as usize].set_is_red(true);
 
-        // fix parents
-        if let Some(parent_id) = self.nodes[h as usize].parent() {
-            let parent_node = &mut self.nodes[parent_id as usize];
-            if parent_node.left() == Some(h) {
-                parent_node.set_left(Some(x));
+            // fix parents
+            if let Some(parent_id) = self.nodes[h as usize].parent() {
+                let parent_node = &mut self.nodes[parent_id as usize];
+                if parent_node.left() == Some(h) {
+                    parent_node.set_left(Some(x));
+                } else {
+                    debug_assert_eq!(parent_node.right(), Some(h));
+
+                    parent_node.set_right(Some(x));
+                }
             } else {
-                debug_assert_eq!(parent_node.right(), Some(h));
-
-                parent_node.set_right(Some(x));
+                self.header.set_root(Some(x));
             }
-        } else {
-            self.header.set_root(Some(x));
-        }
-        self.nodes[x as usize].set_parent(self.nodes[h as usize].parent());
-        self.nodes[h as usize].set_parent(Some(x));
-        if let Some(right) = self.nodes[h as usize].right() {
-            self.nodes[right as usize].set_parent(Some(h));
+            self.nodes[x as usize].set_parent(self.nodes[h as usize].parent());
+            self.nodes[h as usize].set_parent(Some(x));
+            if let Some(right) = self.nodes[h as usize].right() {
+                self.nodes[right as usize].set_parent(Some(h));
+            }
         }
 
         x
@@ -415,28 +422,30 @@ where
     unsafe fn rotate_right(&mut self, h: u32) -> u32 {
         let x = self.nodes[h as usize].left().unwrap();
 
-        self.nodes[h as usize].set_left(self.nodes[x as usize].right());
-        self.nodes[x as usize].set_right(Some(h));
-        self.nodes[x as usize].set_is_red(self.nodes[h as usize].is_red());
-        self.nodes[h as usize].set_is_red(true);
+        unsafe {
+            self.nodes[h as usize].set_left(self.nodes[x as usize].right());
+            self.nodes[x as usize].set_right(Some(h));
+            self.nodes[x as usize].set_is_red(self.nodes[h as usize].is_red());
+            self.nodes[h as usize].set_is_red(true);
 
-        // fix parents
-        if let Some(parent_id) = self.nodes[h as usize].parent() {
-            let parent_node = &mut self.nodes[parent_id as usize];
-            if parent_node.left() == Some(h) {
-                parent_node.set_left(Some(x));
+            // fix parents
+            if let Some(parent_id) = self.nodes[h as usize].parent() {
+                let parent_node = &mut self.nodes[parent_id as usize];
+                if parent_node.left() == Some(h) {
+                    parent_node.set_left(Some(x));
+                } else {
+                    debug_assert_eq!(parent_node.right(), Some(h));
+
+                    parent_node.set_right(Some(x));
+                }
             } else {
-                debug_assert_eq!(parent_node.right(), Some(h));
-
-                parent_node.set_right(Some(x));
+                self.header.set_root(Some(x));
             }
-        } else {
-            self.header.set_root(Some(x));
-        }
-        self.nodes[x as usize].set_parent(self.nodes[h as usize].parent());
-        self.nodes[h as usize].set_parent(Some(x));
-        if let Some(left) = self.nodes[h as usize].left() {
-            self.nodes[left as usize].set_parent(Some(h));
+            self.nodes[x as usize].set_parent(self.nodes[h as usize].parent());
+            self.nodes[h as usize].set_parent(Some(x));
+            if let Some(left) = self.nodes[h as usize].left() {
+                self.nodes[left as usize].set_parent(Some(h));
+            }
         }
 
         x
@@ -448,7 +457,9 @@ where
         Q: Ord + ?Sized,
     {
         if self.nodes[id].left().is_some() && self.nodes[id].right().is_some() {
-            id = self.swap_max_left(id);
+            unsafe {
+                id = self.swap_max_left(id);
+            }
         }
 
         match (self.nodes[id].left(), self.nodes[id].right()) {
@@ -461,10 +472,12 @@ where
                 debug_assert!(!self.nodes[id].is_red());
                 debug_assert!(self.nodes[left_id].is_red());
 
-                self.swap_nodes(id, left_id);
+                unsafe {
+                    self.swap_nodes(id, left_id);
 
-                self.nodes[id].set_left(None);
-                self.deallocate_node(left_id);
+                    self.nodes[id].set_left(None);
+                    self.deallocate_node(left_id);
+                }
 
                 return left_id;
             }
@@ -474,11 +487,13 @@ where
                 debug_assert!(!self.nodes[id].is_red());
                 debug_assert!(self.nodes[right_id].is_red());
 
-                self.swap_nodes(id, right_id);
+                unsafe {
+                    self.swap_nodes(id, right_id);
 
-                self.nodes[id].set_right(None);
+                    self.nodes[id].set_right(None);
 
-                self.deallocate_node(right_id);
+                    self.deallocate_node(right_id);
+                }
 
                 return right_id;
             }
@@ -488,20 +503,7 @@ where
                     let parent_id = self.nodes[id].parent().unwrap();
                     let parent_node = &mut self.nodes[parent_id as usize];
 
-                    if parent_node.left() == Some(id as u32) {
-                        parent_node.set_left(None);
-                    } else {
-                        debug_assert_eq!(parent_node.right(), Some(id as u32));
-
-                        parent_node.set_right(None);
-                    }
-
-                    self.deallocate_node(id);
-
-                    return id;
-                } else {
-                    if let Some(parent_id) = self.nodes[id].parent() {
-                        let parent_node = &mut self.nodes[parent_id as usize];
+                    unsafe {
                         if parent_node.left() == Some(id as u32) {
                             parent_node.set_left(None);
                         } else {
@@ -510,12 +512,33 @@ where
                             parent_node.set_right(None);
                         }
 
-                        self.balance_subtree(parent_id as usize);
-                    } else {
-                        self.header.set_root(None);
+                        self.deallocate_node(id);
                     }
 
-                    self.deallocate_node(id);
+                    return id;
+                } else {
+                    if let Some(parent_id) = self.nodes[id].parent() {
+                        let parent_node = &mut self.nodes[parent_id as usize];
+                        unsafe {
+                            if parent_node.left() == Some(id as u32) {
+                                parent_node.set_left(None);
+                            } else {
+                                debug_assert_eq!(parent_node.right(), Some(id as u32));
+
+                                parent_node.set_right(None);
+                            }
+
+                            self.balance_subtree(parent_id as usize);
+                        }
+                    } else {
+                        unsafe {
+                            self.header.set_root(None);
+                        }
+                    }
+
+                    unsafe {
+                        self.deallocate_node(id);
+                    }
 
                     return id;
                 }
@@ -530,7 +553,9 @@ where
         }
 
         debug_assert_ne!(id, max_id);
-        self.swap_nodes(id, max_id);
+        unsafe {
+            self.swap_nodes(id, max_id);
+        }
         max_id
     }
 
@@ -557,22 +582,22 @@ where
                     let left_grandchild = self.nodes[left_id].left();
                     let right_grandchild = self.nodes[left_id].right();
                     match (self.is_red(left_grandchild), self.is_red(right_grandchild)) {
-                        (false, false) => {
+                        (false, false) => unsafe {
                             self.nodes[id].set_is_red(false);
                             self.nodes[left_id].set_is_red(true);
-                        }
-                        (true, _) => {
+                        },
+                        (true, _) => unsafe {
                             self.rotate_right(id as u32);
 
                             self.nodes[id].set_is_red(false);
                             self.nodes[left_id].set_is_red(true);
                             self.nodes[left_grandchild.unwrap() as usize].set_is_red(false);
-                        }
-                        (false, true) => {
+                        },
+                        (false, true) => unsafe {
                             self.rotate_left(left_id as u32);
                             self.rotate_right(id as u32);
                             self.nodes[right_grandchild.unwrap() as usize].set_is_red(false);
-                        }
+                        },
                     }
                 } else {
                     if self.nodes[left_id].is_red() {
@@ -587,12 +612,12 @@ where
                             self.is_red(left_grandgrandchild),
                             self.is_red(right_grandgrandchild),
                         ) {
-                            (false, false) => {
+                            (false, false) => unsafe {
                                 self.rotate_right(id as u32);
                                 self.nodes[id].set_is_red(false);
                                 self.nodes[right_grandchild].set_is_red(true);
-                            }
-                            (true, _) => {
+                            },
+                            (true, _) => unsafe {
                                 self.rotate_left(left_id as u32);
                                 self.rotate_right(id as u32);
                                 // FIXME: document unwrap
@@ -600,8 +625,8 @@ where
                                     .set_is_red(false);
                                 self.nodes[right_grandchild].set_is_red(false);
                                 self.nodes[id].set_is_red(false);
-                            }
-                            (false, true) => {
+                            },
+                            (false, true) => unsafe {
                                 self.rotate_left(right_grandchild as u32);
                                 self.rotate_left(left_id as u32);
                                 self.rotate_right(id as u32);
@@ -610,30 +635,30 @@ where
                                     .set_is_red(false);
                                 self.nodes[right_grandchild].set_is_red(false);
                                 self.nodes[id].set_is_red(false);
-                            }
+                            },
                         }
                     } else {
                         let left_grandchild = self.nodes[left_id].left();
                         let right_grandchild = self.nodes[left_id].right();
 
                         match (self.is_red(left_grandchild), self.is_red(right_grandchild)) {
-                            (false, false) => {
+                            (false, false) => unsafe {
                                 self.nodes[left_id].set_is_red(true);
                                 if let Some(parent_id) = self.nodes[id].parent() {
                                     self.balance_subtree(parent_id as usize);
                                 }
-                            }
-                            (_, true) => {
+                            },
+                            (_, true) => unsafe {
                                 self.rotate_left(left_id as u32);
                                 self.rotate_right(id as u32);
                                 self.nodes[left_id].set_is_red(false);
                                 self.nodes[id].set_is_red(false);
-                            }
-                            (true, false) => {
+                            },
+                            (true, false) => unsafe {
                                 self.nodes[left_grandchild.unwrap() as usize].set_is_red(false);
                                 self.rotate_right(id as u32);
                                 self.nodes[id].set_is_red(false);
-                            }
+                            },
                         }
                     }
                 }
@@ -645,22 +670,22 @@ where
                     let right_grandchild = self.nodes[right_id].right();
                     let left_grandchild = self.nodes[right_id].left();
                     match (self.is_red(right_grandchild), self.is_red(left_grandchild)) {
-                        (false, false) => {
+                        (false, false) => unsafe {
                             self.nodes[id].set_is_red(false);
                             self.nodes[right_id].set_is_red(true);
-                        }
-                        (true, _) => {
+                        },
+                        (true, _) => unsafe {
                             self.rotate_left(id as u32);
 
                             self.nodes[id].set_is_red(false);
                             self.nodes[right_id].set_is_red(true);
                             self.nodes[right_grandchild.unwrap() as usize].set_is_red(false);
-                        }
-                        (false, true) => {
+                        },
+                        (false, true) => unsafe {
                             self.rotate_right(right_id as u32);
                             self.rotate_left(id as u32);
                             self.nodes[left_grandchild.unwrap() as usize].set_is_red(false);
-                        }
+                        },
                     }
                 } else {
                     if self.nodes[right_id].is_red() {
@@ -675,12 +700,12 @@ where
                             self.is_red(right_grandgrandchild),
                             self.is_red(left_grandgrandchild),
                         ) {
-                            (false, false) => {
+                            (false, false) => unsafe {
                                 self.rotate_left(id as u32);
                                 self.nodes[id].set_is_red(false);
                                 self.nodes[left_grandchild].set_is_red(true);
-                            }
-                            (true, _) => {
+                            },
+                            (true, _) => unsafe {
                                 self.rotate_right(right_id as u32);
                                 self.rotate_left(id as u32);
                                 // FIXME: document unwrap
@@ -688,8 +713,8 @@ where
                                     .set_is_red(false);
                                 self.nodes[left_grandchild].set_is_red(false);
                                 self.nodes[id].set_is_red(false);
-                            }
-                            (false, true) => {
+                            },
+                            (false, true) => unsafe {
                                 self.rotate_right(left_grandchild as u32);
                                 self.rotate_right(right_id as u32);
                                 self.rotate_left(id as u32);
@@ -698,30 +723,30 @@ where
                                     .set_is_red(false);
                                 self.nodes[left_grandchild].set_is_red(false);
                                 self.nodes[id].set_is_red(false);
-                            }
+                            },
                         }
                     } else {
                         let right_grandchild = self.nodes[right_id].right();
                         let left_grandchild = self.nodes[right_id].left();
 
                         match (self.is_red(right_grandchild), self.is_red(left_grandchild)) {
-                            (false, false) => {
+                            (false, false) => unsafe {
                                 self.nodes[right_id].set_is_red(true);
                                 if let Some(parent_id) = self.nodes[id].parent() {
                                     self.balance_subtree(parent_id as usize);
                                 }
-                            }
-                            (_, true) => {
+                            },
+                            (_, true) => unsafe {
                                 self.rotate_right(right_id as u32);
                                 self.rotate_left(id as u32);
                                 self.nodes[right_id].set_is_red(false);
                                 self.nodes[id].set_is_red(false);
-                            }
-                            (true, false) => {
+                            },
+                            (true, false) => unsafe {
                                 self.nodes[right_grandchild.unwrap() as usize].set_is_red(false);
                                 self.rotate_left(id as u32);
                                 self.nodes[id].set_is_red(false);
-                            }
+                            },
                         }
                     }
                 }
@@ -777,8 +802,10 @@ where
         let allocator_head = self.header.head();
         let node_index = Some(index as u32);
 
-        self.nodes[index].set_parent(allocator_head);
-        self.header.set_head(node_index);
+        unsafe {
+            self.nodes[index].set_parent(allocator_head);
+            self.header.set_head(node_index);
+        }
     }
 
     /// Allocates a node
@@ -848,11 +875,15 @@ where
     }
 
     unsafe fn set_root(&mut self, root: Option<u32>) {
-        self.header.set_root(root);
+        unsafe {
+            self.header.set_root(root);
+        }
     }
 
     unsafe fn set_head(&mut self, head: Option<u32>) {
-        self.header.set_head(head);
+        unsafe {
+            self.header.set_head(head);
+        }
     }
 
     fn struct_eq(&self, other: &Self) -> bool {

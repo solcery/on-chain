@@ -112,7 +112,9 @@ impl<const KSIZE: usize, const VSIZE: usize> Node<KSIZE, VSIZE> {
         // parent = None
         // is_red = true
         self.flags = 0b1000;
-        self.set_parent(parent);
+        unsafe {
+            self.set_parent(parent);
+        }
         self.key.fill(0);
         self.value.fill(0);
     }
