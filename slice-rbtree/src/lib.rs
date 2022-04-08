@@ -614,7 +614,11 @@ where
                             self.nodes[left_id].set_is_red(true);
                             self.nodes[left_grandchild.unwrap() as usize].set_is_red(false);
                         }
-                        (false, true) => unimplemented!("reversed ЧК4"),
+                        (false, true) => {
+                            self.rotate_left(left_id as u32);
+                            self.rotate_right(id as u32);
+                            self.nodes[right_grandchild.unwrap() as usize].set_is_red(false);
+                        }
                     }
                 } else {
                     if self.nodes[left_id].is_red() {
@@ -630,17 +634,28 @@ where
                             self.is_red(right_grandgrandchild),
                         ) {
                             (false, false) => {
-                                self.nodes[left_id].set_is_red(false);
                                 self.rotate_right(id as u32);
-                                unimplemented!("ЧК3");
+                                self.nodes[id].set_is_red(false);
+                                self.nodes[right_grandchild].set_is_red(true);
                             }
                             (true, _) => {
                                 self.rotate_left(left_id as u32);
-                                self.rotate_left(id as u32);
-                                unimplemented!("ЧК4");
+                                self.rotate_right(id as u32);
+                                // FIXME: document unwrap
+                                self.nodes[left_grandgrandchild.unwrap() as usize]
+                                    .set_is_red(false);
+                                self.nodes[right_grandchild].set_is_red(false);
+                                self.nodes[id].set_is_red(false);
                             }
                             (false, true) => {
-                                unreachable!("Or not?");
+                                self.rotate_left(right_grandchild as u32);
+                                self.rotate_left(left_id as u32);
+                                self.rotate_right(id as u32);
+                                // FIXME: document unwrap
+                                self.nodes[right_grandgrandchild.unwrap() as usize]
+                                    .set_is_red(false);
+                                self.nodes[right_grandchild].set_is_red(false);
+                                self.nodes[id].set_is_red(false);
                             }
                         }
                     } else {
@@ -655,24 +670,15 @@ where
                                 }
                             }
                             (_, true) => {
-                                self.nodes[right_grandchild.unwrap() as usize].set_is_red(false);
                                 self.rotate_left(left_id as u32);
                                 self.rotate_right(id as u32);
+                                self.nodes[left_id].set_is_red(false);
+                                self.nodes[id].set_is_red(false);
                             }
                             (true, false) => {
-                                //dbg!(left_grandchild, self.nodes[left_grandchild.unwrap() as usize]);
-                                //dbg!(left_id, self.nodes[left_id]);
-                                //dbg!(id, self.nodes[id]);
                                 self.nodes[left_grandchild.unwrap() as usize].set_is_red(false);
                                 self.rotate_right(id as u32);
                                 self.nodes[id].set_is_red(false);
-                                //dbg!(
-                                //left_grandchild,
-                                //self.nodes[left_grandchild.unwrap() as usize]
-                                //);
-                                //dbg!(left_id, self.nodes[left_id]);
-                                //dbg!(id, self.nodes[id]);
-                                //todo!("Inverse ЧЧ5");
                             }
                         }
                     }
@@ -696,7 +702,11 @@ where
                             self.nodes[right_id].set_is_red(true);
                             self.nodes[right_grandchild.unwrap() as usize].set_is_red(false);
                         }
-                        (false, true) => unreachable!("Or not?"),
+                        (false, true) => {
+                            self.rotate_right(right_id as u32);
+                            self.rotate_left(id as u32);
+                            self.nodes[left_grandchild.unwrap() as usize].set_is_red(false);
+                        }
                     }
                 } else {
                     if self.nodes[right_id].is_red() {
@@ -712,17 +722,28 @@ where
                             self.is_red(left_grandgrandchild),
                         ) {
                             (false, false) => {
-                                self.nodes[right_id].set_is_red(false);
                                 self.rotate_left(id as u32);
-                                unimplemented!("ЧК3");
+                                self.nodes[id].set_is_red(false);
+                                self.nodes[left_grandchild].set_is_red(true);
                             }
                             (true, _) => {
                                 self.rotate_right(right_id as u32);
-                                self.rotate_right(id as u32);
-                                unimplemented!("ЧК4");
+                                self.rotate_left(id as u32);
+                                // FIXME: document unwrap
+                                self.nodes[right_grandgrandchild.unwrap() as usize]
+                                    .set_is_red(false);
+                                self.nodes[left_grandchild].set_is_red(false);
+                                self.nodes[id].set_is_red(false);
                             }
                             (false, true) => {
-                                unreachable!("Or not?");
+                                self.rotate_right(left_grandchild as u32);
+                                self.rotate_right(right_id as u32);
+                                self.rotate_left(id as u32);
+                                // FIXME: document unwrap
+                                self.nodes[left_grandgrandchild.unwrap() as usize]
+                                    .set_is_red(false);
+                                self.nodes[left_grandchild].set_is_red(false);
+                                self.nodes[id].set_is_red(false);
                             }
                         }
                     } else {
@@ -737,24 +758,15 @@ where
                                 }
                             }
                             (_, true) => {
-                                self.nodes[left_grandchild.unwrap() as usize].set_is_red(false);
                                 self.rotate_right(right_id as u32);
                                 self.rotate_left(id as u32);
+                                self.nodes[right_id].set_is_red(false);
+                                self.nodes[id].set_is_red(false);
                             }
                             (true, false) => {
-                                //dbg!(right_grandchild, self.nodes[right_grandchild.unwrap() as usize]);
-                                //dbg!(right_id, self.nodes[right_id]);
-                                //dbg!(id, self.nodes[id]);
                                 self.nodes[right_grandchild.unwrap() as usize].set_is_red(false);
                                 self.rotate_left(id as u32);
                                 self.nodes[id].set_is_red(false);
-                                //dbg!(
-                                //right_grandchild,
-                                //self.nodes[right_grandchild.unwrap() as usize]
-                                //);
-                                //dbg!(right_id, self.nodes[right_id]);
-                                //dbg!(id, self.nodes[id]);
-                                //todo!("Inverse ЧЧ5");
                             }
                         }
                     }
@@ -1213,71 +1225,15 @@ mod tests {
             assert_eq!(tree.insert(*key, *key), Ok(None));
         }
 
-        let tmp_excluded = vec![
-            23,  // ЧК3 on 635
-            21,  // ЧК3 on 635
-            236, // ЧК3 on 635
-            41,  // unbalanced
-            42,  // unreachable on 699
-            76,  // ЧК3 on 635
-            222, // unbalanced
-            120, // ЧК3 on 635
-            14,  // unbalanced
-            36,  // unbalanced
-            35,  // unbalanced
-            79,  // unreachable on 699
-            202, // unbalanced
-            185, // unbalanced
-            164, // ЧК3 on 635
-            12,  // unbalanced
-            56,  // unbalanced
-            71,  // ЧК3 on 635
-            255, // ЧК4 on 617
-            109, // ЧК3 on 635
-            38,  // unreachable on 699
-            49,  // unbalanced
-            7,   // unreachable on 699
-            43,  // unbalanced
-            149, // ЧК3 on 717
-            49,  // unbalanced
-            44,  // unbalanced
-            248, // ЧК4 on 617
-            34,  // unreachable on 699
-            24,  // unreachable on 699
-            187, // unbalanced
-            126, // unreachable on 699
-            197, // unwrap on 405
-            251, // ЧК4 on 617
-            184, // unreachable on 699
-            178, // ЧК4 on 617
-            114, // ЧК3 on 717
-            250, // ЧК4 on 617
-            181, // ЧК3 on 635
-            11,  // unreachable on 699
-            29,  // ЧК3 on 635
-            205, // ЧК3 on 717
-            168, // unbalanced
-            214, // unbalanced
-            52,  // ЧК3 on 717
-            208, // unbalanced
-            144, // unbalanced
-            98,  // unwrap on 405
-            6,   // ЧК3 on 717
-            127, // unbalanced
-            135, // unbalanced
-            153, // unbalanced
-        ];
         for key in insert_keys.iter() {
             assert_eq!(tree.get(key), Some(*key));
         }
-
-        //dbg!(&tree);
 
         tree.child_parent_link_test();
 
         let mut len = insert_keys.len();
         assert_eq!(tree.len(), len);
-        for key in insert_keys.iter().filter(|x| !tmp_excluded.contains(x)) {
+        for key in insert_keys.iter() {
             assert_rm(*key, &mut tree);
             len -= 1;
             //assert_eq!(tree.len(), len);
