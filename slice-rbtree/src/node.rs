@@ -6,7 +6,6 @@ use std::fmt;
 pub struct Node<const KSIZE: usize, const VSIZE: usize> {
     pub key: [u8; KSIZE],
     pub value: [u8; VSIZE],
-    size: [u8; 4],
     left: [u8; 4],
     right: [u8; 4],
     parent: [u8; 4],
@@ -23,10 +22,6 @@ pub struct Node<const KSIZE: usize, const VSIZE: usize> {
 unsafe impl<const KSIZE: usize, const VSIZE: usize> Pod for Node<KSIZE, VSIZE> {}
 
 impl<const KSIZE: usize, const VSIZE: usize> Node<KSIZE, VSIZE> {
-    pub fn size(&self) -> u32 {
-        u32::from_be_bytes(self.size)
-    }
-
     // TODO: reimplement this functions with macros to avoid code duplication
     pub fn left(&self) -> Option<u32> {
         // bit position of the flag is 0
@@ -58,10 +53,6 @@ impl<const KSIZE: usize, const VSIZE: usize> Node<KSIZE, VSIZE> {
     pub fn is_red(&self) -> bool {
         // bit position of the flag is 3
         self.flags & 0b1000 != 0
-    }
-
-    pub unsafe fn set_size(&mut self, size: u32) {
-        self.size = u32::to_be_bytes(size);
     }
 
     pub unsafe fn set_left(&mut self, left: Option<u32>) {
@@ -115,7 +106,6 @@ impl<const KSIZE: usize, const VSIZE: usize> Node<KSIZE, VSIZE> {
     }
 
     pub unsafe fn init_node(&mut self, parent: Option<u32>) {
-        self.size = u32::to_be_bytes(1);
         // Flags set:
         // left = None
         // right = None
@@ -131,13 +121,11 @@ impl<const KSIZE: usize, const VSIZE: usize> Node<KSIZE, VSIZE> {
     pub unsafe fn from_raw_parts(
         key: [u8; KSIZE],
         value: [u8; VSIZE],
-        size: u32,
         left: Option<u32>,
         right: Option<u32>,
         parent: Option<u32>,
         is_red: bool,
     ) -> Self {
-        let size = u32::to_be_bytes(size);
         let mut flags = 0b00;
 
         let left = match left {
@@ -171,7 +159,6 @@ impl<const KSIZE: usize, const VSIZE: usize> Node<KSIZE, VSIZE> {
         Self {
             key,
             value,
-            size,
             left,
             right,
             parent,
@@ -185,7 +172,6 @@ impl<const KSIZE: usize, const VSIZE: usize> fmt::Debug for Node<KSIZE, VSIZE> {
         f.debug_struct("Node")
             .field("key", &self.key)
             .field("value", &self.value)
-            .field("size", &self.size())
             .field("left", &self.left())
             .field("right", &self.right())
             .field("parent", &self.parent())
@@ -205,7 +191,7 @@ mod node_tests {
             #[test]
             fn $method() {
                 let mut node =
-                    unsafe { Node::<1, 1>::from_raw_parts([1], [2], 3, None, None, None, false) };
+                    unsafe { Node::<1, 1>::from_raw_parts([1], [2], None, None, None, false) };
 
                 unsafe {
                     paste! {
@@ -228,7 +214,6 @@ mod node_tests {
 
                 assert_eq!(node.key, [1]);
                 assert_eq!(node.value, [2]);
-                assert_eq!(node.size(), 3);
                 assert_eq!(node.left(), None);
                 assert_eq!(node.right(), None);
                 assert_eq!(node.parent(), None);
@@ -243,14 +228,12 @@ mod node_tests {
 
     #[test]
     fn init_node() {
-        let mut node =
-            unsafe { Node::<1, 1>::from_raw_parts([1], [2], 3, None, None, None, false) };
+        let mut node = unsafe { Node::<1, 1>::from_raw_parts([1], [2], None, None, None, false) };
 
         unsafe {
             node.init_node(Some(1));
         }
 
-        assert_eq!(node.size(), 1);
         assert_eq!(node.left(), None);
         assert_eq!(node.right(), None);
         assert_eq!(node.parent(), Some(1));
@@ -259,7 +242,6 @@ mod node_tests {
         unsafe {
             node.init_node(None);
         }
-        assert_eq!(node.size(), 1);
         assert_eq!(node.left(), None);
         assert_eq!(node.right(), None);
         assert_eq!(node.parent(), None);
@@ -268,7 +250,6 @@ mod node_tests {
         unsafe {
             node.init_node(Some(54));
         }
-        assert_eq!(node.size(), 1);
         assert_eq!(node.left(), None);
         assert_eq!(node.right(), None);
         assert_eq!(node.parent(), Some(54));

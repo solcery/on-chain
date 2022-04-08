@@ -244,7 +244,8 @@ where
 
     fn size(&self, maybe_id: Option<u32>) -> usize {
         if let Some(id) = maybe_id {
-            self.nodes[id as usize].size() as usize
+            let node = self.nodes[id as usize];
+            self.size(node.left()) + self.size(node.right()) + 1
         } else {
             0
         }
@@ -305,12 +306,6 @@ where
                 }
             }
             unsafe {
-                self.nodes[id as usize].set_size(
-                    (self.size(self.nodes[id as usize].left())
-                        + self.size(self.nodes[id as usize].right())
-                        + 1) as u32,
-                );
-
                 if self.is_red(self.nodes[id as usize].right())
                     && !self.is_red(self.nodes[id as usize].left())
                 {
@@ -428,14 +423,6 @@ where
             self.nodes[right as usize].set_parent(Some(h));
         }
 
-        // fix size
-        self.nodes[x as usize].set_size(self.nodes[h as usize].size());
-        self.nodes[h as usize].set_size(
-            (self.size(self.nodes[h as usize].left())
-                + self.size(self.nodes[h as usize].right())
-                + 1) as u32,
-        );
-
         x
     }
 
@@ -465,14 +452,6 @@ where
         if let Some(left) = self.nodes[h as usize].left() {
             self.nodes[left as usize].set_parent(Some(h));
         }
-
-        // fix size
-        self.nodes[x as usize].set_size(self.nodes[h as usize].size());
-        self.nodes[h as usize].set_size(
-            (self.size(self.nodes[h as usize].right())
-                + self.size(self.nodes[h as usize].left())
-                + 1) as u32,
-        );
 
         x
     }
@@ -518,12 +497,14 @@ where
                 let value = V::deserialize(&mut self.nodes[right_id].value.as_slice()).unwrap();
 
                 self.nodes[id].set_right(None);
+
                 self.deallocate_node(right_id);
 
                 return Some((key, value));
             }
             (None, None) => {
                 if self.nodes[id].is_red() {
+                    // FIXME: document unwrap
                     let parent_id = self.nodes[id].parent().unwrap();
                     let parent_node = &mut self.nodes[parent_id as usize];
 
@@ -814,12 +795,6 @@ where
         }
         depth
     }
-
-    unsafe fn fix_size(&mut self, id: usize) {
-        self.nodes[id].set_size(
-            (self.size(self.nodes[id].left()) + self.size(self.nodes[id].right())) as u32,
-        );
-    }
 }
 
 #[cfg(test)]
@@ -987,7 +962,6 @@ mod tests {
                 // 0
                 u32::to_be_bytes(1),
                 u32::to_be_bytes(4),
-                3,
                 Some(1),
                 None,
                 None,
@@ -998,7 +972,6 @@ mod tests {
                 // 1
                 u32::to_be_bytes(2),
                 u32::to_be_bytes(5),
-                2,
                 Some(2),
                 Some(3),
                 Some(0),
@@ -1009,7 +982,6 @@ mod tests {
                 // 2
                 u32::to_be_bytes(3),
                 u32::to_be_bytes(6),
-                2,
                 Some(4),
                 None,
                 Some(1),
@@ -1020,7 +992,6 @@ mod tests {
                 // 3
                 u32::to_be_bytes(7),
                 u32::to_be_bytes(9),
-                2,
                 None,
                 None,
                 Some(1),
@@ -1031,7 +1002,6 @@ mod tests {
                 // 4
                 u32::to_be_bytes(8),
                 u32::to_be_bytes(8),
-                2,
                 None,
                 None,
                 Some(2),
@@ -1062,7 +1032,6 @@ mod tests {
                 // 0
                 u32::to_be_bytes(1),
                 u32::to_be_bytes(4),
-                3,
                 Some(1),
                 None,
                 None,
@@ -1073,7 +1042,6 @@ mod tests {
                 // 1
                 u32::to_be_bytes(2),
                 u32::to_be_bytes(5),
-                2,
                 Some(4),
                 None,
                 Some(1),
@@ -1084,7 +1052,6 @@ mod tests {
                 // 2
                 u32::to_be_bytes(3),
                 u32::to_be_bytes(6),
-                2,
                 Some(2),
                 Some(3),
                 Some(0),
@@ -1095,7 +1062,6 @@ mod tests {
                 // 3
                 u32::to_be_bytes(7),
                 u32::to_be_bytes(9),
-                2,
                 None,
                 None,
                 Some(1),
@@ -1106,7 +1072,6 @@ mod tests {
                 // 4
                 u32::to_be_bytes(8),
                 u32::to_be_bytes(8),
-                2,
                 None,
                 None,
                 Some(2),
@@ -1236,7 +1201,7 @@ mod tests {
         for key in insert_keys.iter() {
             assert_rm(*key, &mut tree);
             len -= 1;
-            //assert_eq!(tree.len(), len);
+            assert_eq!(tree.len(), len);
         }
     }
 
