@@ -150,8 +150,8 @@ where
     {
         self.get_key_index(k).map(|id| {
             let node = &self.nodes[id as usize];
-            let node_key = K::deserialize(&mut node.key.as_slice()).unwrap();
-            let node_value = V::deserialize(&mut node.value.as_slice()).unwrap();
+            let node_key = K::deserialize(&mut node.key.as_slice()).expect("Key corrupted");
+            let node_value = V::deserialize(&mut node.value.as_slice()).expect("Value corrupted");
             (node_key, node_value)
         })
     }
@@ -163,7 +163,7 @@ where
     {
         self.get_key_index(k).map(|id| {
             let node = &self.nodes[id as usize];
-            let node_value = V::deserialize(&mut node.value.as_slice()).unwrap();
+            let node_value = V::deserialize(&mut node.value.as_slice()).expect("Value corrupted");
             node_value
         })
     }
@@ -195,8 +195,8 @@ where
         self.get_key_index(key).map(|id| {
             let deallocated_node_id = unsafe { self.delete_node(id) };
 
-            let value =
-                V::deserialize(&mut self.nodes[deallocated_node_id].value.as_slice()).unwrap();
+            let value = V::deserialize(&mut self.nodes[deallocated_node_id].value.as_slice())
+                .expect("Value corrupted");
             value
         })
     }
@@ -209,9 +209,10 @@ where
         self.get_key_index(key).map(|id| {
             let deallocated_node_id = unsafe { self.delete_node(id) };
 
-            let key = K::deserialize(&mut self.nodes[deallocated_node_id].key.as_slice()).unwrap();
-            let value =
-                V::deserialize(&mut self.nodes[deallocated_node_id].value.as_slice()).unwrap();
+            let key = K::deserialize(&mut self.nodes[deallocated_node_id].key.as_slice())
+                .expect("Key corrupted");
+            let value = V::deserialize(&mut self.nodes[deallocated_node_id].value.as_slice())
+                .expect("Value corrupted");
             (key, value)
         })
     }
@@ -250,7 +251,7 @@ where
         if let Some(mut id) = maybe_id {
             let old_val;
             let node = &self.nodes[id as usize];
-            let node_key = K::deserialize(&mut node.key.as_slice()).unwrap();
+            let node_key = K::deserialize(&mut node.key.as_slice()).expect("Key corrupted");
             match key.cmp(node_key.borrow()) {
                 Ordering::Less => {
                     let left_result =
@@ -373,7 +374,7 @@ where
         let mut maybe_id = self.header.root();
         while let Some(id) = maybe_id {
             let node = &self.nodes[id as usize];
-            let node_key = K::deserialize(&mut node.key.as_slice()).unwrap();
+            let node_key = K::deserialize(&mut node.key.as_slice()).expect("Key corrupted");
             match k.cmp(node_key.borrow()) {
                 Ordering::Equal => {
                     return Some(id as usize);
@@ -386,7 +387,9 @@ where
     }
 
     unsafe fn rotate_left(&mut self, h: u32) -> u32 {
-        let x = self.nodes[h as usize].right().unwrap();
+        let x = self.nodes[h as usize]
+            .right()
+            .expect("RBTree invariants corrupted: rotate_left on subtree without right child");
 
         unsafe {
             self.nodes[h as usize].set_right(self.nodes[x as usize].left());
@@ -418,7 +421,9 @@ where
     }
 
     unsafe fn rotate_right(&mut self, h: u32) -> u32 {
-        let x = self.nodes[h as usize].left().unwrap();
+        let x = self.nodes[h as usize]
+            .left()
+            .expect("RBTree invariants corrupted: rotate_left on subtree without left child");
 
         unsafe {
             self.nodes[h as usize].set_left(self.nodes[x as usize].right());
@@ -497,7 +502,7 @@ where
             }
             (None, None) => {
                 if self.nodes[id].is_red() {
-                    // FIXME: document unwrap
+                    // Root node is always black, so if nodes[id] is red, it always has a parent
                     let parent_id = self.nodes[id].parent().unwrap();
                     let parent_node = &mut self.nodes[parent_id as usize];
 
@@ -545,7 +550,10 @@ where
     }
 
     unsafe fn swap_max_left(&mut self, id: usize) -> usize {
-        let mut max_id = self.nodes[id].left().unwrap() as usize;
+        let mut max_id = self.nodes[id]
+            .left()
+            .expect("swap_max_left should only be called on nodes with two children")
+            as usize;
         while let Some(maybe_max) = self.nodes[max_id].right() {
             max_id = maybe_max as usize;
         }
@@ -574,6 +582,8 @@ where
         let right_depth = self.black_depth(right_child);
         match left_depth.cmp(&right_depth) {
             Ordering::Greater => {
+                // left_depth is greater than right_depth, so it is >= 1 and therefore left_child
+                // always exists
                 let left_id = left_child.unwrap() as usize;
                 if self.nodes[id].is_red() {
                     debug_assert!(!self.nodes[left_id].is_red());
@@ -589,18 +599,22 @@ where
 
                             self.nodes[id].set_is_red(false);
                             self.nodes[left_id].set_is_red(true);
+                            // left_grandchild is red, so it exists
                             self.nodes[left_grandchild.unwrap() as usize].set_is_red(false);
                         },
                         (false, true) => unsafe {
                             self.rotate_left(left_id as u32);
                             self.rotate_right(id as u32);
+                            // right_grandchild is red, so it exists
                             self.nodes[right_grandchild.unwrap() as usize].set_is_red(false);
                         },
                     }
                 } else if self.nodes[left_id].is_red() {
                     debug_assert!(!self.is_red(self.nodes[left_id].left()));
                     debug_assert!(!self.is_red(self.nodes[left_id].right()));
-                    // FIXME: Why unwrap?
+                    // left_depth is greater than right_depth, so it is >= 1
+                    // left_child is red and does not affect black height
+                    // therefore left and right grandchildren exists
                     let right_grandchild = self.nodes[left_id].right().unwrap() as usize;
                     let left_grandgrandchild = self.nodes[right_grandchild].left();
                     let right_grandgrandchild = self.nodes[right_grandchild].right();
@@ -617,7 +631,7 @@ where
                         (true, _) => unsafe {
                             self.rotate_left(left_id as u32);
                             self.rotate_right(id as u32);
-                            // FIXME: document unwrap
+                            // left_grandgrandchild is red, so it always exists
                             self.nodes[left_grandgrandchild.unwrap() as usize].set_is_red(false);
                             self.nodes[right_grandchild].set_is_red(false);
                             self.nodes[id].set_is_red(false);
@@ -626,7 +640,7 @@ where
                             self.rotate_left(right_grandchild as u32);
                             self.rotate_left(left_id as u32);
                             self.rotate_right(id as u32);
-                            // FIXME: document unwrap
+                            // left_grandgrandchild is red, so it always exists
                             self.nodes[right_grandgrandchild.unwrap() as usize].set_is_red(false);
                             self.nodes[right_grandchild].set_is_red(false);
                             self.nodes[id].set_is_red(false);
@@ -658,6 +672,8 @@ where
                 }
             }
             Ordering::Less => {
+                // right_depth is greater than left_depth, so it >= 1 and therefore right_child
+                // always exists
                 let right_id = right_child.unwrap() as usize;
                 if self.nodes[id].is_red() {
                     debug_assert!(!self.nodes[right_id].is_red());
@@ -673,18 +689,22 @@ where
 
                             self.nodes[id].set_is_red(false);
                             self.nodes[right_id].set_is_red(true);
+                            // right_grandchild is red, so it always exists
                             self.nodes[right_grandchild.unwrap() as usize].set_is_red(false);
                         },
                         (false, true) => unsafe {
                             self.rotate_right(right_id as u32);
                             self.rotate_left(id as u32);
+                            // right_grandchild is red, so it always exists
                             self.nodes[left_grandchild.unwrap() as usize].set_is_red(false);
                         },
                     }
                 } else if self.nodes[right_id].is_red() {
                     debug_assert!(!self.is_red(self.nodes[right_id].right()));
                     debug_assert!(!self.is_red(self.nodes[right_id].left()));
-                    // FIXME: Why unwrap?
+                    // right_depth is greater than left_depth, so it is >= 1
+                    // right_child is red and does not affect black height
+                    // therefore left and right grandchildren exists
                     let left_grandchild = self.nodes[right_id].left().unwrap() as usize;
                     let right_grandgrandchild = self.nodes[left_grandchild].right();
                     let left_grandgrandchild = self.nodes[left_grandchild].left();
@@ -701,7 +721,7 @@ where
                         (true, _) => unsafe {
                             self.rotate_right(right_id as u32);
                             self.rotate_left(id as u32);
-                            // FIXME: document unwrap
+                            // right_grandgrandchild is red, so it always exists
                             self.nodes[right_grandgrandchild.unwrap() as usize].set_is_red(false);
                             self.nodes[left_grandchild].set_is_red(false);
                             self.nodes[id].set_is_red(false);
@@ -710,7 +730,7 @@ where
                             self.rotate_right(left_grandchild as u32);
                             self.rotate_right(right_id as u32);
                             self.rotate_left(id as u32);
-                            // FIXME: document unwrap
+                            // left_grandgrandchild is red, so it always exists
                             self.nodes[left_grandgrandchild.unwrap() as usize].set_is_red(false);
                             self.nodes[left_grandchild].set_is_red(false);
                             self.nodes[id].set_is_red(false);
@@ -734,6 +754,7 @@ where
                             self.nodes[id].set_is_red(false);
                         },
                         (true, false) => unsafe {
+                            // right_grandchild is red, so it always exists
                             self.nodes[right_grandchild.unwrap() as usize].set_is_red(false);
                             self.rotate_left(id as u32);
                             self.nodes[id].set_is_red(false);
@@ -890,16 +911,19 @@ where
                     return false;
                 }
 
-                let self_key = K::deserialize(&mut self.nodes[self_id].key.as_slice()).unwrap();
-                let other_key = K::deserialize(&mut self.nodes[other_id].key.as_slice()).unwrap();
+                let self_key =
+                    K::deserialize(&mut self.nodes[self_id].key.as_slice()).expect("Key corrupted");
+                let other_key = K::deserialize(&mut self.nodes[other_id].key.as_slice())
+                    .expect("Key corrupted");
 
                 if self_key != other_key {
                     return false;
                 }
 
-                let self_value = V::deserialize(&mut self.nodes[self_id].value.as_slice()).unwrap();
-                let other_value =
-                    V::deserialize(&mut self.nodes[other_id].value.as_slice()).unwrap();
+                let self_value = V::deserialize(&mut self.nodes[self_id].value.as_slice())
+                    .expect("Value corrupted");
+                let other_value = V::deserialize(&mut self.nodes[other_id].value.as_slice())
+                    .expect("Value corrupted");
 
                 if self_value != other_value {
                     return false;
