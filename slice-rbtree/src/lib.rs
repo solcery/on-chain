@@ -823,6 +823,99 @@ where
             None => None,
         }
     }
+
+    pub fn first_entry(&self) -> Option<(K, V)> {
+        self.header.root().map(|root_id| {
+            let node = &self.nodes[self.min(root_id as usize)];
+            let key = K::deserialize(&mut node.key.as_slice()).expect("Key corrupted");
+            let value = V::deserialize(&mut node.value.as_slice()).expect("Value corrupted");
+            (key, value)
+        })
+    }
+
+    pub fn last_entry(&self) -> Option<(K, V)> {
+        self.header.root().map(|root_id| {
+            let node = &self.nodes[self.max(root_id as usize)];
+            let key = K::deserialize(&mut node.key.as_slice()).expect("Key corrupted");
+            let value = V::deserialize(&mut node.value.as_slice()).expect("Value corrupted");
+            (key, value)
+        })
+    }
+
+    fn min(&self, mut min_id: usize) -> usize {
+        while let Some(id) = self.nodes[min_id].left() {
+            min_id = id as usize;
+        }
+        min_id
+    }
+
+    fn max(&self, mut max_id: usize) -> usize {
+        while let Some(id) = self.nodes[max_id].right() {
+            max_id = id as usize;
+        }
+        max_id
+    }
+}
+
+pub struct TreeIterator<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize>
+where
+    K: Ord + BorshDeserialize + BorshSerialize,
+    V: BorshDeserialize + BorshSerialize,
+{
+    next_node: Option<usize>,
+    tree: &'a RBtree<'b, K, V, KSIZE, VSIZE>,
+}
+
+impl<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize> IntoIterator
+    for &'a RBtree<'b, K, V, KSIZE, VSIZE>
+where
+    K: Ord + BorshDeserialize + BorshSerialize,
+    V: BorshDeserialize + BorshSerialize,
+{
+    type Item = (K, V);
+    type IntoIter = TreeIterator<'a, 'b, K, V, KSIZE, VSIZE>;
+    fn into_iter(self) -> Self::IntoIter {
+        TreeIterator {
+            next_node: self.header.root().map(|root_id| self.min(root_id as usize)),
+            tree: self,
+        }
+    }
+}
+
+impl<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize> Iterator
+    for TreeIterator<'a, 'b, K, V, KSIZE, VSIZE>
+where
+    K: Ord + BorshDeserialize + BorshSerialize,
+    V: BorshDeserialize + BorshSerialize,
+{
+    type Item = (K, V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next_node.map(|mut id| {
+            let nodes = &self.tree.nodes;
+
+            let key = K::deserialize(&mut dbg!(nodes[id].key.as_slice())).expect("Key corrupted");
+            let value = V::deserialize(&mut nodes[id].value.as_slice()).expect("Value corrupted");
+
+            // find next
+            if let Some(right_id) = nodes[id].right() {
+                self.next_node = Some(self.tree.min(right_id as usize));
+            } else {
+                self.next_node = None;
+                while let Some(parent_id) = nodes[id].parent() {
+                    let parent_id = parent_id as usize;
+                    if Some(id as u32) == nodes[parent_id].left() {
+                        self.next_node = Some(parent_id);
+                        break;
+                    } else {
+                        id = parent_id;
+                    }
+                }
+            }
+
+            (key, value)
+        })
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]

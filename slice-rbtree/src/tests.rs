@@ -415,6 +415,31 @@ fn delete() {
     }
 }
 
+#[test]
+fn iterator() {
+    let mut vec = create_vec(1, 1, 256);
+
+    let mut tree = RBtree::<u8, u8, 1, 1>::init_slice(vec.as_mut_slice()).unwrap();
+    assert!(tree.is_empty());
+
+    for key in &INSERT_KEYS {
+        assert_eq!(tree.insert(*key, *key), Ok(None));
+    }
+
+    let tree_iter = tree.into_iter();
+
+    let tree_data: Vec<(u8, u8)> = tree_iter.collect();
+
+    assert_eq!(tree_data.len(), INSERT_KEYS.len());
+
+    let mut prev_elem = (0, 0);
+
+    for elem in tree_data {
+        assert!(prev_elem <= elem);
+        prev_elem = elem;
+    }
+}
+
 fn create_vec(k_size: usize, v_size: usize, num_entries: usize) -> Vec<u8> {
     let len =
         mem::size_of::<Header>() + (mem::size_of::<Node<0, 0>>() + k_size + v_size) * num_entries;
