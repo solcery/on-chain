@@ -44,6 +44,7 @@ where
         if nodes.len() % mem::size_of::<Node<KSIZE, VSIZE>>() != 0 {
             return Err(Error::WrongNodePoolSize);
         }
+
         let nodes: &mut [Node<KSIZE, VSIZE>] = cast_slice_mut(nodes);
         let header: &mut [[u8; mem::size_of::<Header>()]] = cast_slice_mut(header);
         let header: &mut Header = cast_mut(&mut header[0]);
@@ -57,8 +58,8 @@ where
             }
 
             header.fill(
-                KSIZE as u32,
-                VSIZE as u32,
+                KSIZE as u16,
+                VSIZE as u16,
                 nodes.len() as u32,
                 None,
                 Some((nodes.len() - 1) as u32),
@@ -73,8 +74,8 @@ where
     }
 
     #[must_use]
-    pub fn expected_size(k_size: usize, v_size: usize, num_entries: usize) -> usize {
-        mem::size_of::<Header>() + (mem::size_of::<Node<0, 0>>() + k_size + v_size) * num_entries
+    pub fn expected_size(num_entries: usize) -> usize {
+        mem::size_of::<Header>() + mem::size_of::<Node<KSIZE, VSIZE>>() * num_entries
     }
 
     pub unsafe fn from_slice(slice: &'a mut [u8]) -> Result<Self, Error> {

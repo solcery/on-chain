@@ -4,26 +4,22 @@ use std::fmt;
 #[repr(C)]
 #[derive(Pod, Clone, Copy, Zeroable)]
 pub struct Header {
-    k_size: [u8; 4],
-    v_size: [u8; 4],
+    k_size: [u8; 2],
+    v_size: [u8; 2],
     max_nodes: [u8; 4],
+    /// root of the tree
     root: [u8; 4],
-    /// Flag layout:
-    ///
-    /// 0. is_root_present
-    /// 1. is_head_present
-    flags: u8,
     /// head of the linked list of empty nodes
     head: [u8; 4],
 }
 
 impl Header {
-    pub fn k_size(&self) -> u32 {
-        u32::from_be_bytes(self.k_size)
+    pub fn k_size(&self) -> u16 {
+        u16::from_be_bytes(self.k_size)
     }
 
-    pub fn v_size(&self) -> u32 {
-        u32::from_be_bytes(self.v_size)
+    pub fn v_size(&self) -> u16 {
+        u16::from_be_bytes(self.v_size)
     }
 
     pub fn max_nodes(&self) -> u32 {
@@ -31,47 +27,43 @@ impl Header {
     }
 
     pub fn root(&self) -> Option<u32> {
-        // bit position of the flag is 0
-        if self.flags & 0b0001 != 0 {
-            Some(u32::from_be_bytes(self.root))
-        } else {
+        let num = u32::from_be_bytes(self.root);
+        if num == u32::MAX {
             None
+        } else {
+            Some(num)
         }
     }
 
     pub fn head(&self) -> Option<u32> {
-        // bit position of the flag is 1
-        if self.flags & 0b0010 != 0 {
-            Some(u32::from_be_bytes(self.head))
-        } else {
+        let num = u32::from_be_bytes(self.head);
+        if num == u32::MAX {
             None
+        } else {
+            Some(num)
         }
     }
 
     pub unsafe fn set_root(&mut self, root: Option<u32>) {
-        // bit position of the flag is 0
         match root {
             Some(idx) => {
+                assert!(idx < u32::MAX);
                 self.root = u32::to_be_bytes(idx);
-                self.flags |= 0b0001;
             }
             None => {
-                // All flags but 0th will remain the same, which will be set to 0.
-                self.flags &= 0b1110;
+                self.root = u32::to_be_bytes(u32::MAX);
             }
         }
     }
 
     pub unsafe fn set_head(&mut self, head: Option<u32>) {
-        // bit position of the flag is 1
         match head {
             Some(idx) => {
+                assert!(idx < u32::MAX);
                 self.head = u32::to_be_bytes(idx);
-                self.flags |= 0b0010;
             }
             None => {
-                // All flags but 1st will remain the same, which will be set to 0.
-                self.flags &= 0b1101;
+                self.head = u32::to_be_bytes(u32::MAX);
             }
         }
     }
@@ -79,16 +71,15 @@ impl Header {
     /// This function guarantees, that the header will be initialized in fully known state
     pub unsafe fn fill(
         &mut self,
-        k_size: u32,
-        v_size: u32,
+        k_size: u16,
+        v_size: u16,
         max_nodes: u32,
         root: Option<u32>,
         head: Option<u32>,
     ) {
-        self.k_size = u32::to_be_bytes(k_size);
-        self.v_size = u32::to_be_bytes(v_size);
+        self.k_size = u16::to_be_bytes(k_size);
+        self.v_size = u16::to_be_bytes(v_size);
         self.max_nodes = u32::to_be_bytes(max_nodes);
-        self.flags = 0b00;
         unsafe {
             self.set_head(head);
             self.set_root(root);
@@ -97,38 +88,30 @@ impl Header {
 
     #[cfg(test)]
     unsafe fn from_raw_parts(
-        k_size: u32,
-        v_size: u32,
+        k_size: u16,
+        v_size: u16,
         max_nodes: u32,
         root: Option<u32>,
         head: Option<u32>,
     ) -> Self {
-        let k_size = u32::to_be_bytes(k_size);
-        let v_size = u32::to_be_bytes(v_size);
+        let k_size = u16::to_be_bytes(k_size);
+        let v_size = u16::to_be_bytes(v_size);
         let max_nodes = u32::to_be_bytes(max_nodes);
-        let mut flags = 0b00;
 
         let root = match root {
-            Some(index) => {
-                flags |= 0b01;
-                u32::to_be_bytes(index)
-            }
-            None => u32::to_be_bytes(0),
+            Some(index) => u32::to_be_bytes(index),
+            None => u32::to_be_bytes(u32::MAX),
         };
 
         let head = match head {
-            Some(index) => {
-                flags |= 0b10;
-                u32::to_be_bytes(index)
-            }
-            None => u32::to_be_bytes(0),
+            Some(index) => u32::to_be_bytes(index),
+            None => u32::to_be_bytes(u32::MAX),
         };
         Self {
             k_size,
             v_size,
             max_nodes,
             root,
-            flags,
             head,
         }
     }
