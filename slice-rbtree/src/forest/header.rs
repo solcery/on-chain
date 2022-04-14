@@ -7,6 +7,7 @@ pub struct Header<const MAX_ROOTS: usize> {
     k_size: [u8; 2],
     v_size: [u8; 2],
     max_nodes: [u8; 4],
+    roots_num: [u8; 4],
     /// array of roots of the tree
     roots: [[u8; 4]; MAX_ROOTS],
     /// head of the linked list of empty nodes
@@ -26,6 +27,10 @@ impl<const MAX_ROOTS: usize> Header<MAX_ROOTS> {
 
     pub fn max_nodes(&self) -> u32 {
         u32::from_be_bytes(self.max_nodes)
+    }
+
+    pub fn roots_num(&self) -> u32 {
+        u32::from_be_bytes(self.roots_num)
     }
 
     pub fn root(&self, id: usize) -> Option<u32> {
@@ -102,6 +107,8 @@ impl<const MAX_ROOTS: usize> Header<MAX_ROOTS> {
         let v_size = u16::to_be_bytes(v_size);
         let max_nodes = u32::to_be_bytes(max_nodes);
 
+        let roots_num = u32::to_be_bytes(MAX_ROOTS as u32);
+
         let roots = roots.map(|root| match root {
             Some(index) => u32::to_be_bytes(index),
             None => u32::to_be_bytes(u32::MAX),
@@ -116,6 +123,7 @@ impl<const MAX_ROOTS: usize> Header<MAX_ROOTS> {
             k_size,
             v_size,
             max_nodes,
+            roots_num,
             roots,
             head,
         }

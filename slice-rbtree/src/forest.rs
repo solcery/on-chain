@@ -99,6 +99,10 @@ where
         let header: &mut [[u8; mem::size_of::<Header<MAX_ROOTS>>()]] = cast_slice_mut(header);
         let header: &mut Header<MAX_ROOTS> = cast_mut(&mut header[0]);
 
+        if header.roots_num() as usize != MAX_ROOTS {
+            return Err(Error::WrongRootsNumber);
+        }
+
         if header.k_size() as usize != KSIZE {
             return Err(Error::WrongKeySize);
         }
@@ -914,12 +918,13 @@ where
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
-    TooSmall,
-    WrongNodePoolSize,
-    NoNodesLeft,
-    ValueSerializationError,
     KeySerializationError,
+    NoNodesLeft,
+    TooSmall,
+    ValueSerializationError,
     WrongKeySize,
+    WrongNodePoolSize,
+    WrongRootsNumber,
     WrongValueSize,
 }
 
