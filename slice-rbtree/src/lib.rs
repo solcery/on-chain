@@ -8,17 +8,18 @@ use std::cmp::Ord;
 
 mod forest;
 
-use forest::{Error, RBForest};
+pub use forest::{Error, RBForest};
+use forest::{KeysIterator, PairsIterator, ValuesIterator};
 
 //#[derive(Debug)]
-pub struct RBtree<'a, K, V, const KSIZE: usize, const VSIZE: usize>(
+pub struct RBTree<'a, K, V, const KSIZE: usize, const VSIZE: usize>(
     RBForest<'a, K, V, KSIZE, VSIZE, 1>,
 )
 where
     K: Ord + BorshDeserialize + BorshSerialize,
     V: BorshDeserialize + BorshSerialize;
 
-impl<'a, K, V, const KSIZE: usize, const VSIZE: usize> RBtree<'a, K, V, KSIZE, VSIZE>
+impl<'a, K, V, const KSIZE: usize, const VSIZE: usize> RBTree<'a, K, V, KSIZE, VSIZE>
 where
     K: Ord + BorshDeserialize + BorshSerialize,
     V: BorshDeserialize + BorshSerialize,
@@ -115,7 +116,19 @@ where
     pub fn last_entry(&self) -> Option<(K, V)> {
         self.0.last_entry(0)
     }
+
+    pub fn pairs<'b>(&'b self) -> PairsIterator<'b, 'a, K, V, KSIZE, VSIZE, 1> {
+        self.0.pairs(0)
+    }
+
+    pub fn keys<'b>(&'b self) -> KeysIterator<'b, 'a, K, V, KSIZE, VSIZE, 1> {
+        self.0.keys(0)
+    }
+
+    pub fn values<'b>(&'b self) -> ValuesIterator<'b, 'a, K, V, KSIZE, VSIZE, 1> {
+        self.0.values(0)
+    }
 }
 
-//#[cfg(test)]
-//mod tests;
+#[cfg(test)]
+mod tests;

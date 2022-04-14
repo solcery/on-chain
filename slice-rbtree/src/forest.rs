@@ -9,8 +9,8 @@ use std::mem;
 mod header;
 mod node;
 
-use header::Header;
-use node::Node;
+pub(crate) use header::Header;
+pub(crate) use node::Node;
 
 //#[derive(Debug)]
 pub struct RBForest<'a, K, V, const KSIZE: usize, const VSIZE: usize, const MAX_ROOTS: usize>
@@ -1084,4 +1084,4 @@ where
 }
 
 #[cfg(test)]
-mod tests;
+pub(super) mod tests;

@@ -9,7 +9,7 @@ where
     V: Eq + BorshDeserialize + BorshSerialize,
     [(); mem::size_of::<Header<MAX_ROOTS>>()]: Sized,
 {
-    fn is_balanced(&self, tree_id: usize) -> bool {
+    pub fn is_balanced(&self, tree_id: usize) -> bool {
         let mut black = 0;
         let mut node = self.header.root(tree_id);
         while let Some(id) = node {
@@ -40,23 +40,23 @@ where
         }
     }
 
-    unsafe fn set_node(&mut self, id: usize, node: &Node<KSIZE, VSIZE>) {
+    pub unsafe fn set_node(&mut self, id: usize, node: &Node<KSIZE, VSIZE>) {
         self.nodes[id] = *node;
     }
 
-    unsafe fn set_root(&mut self, tree_id: usize, root: Option<u32>) {
+    pub unsafe fn set_root(&mut self, tree_id: usize, root: Option<u32>) {
         unsafe {
             self.header.set_root(tree_id, root);
         }
     }
 
-    unsafe fn set_head(&mut self, head: Option<u32>) {
+    pub unsafe fn set_head(&mut self, head: Option<u32>) {
         unsafe {
             self.header.set_head(head);
         }
     }
 
-    fn struct_eq(&self, tree_id: usize, other: &Self, other_tree_id: usize) -> bool {
+    pub fn struct_eq(&self, tree_id: usize, other: &Self, other_tree_id: usize) -> bool {
         self.node_eq(self.header.root(tree_id), other.header.root(other_tree_id))
     }
 
@@ -101,7 +101,7 @@ where
         }
     }
 
-    fn child_parent_link_test(&self, tree_id: usize) {
+    pub fn child_parent_link_test(&self, tree_id: usize) {
         if let Some(id) = self.header.root(tree_id) {
             assert_eq!(self.nodes[id as usize].parent(), None);
             self.node_link_test(id as usize);
@@ -121,7 +121,7 @@ where
     }
 }
 
-const INSERT_KEYS: [u8; 256] = [
+pub const INSERT_KEYS: [u8; 256] = [
     123, 201, 112, 93, 21, 236, 41, 121, 42, 10, 147, 254, 220, 148, 76, 245, 94, 142, 75, 222,
     132, 215, 86, 150, 31, 137, 60, 120, 14, 36, 77, 35, 192, 224, 204, 97, 129, 80, 252, 99, 79,
     202, 196, 172, 221, 165, 185, 102, 157, 2, 138, 233, 164, 206, 12, 190, 105, 151, 33, 188, 56,
@@ -173,283 +173,294 @@ fn init() {
     assert_eq!(tree.len(0), 5);
 }
 
-//#[test]
-//fn swap_nodes() {
-//let mut vec = create_vec(4, 4, 6);
+#[test]
+fn swap_nodes() {
+    let mut vec = create_vec(4, 4, 6, 1);
 
-//let mut tree = RBtree::<i32, u32, 4, 4>::init_slice(vec.as_mut_slice()).unwrap();
-//// Initial structure
-////          parent
-////           /
-//// black-> swap1
-////        /   \
-////red-> swap2 node1 <-red
-////      /
-////  node2            <-black
-//unsafe {
-//let parent = Node::from_raw_parts(
-//// 0
-//u32::to_be_bytes(1),
-//u32::to_be_bytes(4),
-//Some(1),
-//None,
-//None,
-//false,
-//);
+    let mut tree = RBForest::<i32, u32, 4, 4, 1>::init_slice(vec.as_mut_slice()).unwrap();
+    // Initial structure
+    //          parent
+    //           /
+    // black-> swap1
+    //        /   \
+    //red-> swap2 node1 <-red
+    //      /
+    //  node2            <-black
+    unsafe {
+        let parent = Node::from_raw_parts(
+            // 0
+            u32::to_be_bytes(1),
+            u32::to_be_bytes(4),
+            Some(1),
+            None,
+            None,
+            false,
+        );
 
-//let swap1 = Node::from_raw_parts(
-//// 1
-//u32::to_be_bytes(2),
-//u32::to_be_bytes(5),
-//Some(2),
-//Some(3),
-//Some(0),
-//false,
-//);
+        let swap1 = Node::from_raw_parts(
+            // 1
+            u32::to_be_bytes(2),
+            u32::to_be_bytes(5),
+            Some(2),
+            Some(3),
+            Some(0),
+            false,
+        );
 
-//let swap2 = Node::from_raw_parts(
-//// 2
-//u32::to_be_bytes(3),
-//u32::to_be_bytes(6),
-//Some(4),
-//None,
-//Some(1),
-//true,
-//);
+        let swap2 = Node::from_raw_parts(
+            // 2
+            u32::to_be_bytes(3),
+            u32::to_be_bytes(6),
+            Some(4),
+            None,
+            Some(1),
+            true,
+        );
 
-//let node1 = Node::from_raw_parts(
-//// 3
-//u32::to_be_bytes(7),
-//u32::to_be_bytes(9),
-//None,
-//None,
-//Some(1),
-//true,
-//);
+        let node1 = Node::from_raw_parts(
+            // 3
+            u32::to_be_bytes(7),
+            u32::to_be_bytes(9),
+            None,
+            None,
+            Some(1),
+            true,
+        );
 
-//let node2 = Node::from_raw_parts(
-//// 4
-//u32::to_be_bytes(8),
-//u32::to_be_bytes(8),
-//None,
-//None,
-//Some(2),
-//false,
-//);
+        let node2 = Node::from_raw_parts(
+            // 4
+            u32::to_be_bytes(8),
+            u32::to_be_bytes(8),
+            None,
+            None,
+            Some(2),
+            false,
+        );
 
-//tree.set_node(0, &parent);
-//tree.set_node(1, &swap1);
-//tree.set_node(2, &swap2);
-//tree.set_node(3, &node1);
-//tree.set_node(4, &node2);
-//}
+        tree.set_node(0, &parent);
+        tree.set_node(1, &swap1);
+        tree.set_node(2, &swap2);
+        tree.set_node(3, &node1);
+        tree.set_node(4, &node2);
+        tree.set_root(0, Some(0));
+    }
 
-//let mut expected_vec = create_vec(4, 4, 6);
+    let mut expected_vec = create_vec(4, 4, 6, 1);
 
-//let mut expected_tree =
-//RBtree::<i32, u32, 4, 4>::init_slice(expected_vec.as_mut_slice()).unwrap();
-//// Final structure
-////          parent
-////           /
-//// black-> swap2
-////        /   \
-////red-> swap1 node1 <-red
-////      /
-////  node2            <-black
-//unsafe {
-//let parent = Node::from_raw_parts(
-//// 0
-//u32::to_be_bytes(1),
-//u32::to_be_bytes(4),
-//Some(1),
-//None,
-//None,
-//false,
-//);
+    let mut expected_tree =
+        RBForest::<i32, u32, 4, 4, 1>::init_slice(expected_vec.as_mut_slice()).unwrap();
+    // Final structure
+    //          parent
+    //           /
+    // black-> swap2
+    //        /   \
+    //red-> swap1 node1 <-red
+    //      /
+    //  node2            <-black
+    unsafe {
+        let parent = Node::from_raw_parts(
+            // 0
+            u32::to_be_bytes(1),
+            u32::to_be_bytes(4),
+            Some(1),
+            None,
+            None,
+            false,
+        );
 
-//let swap2 = Node::from_raw_parts(
-//// 1
-//u32::to_be_bytes(2),
-//u32::to_be_bytes(5),
-//Some(4),
-//None,
-//Some(1),
-//true,
-//);
+        let swap2 = Node::from_raw_parts(
+            // 1
+            u32::to_be_bytes(2),
+            u32::to_be_bytes(5),
+            Some(4),
+            None,
+            Some(1),
+            true,
+        );
 
-//let swap1 = Node::from_raw_parts(
-//// 2
-//u32::to_be_bytes(3),
-//u32::to_be_bytes(6),
-//Some(2),
-//Some(3),
-//Some(0),
-//false,
-//);
+        let swap1 = Node::from_raw_parts(
+            // 2
+            u32::to_be_bytes(3),
+            u32::to_be_bytes(6),
+            Some(2),
+            Some(3),
+            Some(0),
+            false,
+        );
 
-//let node1 = Node::from_raw_parts(
-//// 3
-//u32::to_be_bytes(7),
-//u32::to_be_bytes(9),
-//None,
-//None,
-//Some(1),
-//true,
-//);
+        let node1 = Node::from_raw_parts(
+            // 3
+            u32::to_be_bytes(7),
+            u32::to_be_bytes(9),
+            None,
+            None,
+            Some(1),
+            true,
+        );
 
-//let node2 = Node::from_raw_parts(
-//// 4
-//u32::to_be_bytes(8),
-//u32::to_be_bytes(8),
-//None,
-//None,
-//Some(2),
-//false,
-//);
+        let node2 = Node::from_raw_parts(
+            // 4
+            u32::to_be_bytes(8),
+            u32::to_be_bytes(8),
+            None,
+            None,
+            Some(2),
+            false,
+        );
 
-//expected_tree.set_node(0, &parent);
-//expected_tree.set_node(1, &swap2);
-//expected_tree.set_node(2, &swap1);
-//expected_tree.set_node(3, &node1);
-//expected_tree.set_node(4, &node2);
-//}
+        expected_tree.set_node(0, &parent);
+        expected_tree.set_node(1, &swap2);
+        expected_tree.set_node(2, &swap1);
+        expected_tree.set_node(3, &node1);
+        expected_tree.set_node(4, &node2);
+        expected_tree.set_root(0, Some(0));
+    }
 
-//assert!(tree.struct_eq(&expected_tree));
-//}
+    assert!(tree.struct_eq(0, &expected_tree, 0));
+}
 
-//#[test]
-//fn test_tree_strings() {
-//let mut vec = create_vec(4, 10, 10);
+#[test]
+fn test_tree_strings() {
+    let mut vec = create_vec(4, 10, 10, 1);
 
-//let mut tree = RBtree::<i32, String, 4, 10>::init_slice(vec.as_mut_slice()).unwrap();
-//assert!(tree.is_empty());
+    let mut tree = RBForest::<i32, String, 4, 10, 1>::init_slice(vec.as_mut_slice()).unwrap();
+    assert!(tree.is_empty(0));
 
-//assert_eq!(tree.insert(12, "val".to_string()), Ok(None));
-//assert_eq!(tree.insert(32, "44".to_string()), Ok(None));
-//assert_eq!(tree.insert(123, "321".to_string()), Ok(None));
-//assert_eq!(
-//tree.insert(123, "321".to_string()),
-//Ok(Some("321".to_string()))
-//);
-//assert_eq!(tree.insert(1, "2".to_string()), Ok(None));
-//assert_eq!(tree.insert(14, "32".to_string()), Ok(None));
-//assert_eq!(tree.insert(20, "41".to_string()), Ok(None));
-//assert_eq!(tree.insert(6, "64".to_string()), Ok(None));
-//assert_eq!(tree.insert(41, "22".to_string()), Ok(None));
-//assert_eq!(tree.insert(122, "14".to_string()), Ok(None));
-//assert_eq!(
-//tree.insert(41, "99".to_string()),
-//Ok(Some("22".to_string()))
-//);
-//assert_eq!(
-//tree.insert(12, "very long value".to_string()),
-//Err(Error::ValueSerializationError)
-//);
+    assert_eq!(tree.insert(0, 12, "val".to_string()), Ok(None));
+    assert_eq!(tree.insert(0, 32, "44".to_string()), Ok(None));
+    assert_eq!(tree.insert(0, 123, "321".to_string()), Ok(None));
+    assert_eq!(
+        tree.insert(0, 123, "321".to_string()),
+        Ok(Some("321".to_string()))
+    );
+    assert_eq!(tree.insert(0, 1, "2".to_string()), Ok(None));
+    assert_eq!(tree.insert(0, 14, "32".to_string()), Ok(None));
+    assert_eq!(tree.insert(0, 20, "41".to_string()), Ok(None));
+    assert_eq!(tree.insert(0, 6, "64".to_string()), Ok(None));
+    assert_eq!(tree.insert(0, 41, "22".to_string()), Ok(None));
+    assert_eq!(tree.insert(0, 122, "14".to_string()), Ok(None));
+    assert_eq!(
+        tree.insert(0, 41, "99".to_string()),
+        Ok(Some("22".to_string()))
+    );
+    assert_eq!(
+        tree.insert(0, 12, "very long value".to_string()),
+        Err(Error::ValueSerializationError)
+    );
 
-//assert_eq!(tree.get(&41).unwrap(), "99".to_string());
-//assert_eq!(tree.get(&12).unwrap(), "val".to_string());
-//assert_eq!(tree.len(), 9);
-//}
+    assert_eq!(tree.get(0, &41).unwrap(), "99".to_string());
+    assert_eq!(tree.get(0, &12).unwrap(), "val".to_string());
+    assert_eq!(tree.len(0), 9);
+}
 
-//#[test]
-//fn test_tree_string_keys() {
-//let mut vec = create_vec(10, 10, 10);
+#[test]
+fn test_tree_string_keys() {
+    let mut vec = create_vec(10, 10, 10, 1);
 
-//let mut tree = RBtree::<String, String, 10, 10>::init_slice(vec.as_mut_slice()).unwrap();
-//assert!(tree.is_empty());
+    let mut tree = RBForest::<String, String, 10, 10, 1>::init_slice(vec.as_mut_slice()).unwrap();
+    assert!(tree.is_empty(0));
 
-//assert_eq!(tree.insert("12".to_string(), "val".to_string()), Ok(None));
-//assert_eq!(tree.insert("32".to_string(), "44".to_string()), Ok(None));
-//assert_eq!(tree.insert("123".to_string(), "321".to_string()), Ok(None));
-//assert_eq!(
-//tree.insert("123".to_string(), "321".to_string()),
-//Ok(Some("321".to_string()))
-//);
-//assert_eq!(tree.insert("1".to_string(), "2".to_string()), Ok(None));
-//assert_eq!(tree.insert("14".to_string(), "32".to_string()), Ok(None));
-//assert_eq!(tree.insert("20".to_string(), "41".to_string()), Ok(None));
-//assert_eq!(tree.insert("6".to_string(), "64".to_string()), Ok(None));
-//assert_eq!(tree.insert("41".to_string(), "22".to_string()), Ok(None));
-//assert_eq!(tree.insert("122".to_string(), "14".to_string()), Ok(None));
-//assert_eq!(
-//tree.insert("41".to_string(), "99".to_string()),
-//Ok(Some("22".to_string()))
-//);
+    assert_eq!(
+        tree.insert(0, "12".to_string(), "val".to_string()),
+        Ok(None)
+    );
+    assert_eq!(tree.insert(0, "32".to_string(), "44".to_string()), Ok(None));
+    assert_eq!(
+        tree.insert(0, "123".to_string(), "321".to_string()),
+        Ok(None)
+    );
+    assert_eq!(
+        tree.insert(0, "123".to_string(), "321".to_string()),
+        Ok(Some("321".to_string()))
+    );
+    assert_eq!(tree.insert(0, "1".to_string(), "2".to_string()), Ok(None));
+    assert_eq!(tree.insert(0, "14".to_string(), "32".to_string()), Ok(None));
+    assert_eq!(tree.insert(0, "20".to_string(), "41".to_string()), Ok(None));
+    assert_eq!(tree.insert(0, "6".to_string(), "64".to_string()), Ok(None));
+    assert_eq!(tree.insert(0, "41".to_string(), "22".to_string()), Ok(None));
+    assert_eq!(
+        tree.insert(0, "122".to_string(), "14".to_string()),
+        Ok(None)
+    );
+    assert_eq!(
+        tree.insert(0, "41".to_string(), "99".to_string()),
+        Ok(Some("22".to_string()))
+    );
 
-//assert_eq!(
-//tree.insert("12".to_string(), "very long value".to_string()),
-//Err(Error::ValueSerializationError)
-//);
+    assert_eq!(
+        tree.insert(0, "12".to_string(), "very long value".to_string()),
+        Err(Error::ValueSerializationError)
+    );
 
-//assert_eq!(
-//tree.insert("very long key".to_string(), "1".to_string()),
-//Err(Error::KeySerializationError)
-//);
+    assert_eq!(
+        tree.insert(0, "very long key".to_string(), "1".to_string()),
+        Err(Error::KeySerializationError)
+    );
 
-//assert_eq!(tree.get(&"41".to_string()).unwrap(), "99".to_string());
-//assert_eq!(tree.get(&"12".to_string()).unwrap(), "val".to_string());
-//assert_eq!(tree.len(), 9);
-//}
+    assert_eq!(tree.get(0, &"41".to_string()).unwrap(), "99".to_string());
+    assert_eq!(tree.get(0, &"12".to_string()).unwrap(), "val".to_string());
+    assert_eq!(tree.len(0), 9);
+}
 
-//#[test]
-//fn delete() {
-//let mut vec = create_vec(1, 1, 256);
+#[test]
+fn delete() {
+    let mut vec = create_vec(1, 1, 256, 1);
 
-//let mut tree = RBtree::<u8, u8, 1, 1>::init_slice(vec.as_mut_slice()).unwrap();
-//assert!(tree.is_empty());
+    let mut tree = RBForest::<u8, u8, 1, 1, 1>::init_slice(vec.as_mut_slice()).unwrap();
+    assert!(tree.is_empty(0));
 
-//for key in &INSERT_KEYS {
-//assert_eq!(tree.insert(*key, *key), Ok(None));
-//}
+    for key in &INSERT_KEYS {
+        assert_eq!(tree.insert(0, *key, *key), Ok(None));
+    }
 
-//for key in &INSERT_KEYS {
-//assert_eq!(tree.get(key), Some(*key));
-//}
+    for key in &INSERT_KEYS {
+        assert_eq!(tree.get(0, key), Some(*key));
+    }
 
-//tree.child_parent_link_test();
+    tree.child_parent_link_test(0);
 
-//let mut len = INSERT_KEYS.len();
-//assert_eq!(tree.len(), len);
-//for key in &INSERT_KEYS {
-//assert_rm(key, &mut tree);
-//len -= 1;
-//assert_eq!(tree.len(), len);
-//}
-//}
+    let mut len = INSERT_KEYS.len();
+    assert_eq!(tree.len(0), len);
+    for key in &INSERT_KEYS {
+        assert_rm(key, 0, &mut tree);
+        len -= 1;
+        assert_eq!(tree.len(0), len);
+    }
+}
 
-//#[test]
-//fn iterator() {
-//let mut vec = create_vec(1, 1, 256);
+#[test]
+fn pairs_iterator() {
+    let mut vec = create_vec(1, 1, 256, 1);
 
-//let mut tree = RBtree::<u8, u8, 1, 1>::init_slice(vec.as_mut_slice()).unwrap();
-//assert!(tree.is_empty());
+    let mut tree = RBForest::<u8, u8, 1, 1, 1>::init_slice(vec.as_mut_slice()).unwrap();
+    assert!(tree.is_empty(0));
 
-//for key in &INSERT_KEYS {
-//assert_eq!(tree.insert(*key, *key), Ok(None));
-//}
+    for key in &INSERT_KEYS {
+        assert_eq!(tree.insert(0, *key, *key), Ok(None));
+    }
 
-//let tree_iter = tree.into_iter();
+    let tree_iter = tree.pairs(0);
 
-//let tree_data: Vec<(u8, u8)> = tree_iter.collect();
+    let tree_data: Vec<(u8, u8)> = tree_iter.collect();
 
-//assert_eq!(tree_data.len(), INSERT_KEYS.len());
+    assert_eq!(tree_data.len(), INSERT_KEYS.len());
 
-//let mut prev_elem = (0, 0);
+    let mut prev_elem = (0, 0);
 
-//for elem in tree_data {
-//assert!(prev_elem <= elem);
-//prev_elem = elem;
-//}
-//}
+    for elem in tree_data {
+        assert!(prev_elem <= elem);
+        prev_elem = elem;
+    }
+}
 
-fn create_vec(k_size: usize, v_size: usize, num_entries: usize, max_roots: usize) -> Vec<u8> {
+pub fn create_vec(k_size: usize, v_size: usize, num_entries: usize, max_roots: usize) -> Vec<u8> {
     let len = mem::size_of::<Header<0>>()
         + 4 * max_roots
         + (mem::size_of::<Node<0, 0>>() + k_size + v_size) * num_entries;
     vec![0; len]
 }
 
-fn assert_rm<K, V, const KSIZE: usize, const VSIZE: usize, const MAX_ROOTS: usize>(
+pub fn assert_rm<K, V, const KSIZE: usize, const VSIZE: usize, const MAX_ROOTS: usize>(
     val: &K,
     tree_id: usize,
     tree: &mut RBForest<K, V, KSIZE, VSIZE, MAX_ROOTS>,
