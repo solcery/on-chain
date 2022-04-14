@@ -240,6 +240,63 @@ where
             .is_some()
     }
 
+    pub fn pairs<'b>(
+        &'b self,
+        tree_id: usize,
+    ) -> PairsIterator<'b, 'a, K, V, KSIZE, VSIZE, MAX_ROOTS> {
+        PairsIterator {
+            next_node: self
+                .header
+                .root(tree_id)
+                .map(|root_id| self.min(root_id as usize)),
+            tree: self,
+        }
+    }
+
+    pub fn keys<'b>(
+        &'b self,
+        tree_id: usize,
+    ) -> KeysIterator<'b, 'a, K, V, KSIZE, VSIZE, MAX_ROOTS> {
+        KeysIterator {
+            next_node: self
+                .header
+                .root(tree_id)
+                .map(|root_id| self.min(root_id as usize)),
+            tree: self,
+        }
+    }
+
+    pub fn values<'b>(
+        &'b self,
+        tree_id: usize,
+    ) -> ValuesIterator<'b, 'a, K, V, KSIZE, VSIZE, MAX_ROOTS> {
+        ValuesIterator {
+            next_node: self
+                .header
+                .root(tree_id)
+                .map(|root_id| self.min(root_id as usize)),
+            tree: self,
+        }
+    }
+
+    pub fn first_entry(&self, tree_id: usize) -> Option<(K, V)> {
+        self.header.root(tree_id).map(|root_id| {
+            let node = &self.nodes[self.min(root_id as usize)];
+            let key = K::deserialize(&mut node.key.as_slice()).expect("Key corrupted");
+            let value = V::deserialize(&mut node.value.as_slice()).expect("Value corrupted");
+            (key, value)
+        })
+    }
+
+    pub fn last_entry(&self, tree_id: usize) -> Option<(K, V)> {
+        self.header.root(tree_id).map(|root_id| {
+            let node = &self.nodes[self.max(root_id as usize)];
+            let key = K::deserialize(&mut node.key.as_slice()).expect("Key corrupted");
+            let value = V::deserialize(&mut node.value.as_slice()).expect("Value corrupted");
+            (key, value)
+        })
+    }
+
     #[must_use]
     fn size(&self, maybe_id: Option<u32>) -> usize {
         if let Some(id) = maybe_id {
@@ -840,24 +897,6 @@ where
         }
     }
 
-    pub fn first_entry(&self, tree_id: usize) -> Option<(K, V)> {
-        self.header.root(tree_id).map(|root_id| {
-            let node = &self.nodes[self.min(root_id as usize)];
-            let key = K::deserialize(&mut node.key.as_slice()).expect("Key corrupted");
-            let value = V::deserialize(&mut node.value.as_slice()).expect("Value corrupted");
-            (key, value)
-        })
-    }
-
-    pub fn last_entry(&self, tree_id: usize) -> Option<(K, V)> {
-        self.header.root(tree_id).map(|root_id| {
-            let node = &self.nodes[self.max(root_id as usize)];
-            let key = K::deserialize(&mut node.key.as_slice()).expect("Key corrupted");
-            let value = V::deserialize(&mut node.value.as_slice()).expect("Value corrupted");
-            (key, value)
-        })
-    }
-
     fn min(&self, mut min_id: usize) -> usize {
         while let Some(id) = self.nodes[min_id].left() {
             min_id = id as usize;
@@ -870,19 +909,6 @@ where
             max_id = id as usize;
         }
         max_id
-    }
-
-    pub fn pairs<'b>(
-        &'b self,
-        tree_id: usize,
-    ) -> ForestIterator<'b, 'a, K, V, KSIZE, VSIZE, MAX_ROOTS> {
-        ForestIterator {
-            next_node: self
-                .header
-                .root(tree_id)
-                .map(|root_id| self.min(root_id as usize)),
-            tree: self,
-        }
     }
 }
 
@@ -897,7 +923,7 @@ pub enum Error {
     WrongValueSize,
 }
 
-pub struct ForestIterator<
+pub struct PairsIterator<
     'a,
     'b,
     K,
@@ -915,7 +941,7 @@ pub struct ForestIterator<
 }
 
 impl<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize, const MAX_ROOTS: usize> Iterator
-    for ForestIterator<'a, 'b, K, V, KSIZE, VSIZE, MAX_ROOTS>
+    for PairsIterator<'a, 'b, K, V, KSIZE, VSIZE, MAX_ROOTS>
 where
     K: Ord + BorshDeserialize + BorshSerialize,
     V: BorshDeserialize + BorshSerialize,
@@ -947,6 +973,112 @@ where
             }
 
             (key, value)
+        })
+    }
+}
+
+pub struct KeysIterator<
+    'a,
+    'b,
+    K,
+    V,
+    const KSIZE: usize,
+    const VSIZE: usize,
+    const MAX_ROOTS: usize,
+> where
+    K: Ord + BorshDeserialize + BorshSerialize,
+    V: BorshDeserialize + BorshSerialize,
+    [(); mem::size_of::<Header<MAX_ROOTS>>()]: Sized,
+{
+    next_node: Option<usize>,
+    tree: &'a RBForest<'b, K, V, KSIZE, VSIZE, MAX_ROOTS>,
+}
+
+impl<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize, const MAX_ROOTS: usize> Iterator
+    for KeysIterator<'a, 'b, K, V, KSIZE, VSIZE, MAX_ROOTS>
+where
+    K: Ord + BorshDeserialize + BorshSerialize,
+    V: BorshDeserialize + BorshSerialize,
+    [(); mem::size_of::<Header<MAX_ROOTS>>()]: Sized,
+{
+    type Item = K;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next_node.map(|mut id| {
+            let nodes = &self.tree.nodes;
+
+            let key = K::deserialize(&mut dbg!(nodes[id].key.as_slice())).expect("Key corrupted");
+
+            // find next
+            if let Some(right_id) = nodes[id].right() {
+                self.next_node = Some(self.tree.min(right_id as usize));
+            } else {
+                self.next_node = None;
+                while let Some(parent_id) = nodes[id].parent() {
+                    let parent_id = parent_id as usize;
+                    if Some(id as u32) == nodes[parent_id].left() {
+                        self.next_node = Some(parent_id);
+                        break;
+                    } else {
+                        id = parent_id;
+                    }
+                }
+            }
+
+            key
+        })
+    }
+}
+
+pub struct ValuesIterator<
+    'a,
+    'b,
+    K,
+    V,
+    const KSIZE: usize,
+    const VSIZE: usize,
+    const MAX_ROOTS: usize,
+> where
+    K: Ord + BorshDeserialize + BorshSerialize,
+    V: BorshDeserialize + BorshSerialize,
+    [(); mem::size_of::<Header<MAX_ROOTS>>()]: Sized,
+{
+    next_node: Option<usize>,
+    tree: &'a RBForest<'b, K, V, KSIZE, VSIZE, MAX_ROOTS>,
+}
+
+impl<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize, const MAX_ROOTS: usize> Iterator
+    for ValuesIterator<'a, 'b, K, V, KSIZE, VSIZE, MAX_ROOTS>
+where
+    K: Ord + BorshDeserialize + BorshSerialize,
+    V: BorshDeserialize + BorshSerialize,
+    [(); mem::size_of::<Header<MAX_ROOTS>>()]: Sized,
+{
+    type Item = V;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next_node.map(|mut id| {
+            let nodes = &self.tree.nodes;
+
+            let value = V::deserialize(&mut nodes[id].value.as_slice()).expect("Value corrupted");
+
+            // find next
+            if let Some(right_id) = nodes[id].right() {
+                self.next_node = Some(self.tree.min(right_id as usize));
+            } else {
+                self.next_node = None;
+                while let Some(parent_id) = nodes[id].parent() {
+                    let parent_id = parent_id as usize;
+                    if Some(id as u32) == nodes[parent_id].left() {
+                        self.next_node = Some(parent_id);
+                        break;
+                    } else {
+                        id = parent_id;
+                    }
+                }
+            }
+
+            value
         })
     }
 }
