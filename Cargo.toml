@@ -3,6 +3,7 @@ members = [
 	"crud",
 	"data-types",
 	"db",
+	"db-manager",
 	"engine",
 	"game",
 	"object",
