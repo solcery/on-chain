@@ -18,8 +18,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
+      - name: Install nightly toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly-2022-03-22
+          default: true
+          override: true
+
       - name: Generate code coverage
-        run: cargo +nightly tarpaulin --workspace --out Xml
+        run: cargo tarpaulin --workspace --out Xml
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2

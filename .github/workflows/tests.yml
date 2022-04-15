@@ -15,15 +15,14 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
-        with:
-          submodules: recursive
 
-      - name: Install stable toolchain
+      - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: nightly-2022-03-22
           default: true
+          override: true
 
       - name: Build tests
         run: cargo test --no-run
