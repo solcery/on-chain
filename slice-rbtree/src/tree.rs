@@ -4,7 +4,7 @@ use std::cmp::Ord;
 
 use super::{Error, KeysIterator, PairsIterator, RBForest, ValuesIterator};
 
-//#[derive(Debug)]
+#[derive(Debug)]
 pub struct RBTree<'a, K, V, const KSIZE: usize, const VSIZE: usize>(
     RBForest<'a, K, V, KSIZE, VSIZE, 1>,
 )

@@ -6,8 +6,8 @@ members = [
 	"game",
 	"object",
 	"project",
-	"storage",
 	"slice-rbtree",
+	"storage",
 	"template",
 	"vm",
 ]
