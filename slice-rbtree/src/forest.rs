@@ -12,6 +12,8 @@ mod node;
 pub(crate) use header::Header;
 pub(crate) use node::Node;
 
+use super::Error;
+
 //#[derive(Debug)]
 pub struct RBForest<'a, K, V, const KSIZE: usize, const VSIZE: usize, const MAX_ROOTS: usize>
 where
@@ -914,18 +916,6 @@ where
         }
         max_id
     }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum Error {
-    KeySerializationError,
-    NoNodesLeft,
-    TooSmall,
-    ValueSerializationError,
-    WrongKeySize,
-    WrongNodePoolSize,
-    WrongRootsNumber,
-    WrongValueSize,
 }
 
 pub struct PairsIterator<
