@@ -1,20 +1,13 @@
+use crate::db_manager::DBManager;
+use crate::schemas_manager::{Schema, SchemaId, SchemasManager};
 use borsh::{BorshDeserialize, BorshSerialize};
 use slice_rbtree;
 use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    entrypoint,
-    entrypoint::ProgramResult,
-    program_error::ProgramError,
+    account_info::AccountInfo, entrypoint, entrypoint::ProgramResult, program_error::ProgramError,
     pubkey::Pubkey,
 };
 
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, BorshSerialize, BorshDeserialize)]
-struct Schema {
-    version: u64,
-    tables: String, //TODO: how store tables order/types?
-}
-
-type SchemaId = String;
+// TODO: specify by DB
 type DBId = String;
 type DBRequest = String;
 
@@ -56,22 +49,22 @@ fn process_instruction(
     let accounts_iter = &mut accounts.iter();
     match instruction {
         Instruction::CreateDB { schema_id, db_id } => {
-            unimplemented!();
+            DBManager::create_db();
         }
         Instruction::RemoveDB { db_id } => {
-            unimplemented!();
+            DBManager::remove_db();
         }
         Instruction::AddDBSchema { schema_id, schema } => {
-            unimplemented!();
+            SchemasManager::add_schema();
         }
         Instruction::RemoveDBSchema { schema_id } => {
-            unimplemented!();
+            SchemasManager::remove_schema();
         }
         Instruction::UpdateDBSchema { schema_id, schema } => {
-            unimplemented!();
+            SchemasManager::update_schema();
         }
         Instruction::CallDB { db_id, request } => {
-            unimplemented!();
+            DBManager::process_request();
         }
     }
 
