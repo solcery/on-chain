@@ -2778,6 +2778,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "solcery-reltab"
+version = "0.0.0"
+dependencies = [
+ "borsh",
+ "pretty_assertions",
+ "slice-rbtree",
+]
+
+[[package]]
 name = "solcery-storage"
 version = "0.0.0"
 dependencies = [

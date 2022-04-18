@@ -1,0 +1,13 @@
+[package]
+name = "solcery-reltab"
+version = "0.0.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+slice-rbtree = {path = "../slice-rbtree"}
+borsh = "0.9.1"
+
+[dev-dependencies]
+pretty_assertions = "0.6.1"

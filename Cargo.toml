@@ -6,6 +6,7 @@ members = [
 	"game",
 	"object",
 	"project",
+	"reltab",
 	"slice-rbtree",
 	"storage",
 	"template",
