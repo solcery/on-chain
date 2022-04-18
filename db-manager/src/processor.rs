@@ -1,27 +1,39 @@
-use crate::db_manager::DBManager;
-use crate::schemas_manager::{Schema, SchemaId, SchemasManager};
+use crate::{
+    db_manager::{DBId, DBManager, DBQuery},
+    schemas_manager::{Schema, SchemaId, SchemasManager},
+};
 use borsh::{BorshDeserialize, BorshSerialize};
-use slice_rbtree;
 use solana_program::{
     account_info::AccountInfo, entrypoint, entrypoint::ProgramResult, program_error::ProgramError,
     pubkey::Pubkey,
 };
 
-// TODO: specify by DB
-type DBId = String;
-type DBRequest = String;
-
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, BorshSerialize, BorshDeserialize)]
 pub enum Instruction {
-    // TODO: add descriptions
-    CreateDB { schema_id: SchemaId, db_id: DBId },
-    RemoveDB { db_id: DBId },
+    CreateDB {
+        schema_id: SchemaId,
+        db_id: DBId,
+    },
+    RemoveDB {
+        db_id: DBId,
+    },
 
-    AddDBSchema { schema_id: SchemaId, schema: Schema },
-    RemoveDBSchema { schema_id: SchemaId },
-    UpdateDBSchema { schema_id: SchemaId, schema: Schema },
+    AddSchema {
+        schema_id: SchemaId,
+        schema: Schema,
+    },
+    RemoveSchema {
+        schema_id: SchemaId,
+    },
+    UpdateSchema {
+        schema_id: SchemaId,
+        new_schema: Schema,
+    },
 
-    CallDB { db_id: DBId, request: DBRequest },
+    Query {
+        db_id: DBId,
+        query: DBQuery,
+    },
 }
 
 entrypoint!(process_instruction_bytes);
@@ -42,29 +54,33 @@ pub fn process_instruction_bytes(
 }
 
 fn process_instruction(
-    program_id: &Pubkey,
+    _program_id: &Pubkey,
     accounts: &[AccountInfo],
     instruction: Instruction,
-) -> Result<(), Error> {
-    let accounts_iter = &mut accounts.iter();
+) -> ProgramResult {
+    let _accounts_iter = &mut accounts.iter();
+
     match instruction {
         Instruction::CreateDB { schema_id, db_id } => {
-            DBManager::create_db();
+            DBManager::create_db(schema_id, db_id)?;
         }
         Instruction::RemoveDB { db_id } => {
-            DBManager::remove_db();
+            DBManager::remove_db(db_id)?;
         }
-        Instruction::AddDBSchema { schema_id, schema } => {
-            SchemasManager::add_schema();
+        Instruction::AddSchema { schema_id, schema } => {
+            SchemasManager::add_schema(schema_id, schema)?;
         }
-        Instruction::RemoveDBSchema { schema_id } => {
-            SchemasManager::remove_schema();
+        Instruction::RemoveSchema { schema_id } => {
+            SchemasManager::remove_schema(schema_id)?;
         }
-        Instruction::UpdateDBSchema { schema_id, schema } => {
-            SchemasManager::update_schema();
+        Instruction::UpdateSchema {
+            schema_id,
+            new_schema,
+        } => {
+            SchemasManager::update_schema(schema_id, new_schema)?;
         }
-        Instruction::CallDB { db_id, request } => {
-            DBManager::process_request();
+        Instruction::Query { db_id, query } => {
+            DBManager::process_query(db_id, query)?;
         }
     }
 
