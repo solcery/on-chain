@@ -87,6 +87,7 @@ impl<const MAX_ROOTS: usize> Header<MAX_ROOTS> {
         self.k_size = u16::to_be_bytes(k_size);
         self.v_size = u16::to_be_bytes(v_size);
         self.max_nodes = u32::to_be_bytes(max_nodes);
+        self.roots_num = u32::to_be_bytes(MAX_ROOTS as u32);
         unsafe {
             self.set_head(head);
             for (id, root) in roots.into_iter().enumerate() {

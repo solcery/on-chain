@@ -1,5 +1,5 @@
 use super::*;
-use crate::forest::{tests as forest_helpers, Header, Node};
+use crate::forest::{tests as forest_helpers, Node};
 use pretty_assertions::assert_eq;
 use std::fmt::Debug;
 

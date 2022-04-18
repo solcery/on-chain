@@ -40,6 +40,11 @@ where
     }
 
     #[must_use]
+    pub fn free_nodes_left(&self) -> usize {
+        self.0.free_nodes_left()
+    }
+
+    #[must_use]
     pub fn contains_key<Q>(&self, k: &Q) -> bool
     where
         K: Borrow<Q> + Ord,

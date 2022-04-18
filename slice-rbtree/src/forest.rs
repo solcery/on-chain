@@ -78,8 +78,13 @@ where
     }
 
     #[must_use]
-    pub fn expected_size(num_entries: usize) -> usize {
+    pub const fn expected_size(num_entries: usize) -> usize {
         mem::size_of::<Header<MAX_ROOTS>>() + mem::size_of::<Node<KSIZE, VSIZE>>() * num_entries
+    }
+
+    #[must_use]
+    pub const fn max_roots() -> usize {
+        MAX_ROOTS
     }
 
     pub unsafe fn from_slice(slice: &'a mut [u8]) -> Result<Self, Error> {
@@ -128,6 +133,17 @@ where
     #[must_use]
     pub fn len(&self, tree_id: usize) -> usize {
         self.size(self.header.root(tree_id))
+    }
+
+    #[must_use]
+    pub fn free_nodes_left(&self) -> usize {
+        let mut counter = 0;
+        let mut maybe_id = self.header.head();
+        while let Some(id) = maybe_id {
+            counter += 1;
+            maybe_id = self.nodes[id as usize].parent();
+        }
+        counter
     }
 
     pub fn clear(&mut self) {

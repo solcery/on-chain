@@ -453,6 +453,65 @@ fn pairs_iterator() {
     }
 }
 
+#[test]
+fn too_small() {
+    let mut vec = vec![1, 2, 3];
+    let tree = RBForest::<u8, u8, 1, 1, 1>::init_slice(vec.as_mut_slice()).unwrap_err();
+    assert_eq!(tree, Error::TooSmall);
+}
+
+#[test]
+fn fractional_node_count() {
+    let mut vec = vec![0; RBForest::<u8, u8, 1, 1, 1>::expected_size(1) + 1];
+    let tree = RBForest::<u8, u8, 1, 1, 1>::init_slice(vec.as_mut_slice()).unwrap_err();
+    assert_eq!(tree, Error::WrongNodePoolSize);
+}
+
+#[test]
+fn wrong_root_count() {
+    let mut vec = create_vec(1, 1, 3, 4);
+    let correct_tree = RBForest::<u8, u8, 1, 1, 4>::init_slice(vec.as_mut_slice()).unwrap();
+
+    drop(correct_tree);
+
+    let wrong_len = vec.len() - 3 * 4;
+    let wrong_tree_attempt = unsafe {
+        RBForest::<u8, u8, 1, 1, 1>::from_slice(&mut vec.as_mut_slice()[0..wrong_len]).unwrap_err()
+    };
+    assert_eq!(wrong_tree_attempt, Error::WrongRootsNumber);
+}
+
+const FOREST_BYTES: [u8; 148] = [
+    0, 1, 0, 1, 0, 0, 0, 8, 0, 0, 0, 3, 0, 0, 0, 7, 0, 0, 0, 3, 0, 0, 0, 1, 255, 255, 255, 255, 4,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 12, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 4, 2, 5, 0, 0, 0, 2, 0, 0, 0, 4, 0, 0, 0, 4, 3, 5, 7, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 5, 5, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 4, 2, 9, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 7, 4, 4, 3, 0, 0, 0, 6, 0, 0, 0, 5, 0, 0, 0, 6, 3,
+];
+
+#[test]
+fn deserialization() {
+    let bytes_slice = &mut FOREST_BYTES.clone();
+    let forest = unsafe { RBForest::<u8, u8, 1, 1, 3>::from_slice(bytes_slice).unwrap() };
+    let mut vec = create_vec(1, 1, 8, 3);
+    let mut expected_tree = RBForest::<u8, u8, 1, 1, 3>::init_slice(vec.as_mut_slice()).unwrap();
+
+    expected_tree.insert(0, 4, 3).unwrap();
+    expected_tree.insert(0, 2, 9).unwrap();
+    expected_tree.insert(0, 5, 1).unwrap();
+    expected_tree.insert(1, 5, 7).unwrap();
+    expected_tree.insert(1, 2, 5).unwrap();
+    expected_tree.insert(1, 1, 2).unwrap();
+    expected_tree.insert(2, 1, 4).unwrap();
+    expected_tree.insert(1, 4, 0).unwrap();
+
+    for root in 0..RBForest::<u8, u8, 1, 1, 3>::max_roots() {
+        for (key_value, expected_key_value) in forest.pairs(root).zip(expected_tree.pairs(root)) {
+            assert_eq!(key_value, expected_key_value);
+        }
+    }
+}
+
 pub fn create_vec(k_size: usize, v_size: usize, num_entries: usize, max_roots: usize) -> Vec<u8> {
     let len = mem::size_of::<Header<0>>()
         + 4 * max_roots

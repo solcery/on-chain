@@ -2,10 +2,6 @@
 #![feature(generic_const_exprs)]
 #![allow(const_evaluatable_unchecked)]
 
-use borsh::{BorshDeserialize, BorshSerialize};
-use std::borrow::Borrow;
-use std::cmp::Ord;
-
 mod forest;
 mod tree;
 
