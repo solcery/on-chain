@@ -14,7 +14,7 @@ pub(crate) use node::Node;
 
 use super::Error;
 
-//#[derive(Debug)]
+#[derive(Debug)]
 pub struct RBForest<'a, K, V, const KSIZE: usize, const VSIZE: usize, const MAX_ROOTS: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,

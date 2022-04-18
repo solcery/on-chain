@@ -130,26 +130,20 @@ impl<const MAX_ROOTS: usize> Header<MAX_ROOTS> {
     }
 }
 
-//impl fmt::Debug for Header {
-//fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//f.debug_struct("Header")
-//.field("k_size", &self.k_size())
-//.field("v_size", &self.v_size())
-//.field("max_nodes", &self.max_nodes())
-//.field("head", &self.head())
-//.finish()
-//.debug_list("Roots")
-//.entries(&self.roots.iter().map(|x| {
-//let num = u32::from_be_bytes(x);
-//if num == u32::MAX {
-//None
-//} else {
-//Some(num)
-//}
-//}))
-//.finish()
-//}
-//}
+// FIXME: Implement a better Debug
+impl<const MAX_ROOTS: usize> fmt::Debug for Header<MAX_ROOTS> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Header")
+            .field("k_size", &self.k_size())
+            .field("v_size", &self.v_size())
+            .field("max_nodes", &self.max_nodes())
+            .field("roots_num", &self.roots_num())
+            // slice_cast for splitting
+            .field("roots", &self.roots)
+            .field("head", &self.head())
+            .finish()
+    }
+}
 
 #[cfg(test)]
 mod header_tests {
