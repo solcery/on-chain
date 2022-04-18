@@ -581,6 +581,8 @@ name = "db-manager"
 version = "0.1.0"
 dependencies = [
  "borsh",
+ "num-derive",
+ "num-traits",
  "pretty_assertions 1.2.1",
  "slice-rbtree",
  "solana-program",
