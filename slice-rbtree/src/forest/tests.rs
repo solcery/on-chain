@@ -2,23 +2,22 @@ use super::*;
 use pretty_assertions::assert_eq;
 use std::fmt::Debug;
 
-impl<'a, K, V, const KSIZE: usize, const VSIZE: usize, const MAX_ROOTS: usize>
-    RBForest<'a, K, V, KSIZE, VSIZE, MAX_ROOTS>
+impl<'a, K, V, const KSIZE: usize, const VSIZE: usize> RBForest<'a, K, V, KSIZE, VSIZE>
 where
     K: Eq + Ord + BorshDeserialize + BorshSerialize,
     V: Eq + BorshDeserialize + BorshSerialize,
-    [(); mem::size_of::<Header<MAX_ROOTS>>()]: Sized,
+    [(); mem::size_of::<Header>()]: Sized,
 {
     pub fn is_balanced(&self, tree_id: usize) -> bool {
         let mut black = 0;
-        let mut node = self.header.root(tree_id);
+        let mut node = self.root(tree_id);
         while let Some(id) = node {
             if !self.nodes[id as usize].is_red() {
                 black += 1;
             }
             node = self.nodes[id as usize].left();
         }
-        self.node_balanced(self.header.root(tree_id), black)
+        self.node_balanced(self.root(tree_id), black)
     }
 
     fn node_balanced(&self, maybe_id: Option<u32>, black: i32) -> bool {
@@ -44,12 +43,6 @@ where
         self.nodes[id] = *node;
     }
 
-    pub unsafe fn set_root(&mut self, tree_id: usize, root: Option<u32>) {
-        unsafe {
-            self.header.set_root(tree_id, root);
-        }
-    }
-
     pub unsafe fn set_head(&mut self, head: Option<u32>) {
         unsafe {
             self.header.set_head(head);
@@ -57,7 +50,7 @@ where
     }
 
     pub fn struct_eq(&self, tree_id: usize, other: &Self, other_tree_id: usize) -> bool {
-        self.node_eq(self.header.root(tree_id), other.header.root(other_tree_id))
+        self.node_eq(self.root(tree_id), other.root(other_tree_id))
     }
 
     fn node_eq(&self, a: Option<u32>, b: Option<u32>) -> bool {
@@ -102,7 +95,7 @@ where
     }
 
     pub fn child_parent_link_test(&self, tree_id: usize) {
-        if let Some(id) = self.header.root(tree_id) {
+        if let Some(id) = self.root(tree_id) {
             assert_eq!(self.nodes[id as usize].parent(), None);
             self.node_link_test(id as usize);
         }
@@ -141,7 +134,7 @@ pub const INSERT_KEYS: [u8; 256] = [
 fn init() {
     let mut vec = create_vec(4, 4, 5, 1);
 
-    let mut tree = RBForest::<i32, u32, 4, 4, 1>::init_slice(vec.as_mut_slice()).unwrap();
+    let mut tree = RBForest::<i32, u32, 4, 4>::init_slice(vec.as_mut_slice(), 1).unwrap();
     assert!(tree.is_empty(0));
 
     assert_eq!(tree.insert(0, 12, 32), Ok(None));
@@ -177,7 +170,7 @@ fn init() {
 fn swap_nodes() {
     let mut vec = create_vec(4, 4, 6, 1);
 
-    let mut tree = RBForest::<i32, u32, 4, 4, 1>::init_slice(vec.as_mut_slice()).unwrap();
+    let mut tree = RBForest::<i32, u32, 4, 4>::init_slice(vec.as_mut_slice(), 1).unwrap();
     // Initial structure
     //          parent
     //           /
@@ -248,7 +241,7 @@ fn swap_nodes() {
     let mut expected_vec = create_vec(4, 4, 6, 1);
 
     let mut expected_tree =
-        RBForest::<i32, u32, 4, 4, 1>::init_slice(expected_vec.as_mut_slice()).unwrap();
+        RBForest::<i32, u32, 4, 4>::init_slice(expected_vec.as_mut_slice(), 1).unwrap();
     // Final structure
     //          parent
     //           /
@@ -323,7 +316,7 @@ fn swap_nodes() {
 fn test_tree_strings() {
     let mut vec = create_vec(4, 10, 10, 1);
 
-    let mut tree = RBForest::<i32, String, 4, 10, 1>::init_slice(vec.as_mut_slice()).unwrap();
+    let mut tree = RBForest::<i32, String, 4, 10>::init_slice(vec.as_mut_slice(), 1).unwrap();
     assert!(tree.is_empty(0));
 
     assert_eq!(tree.insert(0, 12, "val".to_string()), Ok(None));
@@ -357,7 +350,7 @@ fn test_tree_strings() {
 fn test_tree_string_keys() {
     let mut vec = create_vec(10, 10, 10, 1);
 
-    let mut tree = RBForest::<String, String, 10, 10, 1>::init_slice(vec.as_mut_slice()).unwrap();
+    let mut tree = RBForest::<String, String, 10, 10>::init_slice(vec.as_mut_slice(), 1).unwrap();
     assert!(tree.is_empty(0));
 
     assert_eq!(
@@ -406,7 +399,7 @@ fn test_tree_string_keys() {
 fn delete() {
     let mut vec = create_vec(1, 1, 256, 1);
 
-    let mut tree = RBForest::<u8, u8, 1, 1, 1>::init_slice(vec.as_mut_slice()).unwrap();
+    let mut tree = RBForest::<u8, u8, 1, 1>::init_slice(vec.as_mut_slice(), 1).unwrap();
     assert!(tree.is_empty(0));
 
     for key in &INSERT_KEYS {
@@ -432,7 +425,7 @@ fn delete() {
 fn pairs_iterator() {
     let mut vec = create_vec(1, 1, 256, 1);
 
-    let mut tree = RBForest::<u8, u8, 1, 1, 1>::init_slice(vec.as_mut_slice()).unwrap();
+    let mut tree = RBForest::<u8, u8, 1, 1>::init_slice(vec.as_mut_slice(), 1).unwrap();
     assert!(tree.is_empty(0));
 
     for key in &INSERT_KEYS {
@@ -456,45 +449,31 @@ fn pairs_iterator() {
 #[test]
 fn too_small() {
     let mut vec = vec![1, 2, 3];
-    let tree = RBForest::<u8, u8, 1, 1, 1>::init_slice(vec.as_mut_slice()).unwrap_err();
+    let tree = RBForest::<u8, u8, 1, 1>::init_slice(vec.as_mut_slice(), 1).unwrap_err();
     assert_eq!(tree, Error::TooSmall);
 }
 
 #[test]
 fn fractional_node_count() {
-    let mut vec = vec![0; RBForest::<u8, u8, 1, 1, 1>::expected_size(1) + 1];
-    let tree = RBForest::<u8, u8, 1, 1, 1>::init_slice(vec.as_mut_slice()).unwrap_err();
+    let mut vec = vec![0; RBForest::<u8, u8, 1, 1>::expected_size(1, 1) + 1];
+    let tree = RBForest::<u8, u8, 1, 1>::init_slice(vec.as_mut_slice(), 1).unwrap_err();
     assert_eq!(tree, Error::WrongNodePoolSize);
 }
 
-#[test]
-fn wrong_root_count() {
-    let mut vec = create_vec(1, 1, 3, 4);
-    let correct_tree = RBForest::<u8, u8, 1, 1, 4>::init_slice(vec.as_mut_slice()).unwrap();
-
-    drop(correct_tree);
-
-    let wrong_len = vec.len() - 3 * 4;
-    let wrong_tree_attempt = unsafe {
-        RBForest::<u8, u8, 1, 1, 1>::from_slice(&mut vec.as_mut_slice()[0..wrong_len]).unwrap_err()
-    };
-    assert_eq!(wrong_tree_attempt, Error::WrongRootsNumber);
-}
-
 const FOREST_BYTES: [u8; 148] = [
-    0, 1, 0, 1, 0, 0, 0, 8, 0, 0, 0, 3, 0, 0, 0, 7, 0, 0, 0, 3, 0, 0, 0, 1, 255, 255, 255, 255, 4,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 12, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 4, 2, 5, 0, 0, 0, 2, 0, 0, 0, 4, 0, 0, 0, 4, 3, 5, 7, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 5, 5, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 4, 2, 9, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 7, 4, 4, 3, 0, 0, 0, 6, 0, 0, 0, 5, 0, 0, 0, 6, 3,
+    0, 1, 0, 1, 0, 0, 0, 8, 0, 0, 0, 3, 255, 255, 255, 255, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    4, 12, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3,
+    4, 2, 5, 0, 0, 0, 2, 0, 0, 0, 4, 0, 0, 0, 4, 3, 5, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 5, 5,
+    1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 4, 2, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 4, 4, 3, 0,
+    0, 0, 6, 0, 0, 0, 5, 0, 0, 0, 6, 3, 0, 0, 0, 7, 0, 0, 0, 3, 0, 0, 0, 1,
 ];
 
 #[test]
 fn deserialization() {
     let bytes_slice = &mut FOREST_BYTES.clone();
-    let forest = unsafe { RBForest::<u8, u8, 1, 1, 3>::from_slice(bytes_slice).unwrap() };
+    let forest = unsafe { RBForest::<u8, u8, 1, 1>::from_slice(bytes_slice).unwrap() };
     let mut vec = create_vec(1, 1, 8, 3);
-    let mut expected_tree = RBForest::<u8, u8, 1, 1, 3>::init_slice(vec.as_mut_slice()).unwrap();
+    let mut expected_tree = RBForest::<u8, u8, 1, 1>::init_slice(vec.as_mut_slice(), 3).unwrap();
 
     expected_tree.insert(0, 4, 3).unwrap();
     expected_tree.insert(0, 2, 9).unwrap();
@@ -505,7 +484,7 @@ fn deserialization() {
     expected_tree.insert(2, 1, 4).unwrap();
     expected_tree.insert(1, 4, 0).unwrap();
 
-    for root in 0..RBForest::<u8, u8, 1, 1, 3>::max_roots() {
+    for root in 0..expected_tree.max_roots() {
         for (key_value, expected_key_value) in forest.pairs(root).zip(expected_tree.pairs(root)) {
             assert_eq!(key_value, expected_key_value);
         }
@@ -513,20 +492,20 @@ fn deserialization() {
 }
 
 pub fn create_vec(k_size: usize, v_size: usize, num_entries: usize, max_roots: usize) -> Vec<u8> {
-    let len = mem::size_of::<Header<0>>()
+    let len = mem::size_of::<Header>()
         + 4 * max_roots
         + (mem::size_of::<Node<0, 0>>() + k_size + v_size) * num_entries;
     vec![0; len]
 }
 
-pub fn assert_rm<K, V, const KSIZE: usize, const VSIZE: usize, const MAX_ROOTS: usize>(
+pub fn assert_rm<K, V, const KSIZE: usize, const VSIZE: usize>(
     val: &K,
     tree_id: usize,
-    tree: &mut RBForest<K, V, KSIZE, VSIZE, MAX_ROOTS>,
+    tree: &mut RBForest<K, V, KSIZE, VSIZE>,
 ) where
     K: Eq + Ord + BorshDeserialize + BorshSerialize + Debug,
     V: Eq + BorshDeserialize + BorshSerialize + Debug,
-    [(); mem::size_of::<Header<MAX_ROOTS>>()]: Sized,
+    [(); mem::size_of::<Header>()]: Sized,
 {
     dbg!(val);
     assert!(tree.is_balanced(tree_id));

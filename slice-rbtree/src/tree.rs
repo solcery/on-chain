@@ -6,7 +6,7 @@ use super::{Error, KeysIterator, PairsIterator, RBForest, ValuesIterator};
 
 #[derive(Debug)]
 pub struct RBTree<'a, K, V, const KSIZE: usize, const VSIZE: usize>(
-    RBForest<'a, K, V, KSIZE, VSIZE, 1>,
+    RBForest<'a, K, V, KSIZE, VSIZE>,
 )
 where
     K: Ord + BorshDeserialize + BorshSerialize,
@@ -18,16 +18,16 @@ where
     V: BorshDeserialize + BorshSerialize,
 {
     pub fn init_slice(slice: &'a mut [u8]) -> Result<Self, Error> {
-        RBForest::<'a, K, V, KSIZE, VSIZE, 1>::init_slice(slice).map(|tree| Self(tree))
+        RBForest::<'a, K, V, KSIZE, VSIZE>::init_slice(slice, 1).map(|tree| Self(tree))
     }
 
     #[must_use]
     pub fn expected_size(num_entries: usize) -> usize {
-        RBForest::<'a, K, V, KSIZE, VSIZE, 1>::expected_size(num_entries)
+        RBForest::<'a, K, V, KSIZE, VSIZE>::expected_size(num_entries, 1)
     }
 
     pub unsafe fn from_slice(slice: &'a mut [u8]) -> Result<Self, Error> {
-        unsafe { RBForest::<'a, K, V, KSIZE, VSIZE, 1>::from_slice(slice).map(|tree| Self(tree)) }
+        unsafe { RBForest::<'a, K, V, KSIZE, VSIZE>::from_slice(slice).map(|tree| Self(tree)) }
     }
 
     #[must_use]
@@ -115,15 +115,15 @@ where
         self.0.last_entry(0)
     }
 
-    pub fn pairs<'b>(&'b self) -> PairsIterator<'b, 'a, K, V, KSIZE, VSIZE, 1> {
+    pub fn pairs<'b>(&'b self) -> PairsIterator<'b, 'a, K, V, KSIZE, VSIZE> {
         self.0.pairs(0)
     }
 
-    pub fn keys<'b>(&'b self) -> KeysIterator<'b, 'a, K, V, KSIZE, VSIZE, 1> {
+    pub fn keys<'b>(&'b self) -> KeysIterator<'b, 'a, K, V, KSIZE, VSIZE> {
         self.0.keys(0)
     }
 
-    pub fn values<'b>(&'b self) -> ValuesIterator<'b, 'a, K, V, KSIZE, VSIZE, 1> {
+    pub fn values<'b>(&'b self) -> ValuesIterator<'b, 'a, K, V, KSIZE, VSIZE> {
         self.0.values(0)
     }
 }

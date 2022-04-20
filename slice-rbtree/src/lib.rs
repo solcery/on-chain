@@ -1,6 +1,4 @@
 #![deny(unsafe_op_in_unsafe_fn)]
-#![feature(generic_const_exprs)]
-#![allow(const_evaluatable_unchecked)]
 
 mod forest;
 mod tree;
