@@ -2,21 +2,17 @@ use bytemuck::{Pod, Zeroable};
 use std::fmt;
 
 #[repr(C)]
-#[derive(Clone, Copy, Zeroable)]
-pub struct Header<const MAX_ROOTS: usize> {
+#[derive(Pod, Clone, Copy, Zeroable)]
+pub struct Header {
     k_size: [u8; 2],
     v_size: [u8; 2],
     max_nodes: [u8; 4],
-    roots_num: [u8; 4],
-    /// array of roots of the tree
-    roots: [[u8; 4]; MAX_ROOTS],
+    max_roots: [u8; 4],
     /// head of the linked list of empty nodes
     head: [u8; 4],
 }
 
-unsafe impl<const MAX_ROOTS: usize> Pod for Header<MAX_ROOTS> {}
-
-impl<const MAX_ROOTS: usize> Header<MAX_ROOTS> {
+impl Header {
     pub fn k_size(&self) -> u16 {
         u16::from_be_bytes(self.k_size)
     }
@@ -29,17 +25,8 @@ impl<const MAX_ROOTS: usize> Header<MAX_ROOTS> {
         u32::from_be_bytes(self.max_nodes)
     }
 
-    pub fn roots_num(&self) -> u32 {
-        u32::from_be_bytes(self.roots_num)
-    }
-
-    pub fn root(&self, id: usize) -> Option<u32> {
-        let num = u32::from_be_bytes(self.roots[id]);
-        if num == u32::MAX {
-            None
-        } else {
-            Some(num)
-        }
+    pub fn max_roots(&self) -> u32 {
+        u32::from_be_bytes(self.max_roots)
     }
 
     pub fn head(&self) -> Option<u32> {
@@ -48,18 +35,6 @@ impl<const MAX_ROOTS: usize> Header<MAX_ROOTS> {
             None
         } else {
             Some(num)
-        }
-    }
-
-    pub unsafe fn set_root(&mut self, id: usize, root: Option<u32>) {
-        match root {
-            Some(idx) => {
-                assert!(idx < u32::MAX);
-                self.roots[id] = u32::to_be_bytes(idx);
-            }
-            None => {
-                self.roots[id] = u32::to_be_bytes(u32::MAX);
-            }
         }
     }
 
@@ -81,18 +56,15 @@ impl<const MAX_ROOTS: usize> Header<MAX_ROOTS> {
         k_size: u16,
         v_size: u16,
         max_nodes: u32,
-        roots: [Option<u32>; MAX_ROOTS],
+        max_roots: u32,
         head: Option<u32>,
     ) {
         self.k_size = u16::to_be_bytes(k_size);
         self.v_size = u16::to_be_bytes(v_size);
         self.max_nodes = u32::to_be_bytes(max_nodes);
-        self.roots_num = u32::to_be_bytes(MAX_ROOTS as u32);
+        self.max_roots = u32::to_be_bytes(max_roots);
         unsafe {
             self.set_head(head);
-            for (id, root) in roots.into_iter().enumerate() {
-                self.set_root(id, root);
-            }
         }
     }
 
@@ -101,19 +73,14 @@ impl<const MAX_ROOTS: usize> Header<MAX_ROOTS> {
         k_size: u16,
         v_size: u16,
         max_nodes: u32,
-        roots: &[Option<u32>; MAX_ROOTS],
+        max_roots: u32,
         head: Option<u32>,
     ) -> Self {
         let k_size = u16::to_be_bytes(k_size);
         let v_size = u16::to_be_bytes(v_size);
         let max_nodes = u32::to_be_bytes(max_nodes);
 
-        let roots_num = u32::to_be_bytes(MAX_ROOTS as u32);
-
-        let roots = roots.map(|root| match root {
-            Some(index) => u32::to_be_bytes(index),
-            None => u32::to_be_bytes(u32::MAX),
-        });
+        let max_roots = u32::to_be_bytes(max_roots);
 
         let head = match head {
             Some(index) => u32::to_be_bytes(index),
@@ -124,23 +91,19 @@ impl<const MAX_ROOTS: usize> Header<MAX_ROOTS> {
             k_size,
             v_size,
             max_nodes,
-            roots_num,
-            roots,
+            max_roots,
             head,
         }
     }
 }
 
-// FIXME: Implement a better Debug
-impl<const MAX_ROOTS: usize> fmt::Debug for Header<MAX_ROOTS> {
+impl fmt::Debug for Header {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Header")
             .field("k_size", &self.k_size())
             .field("v_size", &self.v_size())
             .field("max_nodes", &self.max_nodes())
-            .field("roots_num", &self.roots_num())
-            // slice_cast for splitting
-            .field("roots", &self.roots)
+            .field("max_roots", &self.max_roots())
             .field("head", &self.head())
             .finish()
     }
@@ -154,7 +117,7 @@ mod header_tests {
 
     #[test]
     fn head() {
-        let mut head = unsafe { Header::from_raw_parts(1, 2, 3, &[None], None) };
+        let mut head = unsafe { Header::from_raw_parts(1, 2, 3, 5, None) };
 
         unsafe {
             head.set_head(Some(1));
@@ -174,35 +137,7 @@ mod header_tests {
         assert_eq!(head.k_size(), 1);
         assert_eq!(head.v_size(), 2);
         assert_eq!(head.max_nodes(), 3);
-        assert_eq!(head.root(0), None);
-        assert_eq!(head.head(), None);
-    }
-
-    #[test]
-    fn roots() {
-        let mut head = unsafe { Header::from_raw_parts(1, 2, 3, &[None, None], None) };
-
-        unsafe {
-            head.set_root(0, Some(1));
-        }
-        assert_eq!(head.root(0), Some(1));
-        assert_eq!(head.root(1), None);
-
-        unsafe {
-            head.set_root(1, Some(2));
-        }
-        assert_eq!(head.root(1), Some(2));
-        assert_eq!(head.root(0), Some(1));
-        unsafe {
-            head.set_root(0, None);
-            head.set_root(1, None);
-        }
-
-        assert_eq!(head.k_size(), 1);
-        assert_eq!(head.v_size(), 2);
-        assert_eq!(head.max_nodes(), 3);
-        assert_eq!(head.root(0), None);
-        assert_eq!(head.root(1), None);
+        assert_eq!(head.max_roots(), 5);
         assert_eq!(head.head(), None);
     }
 }
