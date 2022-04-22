@@ -14,6 +14,7 @@ pub enum Error {
     TooSmall,
     ValueSerializationError,
     WrongKeySize,
+    WrongMagic,
     WrongNodePoolSize,
     WrongRootsNumber,
     WrongValueSize,

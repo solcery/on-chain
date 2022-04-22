@@ -103,6 +103,10 @@ where
         let header: &mut [[u8; mem::size_of::<Header>()]] = cast_slice_mut(header);
         let header: &mut Header = cast_mut(&mut header[0]);
 
+        if !header.check_magic() {
+            return Err(Error::WrongMagic);
+        }
+
         if tail.len() <= (header.max_roots() as usize) * 4 {
             return Err(Error::TooSmall);
         }
