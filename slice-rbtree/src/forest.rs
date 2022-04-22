@@ -19,7 +19,6 @@ pub struct RBForest<'a, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,
     V: BorshDeserialize + BorshSerialize,
-    [(); mem::size_of::<Header>()]: Sized,
 {
     header: &'a mut Header,
     nodes: &'a mut [Node<KSIZE, VSIZE>],
@@ -32,7 +31,6 @@ impl<'a, K, V, const KSIZE: usize, const VSIZE: usize> RBForest<'a, K, V, KSIZE,
 where
     K: Ord + BorshDeserialize + BorshSerialize,
     V: BorshDeserialize + BorshSerialize,
-    [(); mem::size_of::<Header>()]: Sized,
 {
     pub fn init_slice(slice: &'a mut [u8], max_roots: usize) -> Result<Self, Error> {
         if slice.len() <= mem::size_of::<Header>() {
@@ -957,7 +955,6 @@ pub struct PairsIterator<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,
     V: BorshDeserialize + BorshSerialize,
-    [(); mem::size_of::<Header>()]: Sized,
 {
     next_node: Option<usize>,
     tree: &'a RBForest<'b, K, V, KSIZE, VSIZE>,
@@ -968,7 +965,6 @@ impl<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize> Iterator
 where
     K: Ord + BorshDeserialize + BorshSerialize,
     V: BorshDeserialize + BorshSerialize,
-    [(); mem::size_of::<Header>()]: Sized,
 {
     type Item = (K, V);
 
@@ -1004,7 +1000,6 @@ pub struct KeysIterator<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,
     V: BorshDeserialize + BorshSerialize,
-    [(); mem::size_of::<Header>()]: Sized,
 {
     next_node: Option<usize>,
     tree: &'a RBForest<'b, K, V, KSIZE, VSIZE>,
@@ -1015,7 +1010,6 @@ impl<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize> Iterator
 where
     K: Ord + BorshDeserialize + BorshSerialize,
     V: BorshDeserialize + BorshSerialize,
-    [(); mem::size_of::<Header>()]: Sized,
 {
     type Item = K;
 
@@ -1050,7 +1044,6 @@ pub struct ValuesIterator<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,
     V: BorshDeserialize + BorshSerialize,
-    [(); mem::size_of::<Header>()]: Sized,
 {
     next_node: Option<usize>,
     tree: &'a RBForest<'b, K, V, KSIZE, VSIZE>,
@@ -1061,7 +1054,6 @@ impl<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize> Iterator
 where
     K: Ord + BorshDeserialize + BorshSerialize,
     V: BorshDeserialize + BorshSerialize,
-    [(); mem::size_of::<Header>()]: Sized,
 {
     type Item = V;
 

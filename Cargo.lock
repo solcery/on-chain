@@ -2725,6 +2725,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "solcery-db"
+version = "0.0.0"
+dependencies = [
+ "borsh",
+ "bytemuck",
+ "pretty_assertions",
+ "slice-rbtree",
+]
+
+[[package]]
 name = "solcery-engine"
 version = "0.0.0"
 dependencies = [
