@@ -9,6 +9,8 @@ edition = "2021"
 borsh = "0.9.1"
 bytemuck = {version = "1.7.2", features = ['derive','min_const_generics']}
 slice-rbtree = { path = "../slice-rbtree" }
+solana-program = "1.7.8"
+tinyvec = "1.0.0"
 
 [dev-dependencies]
 pretty_assertions = "0.6.1"

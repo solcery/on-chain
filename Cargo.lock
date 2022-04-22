@@ -2732,6 +2732,8 @@ dependencies = [
  "bytemuck",
  "pretty_assertions",
  "slice-rbtree",
+ "solana-program",
+ "tinyvec",
 ]
 
 [[package]]
