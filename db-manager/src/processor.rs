@@ -1,6 +1,6 @@
 use crate::{
-    db_manager::{DBId, DBManager, DBQuery},
-    schemas_manager::{Schema, SchemaId, SchemasManager},
+    db_manager::DBManager,
+    messages::{CreateDB, Query, RemoveDB},
 };
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
@@ -8,32 +8,12 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, BorshSerialize, BorshDeserialize)]
+#[derive(Debug, BorshSerialize, BorshDeserialize)]
 pub enum Instruction {
-    CreateDB {
-        schema_id: SchemaId,
-        db_id: DBId,
-    },
-    RemoveDB {
-        db_id: DBId,
-    },
+    Create { message: CreateDB },
+    Remove { message: RemoveDB },
 
-    AddSchema {
-        schema_id: SchemaId,
-        schema: Schema,
-    },
-    RemoveSchema {
-        schema_id: SchemaId,
-    },
-    UpdateSchema {
-        schema_id: SchemaId,
-        new_schema: Schema,
-    },
-
-    Query {
-        db_id: DBId,
-        query: DBQuery,
-    },
+    Query { message: Query },
 }
 
 entrypoint!(process_instruction_bytes);
@@ -61,26 +41,14 @@ fn process_instruction(
     let _accounts_iter = &mut accounts.iter();
 
     match instruction {
-        Instruction::CreateDB { schema_id, db_id } => {
-            DBManager::create_db(schema_id, db_id)?;
+        Instruction::Create { message } => {
+            DBManager::create_db(message)?;
         }
-        Instruction::RemoveDB { db_id } => {
-            DBManager::remove_db(db_id)?;
+        Instruction::Remove { message } => {
+            DBManager::remove_db(message)?;
         }
-        Instruction::AddSchema { schema_id, schema } => {
-            SchemasManager::add_schema(schema_id, schema)?;
-        }
-        Instruction::RemoveSchema { schema_id } => {
-            SchemasManager::remove_schema(schema_id)?;
-        }
-        Instruction::UpdateSchema {
-            schema_id,
-            new_schema,
-        } => {
-            SchemasManager::update_schema(schema_id, new_schema)?;
-        }
-        Instruction::Query { db_id, query } => {
-            DBManager::process_query(db_id, query)?;
+        Instruction::Query { message } => {
+            DBManager::process_query(message)?;
         }
     }
 
