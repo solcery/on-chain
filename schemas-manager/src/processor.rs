@@ -1,7 +1,4 @@
-use crate::{
-    messages::{AddSchema, GetSchema, RemoveSchema, UpdateSchema},
-    schemas_manager::SchemasManager,
-};
+use crate::schemas_manager::SchemasManager;
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -9,6 +6,9 @@ use solana_program::{
     entrypoint::ProgramResult,
     program_error::ProgramError,
     pubkey::Pubkey,
+};
+use solcery_data_types::db::messages::schemas_manager::{
+    AddSchema, GetSchema, RemoveSchema, UpdateSchema,
 };
 
 #[derive(Debug, BorshSerialize, BorshDeserialize)]
