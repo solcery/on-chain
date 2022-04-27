@@ -4,7 +4,7 @@ use std::fmt;
 #[repr(C)]
 #[derive(Pod, Clone, Copy, Zeroable)]
 pub struct Inode {
-    occupied: u8,
+    occupied: u8, // == 0 then inode is occupied
     start_idx: [u8; 4],
     end_idx: [u8; 4],
     id: [u8; 4],
@@ -29,6 +29,21 @@ impl Inode {
 
     pub fn occupied(&self) -> bool {
         self.occupied == 0
+    }
+
+    pub fn len(&self) -> usize {
+        let start = u32::from_be_bytes(self.start_idx) as usize;
+        let end = u32::from_be_bytes(self.end_idx) as usize;
+        end - start
+    }
+
+    pub fn unoccupy(&mut self) {
+        self.occupied = 1;
+    }
+
+    pub unsafe fn occupy(&mut self, id: u32) {
+        self.occupied = 1;
+        self.id = u32::to_be_bytes(id);
     }
 
     pub unsafe fn from_raw_parts(start_idx: usize, end_idx: usize, maybe_id: Option<u32>) -> Self {
@@ -74,5 +89,16 @@ impl fmt::Debug for Inode {
             .field("end_idx", &self.end_idx())
             .field("id", &self.id())
             .finish()
+    }
+}
+
+impl Default for Inode {
+    fn default() -> Self {
+        Self {
+            occupied: 0,
+            start_idx: [0, 0, 0, 0],
+            end_idx: [0, 0, 0, 0],
+            id: [0, 0, 0, 0],
+        }
     }
 }
