@@ -1,22 +1,9 @@
-use crate::{
-    error::SchemasManagerError,
-    messages::{AddSchema, GetSchema, RemoveSchema, UpdateSchema},
+use solcery_data_types::db::messages::schemas_manager::{
+    AddSchema, GetSchema, RemoveSchema, UpdateSchema,
 };
-use borsh::{BorshDeserialize, BorshSerialize};
+
+use crate::error::SchemasManagerError;
 // use slice_rbtree::RBTree;
-
-//TODO: fill other allowed types
-#[derive(Debug, BorshSerialize, BorshDeserialize)]
-enum AllowedTypes {
-    Int,    // i64
-    String, // String
-}
-
-#[derive(Debug, BorshSerialize, BorshDeserialize)]
-pub struct Schema {
-    pub version: u64,
-    tables: Vec<AllowedTypes>,
-}
 
 pub struct SchemasManager {}
 

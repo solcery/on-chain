@@ -1,7 +1,9 @@
+use crate::db::schema_id::SchemaId;
 use borsh::{BorshDeserialize, BorshSerialize};
-use solcery_data_types::db::schema_id::SchemaId;
 
-use crate::db_manager::{DBId, DBQuery};
+// TODO: specify by DB
+pub type DBId = String;
+pub type DBQuery = String;
 
 #[derive(Debug, BorshSerialize, BorshDeserialize)]
 pub struct CreateDB {

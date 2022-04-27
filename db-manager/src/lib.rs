@@ -3,5 +3,4 @@
 pub mod db_manager;
 mod entrypoint;
 pub mod error;
-pub mod messages;
 pub mod processor;

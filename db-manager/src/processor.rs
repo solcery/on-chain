@@ -1,12 +1,10 @@
-use crate::{
-    db_manager::DBManager,
-    messages::{CreateDB, Query, RemoveDB},
-};
+use crate::db_manager::DBManager;
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::AccountInfo, entrypoint, entrypoint::ProgramResult, program_error::ProgramError,
     pubkey::Pubkey,
 };
+use solcery_data_types::db::messages::db_manager::{CreateDB, Query, RemoveDB};
 
 #[derive(Debug, BorshSerialize, BorshDeserialize)]
 pub enum Instruction {

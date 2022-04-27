@@ -1,11 +1,6 @@
-use crate::{
-    error::DBManagerError,
-    messages::{CreateDB, Query, RemoveDB},
-};
+use solcery_data_types::db::messages::db_manager::{CreateDB, Query, RemoveDB};
 
-// TODO: specify by DB
-pub type DBId = String;
-pub type DBQuery = String;
+use crate::error::DBManagerError;
 
 pub struct DBManager {}
 
