@@ -6,6 +6,7 @@ use bytemuck::{cast_mut, cast_slice_mut};
 use solana_program::{account_info::AccountInfo, pubkey::Pubkey};
 use std::cell::RefMut;
 use std::collections::BTreeMap;
+use std::fmt;
 use std::mem;
 use tinyvec::SliceVec;
 
@@ -15,7 +16,6 @@ mod inode;
 use allocation_table::AllocationTable;
 use inode::Inode;
 
-#[derive(Debug)]
 struct AccountAllocator<'long> {
     pubkey: Pubkey,
     data: &'long mut [u8],
@@ -132,11 +132,7 @@ impl<'long> AccountAllocator<'long> {
                     self.inode_data.swap_remove(index);
                     //TODO: reimplement wihout copying
                     let new_inode1 = Inode::from_raw_parts(start, start + size, Some(id));
-                    let new_inode2 = Inode::from_raw_parts(
-                        start + size,
-                        end,
-                        Some(self.allocation_table.genereate_id()),
-                    );
+                    let new_inode2 = Inode::from_raw_parts(start + size, end, None);
 
                     self.inode_data.push(new_inode1);
                     self.inode_data.push(new_inode2);
@@ -146,6 +142,7 @@ impl<'long> AccountAllocator<'long> {
                         .set_inodes_count(self.inode_data.len());
                 }
             }
+            debug_assert_eq!(self.allocation_table.inodes_count(), self.inode_data.len());
             Ok(id)
         } else {
             Err(Error::NoSuitableChunkFound)
@@ -153,11 +150,16 @@ impl<'long> AccountAllocator<'long> {
     }
 
     pub fn deallocate_chunk(&mut self, id: u32) -> Result<(), Error> {
-        self.inode_data
+        let result = self
+            .inode_data
             .iter_mut()
             .find(|inode| inode.id() == Some(id))
             .map(|inode| inode.unoccupy())
-            .ok_or(Error::NoSuchIndex)
+            .ok_or(Error::NoSuchIndex);
+
+        debug_assert_eq!(self.allocation_table.inodes_count(), self.inode_data.len());
+
+        result
     }
 
     fn is_ordered(&self) -> bool {
@@ -180,6 +182,17 @@ impl<'long> AccountAllocator<'long> {
     }
 }
 
+impl<'a> fmt::Debug for AccountAllocator<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AccountAllocator")
+            .field("pubkey", &self.pubkey)
+            .field("allocation_table", &self.allocation_table)
+            .field("data_size", &self.data.len())
+            .field("inodes", &self.inode_data)
+            .finish()
+    }
+}
+
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum Error {
     TooSmall,
@@ -188,3 +201,6 @@ pub enum Error {
     NoSuitableChunkFound,
     NoSuchIndex,
 }
+
+#[cfg(test)]
+mod tests;
