@@ -42,7 +42,7 @@ impl Inode {
     }
 
     pub unsafe fn occupy(&mut self, id: u32) {
-        self.occupied = 1;
+        self.occupied = 0;
         self.id = u32::to_be_bytes(id);
     }
 

@@ -2,13 +2,9 @@ use super::*;
 use pretty_assertions::assert_eq;
 use std::mem;
 
-fn account_size(inode_count: usize, data_size: usize) -> usize {
-    mem::size_of::<AllocationTable>() + inode_count * mem::size_of::<Inode>() + data_size
-}
-
 #[test]
 fn account_initialization() {
-    let mut account_vec = vec![0; account_size(10, 1000)];
+    let mut account_vec = vec![0; AccountAllocator::account_size(10, 1000)];
 
     let alloc = unsafe {
         AccountAllocator::init_account(&mut account_vec, 10, Pubkey::new_unique()).unwrap()
@@ -34,7 +30,7 @@ fn account_initialization() {
 
 #[test]
 fn allocation() {
-    let mut account_vec = vec![0; account_size(10, 1000)];
+    let mut account_vec = vec![0; AccountAllocator::account_size(10, 1000)];
 
     let mut alloc = unsafe {
         AccountAllocator::init_account(&mut account_vec, 10, Pubkey::new_unique()).unwrap()
@@ -54,7 +50,7 @@ fn allocation() {
 
 #[test]
 fn deallocation() {
-    let mut account_vec = vec![0; account_size(10, 1000)];
+    let mut account_vec = vec![0; AccountAllocator::account_size(10, 1000)];
 
     let mut alloc = unsafe {
         AccountAllocator::init_account(&mut account_vec, 10, Pubkey::new_unique()).unwrap()

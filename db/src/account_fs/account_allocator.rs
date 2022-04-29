@@ -119,7 +119,8 @@ impl<'long> AccountAllocator<'long> {
             let start = inode.start_idx();
             let end = inode.end_idx();
 
-            let id = self.allocation_table.genereate_id();
+            let id = self.allocation_table.generate_id();
+
             unsafe {
                 if inode.len() == size {
                     inode.occupy(id);
@@ -137,7 +138,10 @@ impl<'long> AccountAllocator<'long> {
                         .set_inodes_count(self.inode_data.len());
                 }
             }
+
             debug_assert_eq!(self.allocation_table.inodes_count(), self.inode_data.len());
+            debug_assert!(self.is_ordered());
+
             Ok(id)
         } else {
             Err(Error::NoSuitableChunkFound)
@@ -153,11 +157,13 @@ impl<'long> AccountAllocator<'long> {
             .ok_or(Error::NoSuchIndex);
 
         debug_assert_eq!(self.allocation_table.inodes_count(), self.inode_data.len());
+        debug_assert!(self.is_ordered());
 
         result
     }
 
     pub fn to_data_allocator(self) -> DataAllocator<'long> {
+        assert!(self.is_ordered());
         let allocated_segments = BTreeMap::<u32, (usize, usize)>::from_iter(
             self.inode_data
                 .iter()
@@ -172,6 +178,10 @@ impl<'long> AccountAllocator<'long> {
         unsafe {
             DataAllocator::from_raw_parts(pubkey, data, allocated_segments, borrowed_serments)
         }
+    }
+
+    pub fn merge_chunks(&mut self) {
+        unimplemented!();
     }
 
     fn is_ordered(&self) -> bool {
@@ -190,7 +200,13 @@ impl<'long> AccountAllocator<'long> {
         if self.inode_data[self.inode_data.len() - 1].end_idx() != self.data.len() {
             return false;
         }
+
         return true;
+    }
+
+    #[cfg(test)]
+    pub(super) fn account_size(inode_count: usize, data_size: usize) -> usize {
+        mem::size_of::<AllocationTable>() + inode_count * mem::size_of::<Inode>() + data_size
     }
 }
 

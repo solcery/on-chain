@@ -30,7 +30,7 @@ impl AllocationTable {
         u16::from_be_bytes(self.inodes_max) as usize
     }
 
-    pub fn genereate_id(&mut self) -> u32 {
+    pub fn generate_id(&mut self) -> u32 {
         let id = u32::from_be_bytes(self.id_autoincrement);
         self.id_autoincrement = u32::to_be_bytes(id + 1);
         id
