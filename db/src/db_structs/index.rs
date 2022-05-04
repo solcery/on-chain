@@ -7,6 +7,7 @@ const INDEX_MAGIC: [u8; 16] = *b"Solcery_DB_Index";
 #[derive(Pod, Clone, Copy, Zeroable)]
 pub struct Index {
     magic: [u8; 16],
+    db_version: [u8; 2],
     table_name: [u8; 64],
     primary_key_type: u8,
     primary_key_length: u8,
@@ -29,6 +30,10 @@ impl Index {
 
     pub fn table_name(&self) -> String {
         String::deserialize(&mut self.table_name.as_slice()).unwrap()
+    }
+
+    pub fn version(&self) -> usize {
+        u16::from_be_bytes(self.db_version) as usize
     }
 
     pub unsafe fn set_column_count(&mut self, count: usize) {
