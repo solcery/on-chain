@@ -1,12 +1,8 @@
 use bytemuck::{Pod, Zeroable};
 use std::fmt;
 
-// Header magic, used to check the validity of account data strustures.
-// "Solcery_DB_Account_Header" in ASCII bytes.
-const ACCOUNT_HEADER_MAGIC: [u8; 25] = [
-    83, 111, 108, 99, 101, 114, 121, 95, 68, 66, 95, 65, 99, 99, 111, 117, 110, 116, 95, 72, 101,
-    97, 100, 101, 114,
-];
+// Header magic, used to check the validity of account data structures
+const ACCOUNT_HEADER_MAGIC: [u8; 25] = *b"Solcery_DB_Account_Header";
 
 #[repr(C)]
 #[derive(Pod, Clone, Copy, Zeroable)]
