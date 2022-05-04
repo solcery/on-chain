@@ -17,7 +17,6 @@ pub struct UpdateSchema {
     pub id: SchemaId,
     pub new_schema: Schema,
 }
-
 #[derive(Debug, BorshSerialize, BorshDeserialize)]
 pub struct GetSchema {
     pub id: SchemaId,

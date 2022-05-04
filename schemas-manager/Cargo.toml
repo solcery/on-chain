@@ -15,6 +15,7 @@ num-derive = "0.3"
 spl-token = { version = "3.3.0", features = ["no-entrypoint"] }
 solcery-data-types = { path = "../data-types" }
 slice-rbtree = { path = "../slice-rbtree" }
+# serde = { version = "1.0", features = ["derive"] }
 
 
 [dev-dependencies]

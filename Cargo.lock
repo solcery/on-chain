@@ -3586,6 +3586,7 @@ dependencies = [
  "borsh",
  "bytemuck",
  "pretty_assertions 0.6.1",
+ "serde",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
