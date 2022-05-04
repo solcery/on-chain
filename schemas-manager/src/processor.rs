@@ -4,6 +4,7 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint,
     entrypoint::ProgramResult,
+    msg,
     program_error::ProgramError,
     pubkey::Pubkey,
 };
@@ -12,7 +13,7 @@ use solcery_data_types::db::messages::schemas_manager::{
 };
 
 #[derive(Debug, BorshSerialize, BorshDeserialize)]
-pub enum Instruction {
+pub enum SchemasManagerInstruction {
     AddSchema { message: AddSchema },
     RemoveSchema { message: RemoveSchema },
     UpdateSchema { message: UpdateSchema },
@@ -26,7 +27,7 @@ pub fn process_instruction_bytes(
     instruction_data: &[u8],
 ) -> ProgramResult {
     let mut buf = instruction_data;
-    let instruction = Instruction::deserialize(&mut buf)?;
+    let instruction = SchemasManagerInstruction::deserialize(&mut buf)?;
 
     // TODO: We probaly need a special feature for debug printing
     if cfg!(debug_assertions) {
@@ -39,23 +40,23 @@ pub fn process_instruction_bytes(
 fn process_instruction(
     _program_id: &Pubkey,
     accounts: &[AccountInfo],
-    instruction: Instruction,
+    instruction: SchemasManagerInstruction,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let states_account_info = next_account_info(account_info_iter)?;
-    let mut _data = states_account_info.try_borrow_mut_data()?;
+    let mut data = states_account_info.try_borrow_mut_data()?;
 
     match instruction {
-        Instruction::AddSchema { message } => {
-            SchemasManager::add_schema(message)?;
+        SchemasManagerInstruction::AddSchema { message } => {
+            SchemasManager::add_schema(message, data)?;
         }
-        Instruction::RemoveSchema { message } => {
+        SchemasManagerInstruction::RemoveSchema { message } => {
             SchemasManager::remove_schema(message)?;
         }
-        Instruction::UpdateSchema { message } => {
+        SchemasManagerInstruction::UpdateSchema { message } => {
             SchemasManager::update_schema(message)?;
         }
-        Instruction::GetSchema { message } => {
+        SchemasManagerInstruction::GetSchema { message } => {
             SchemasManager::get_schema(message)?;
         }
     }
