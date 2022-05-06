@@ -5,11 +5,19 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::mem;
 use tinyvec::SliceVec;
+
 mod allocation_table;
 mod inode;
 
+#[cfg(not(doc))]
 use allocation_table::AllocationTable;
+#[cfg(not(doc))]
 use inode::Inode;
+
+#[cfg(doc)]
+pub use allocation_table::AllocationTable;
+#[cfg(doc)]
+pub use inode::Inode;
 
 pub struct AccountAllocator<'long> {
     pubkey: Pubkey,

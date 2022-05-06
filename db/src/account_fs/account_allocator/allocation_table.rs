@@ -63,3 +63,15 @@ impl fmt::Debug for AllocationTable {
             .finish()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+    use std::mem;
+
+    #[test]
+    fn table_size() {
+        assert_eq!(mem::size_of::<AllocationTable>(), 33);
+    }
+}
