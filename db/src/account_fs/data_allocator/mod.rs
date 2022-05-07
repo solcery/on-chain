@@ -8,7 +8,6 @@ use std::ptr::NonNull;
 type Segment = (usize, usize);
 
 pub struct DataAllocator<'long> {
-    pubkey: Pubkey,
     ptr: NonNull<u8>,
     len: usize,
     allocated_segments: BTreeMap<u32, Segment>,
@@ -19,7 +18,6 @@ pub struct DataAllocator<'long> {
 impl<'long> fmt::Debug for DataAllocator<'long> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DataAllocator")
-            .field("pubkey", &self.pubkey)
             .field("allocated_segments", &self.allocated_segments)
             .field("borrowed_serments", &self.borrowed_serments)
             .field("data_size", &self.len)
@@ -83,7 +81,6 @@ impl<'long: 'short, 'short> DataAllocator<'long> {
     }
 
     pub(super) unsafe fn from_raw_parts(
-        pubkey: Pubkey,
         data: &'long mut [u8],
         allocated_segments: BTreeMap<u32, Segment>,
         borrowed_serments: BTreeSet<u32>,
@@ -91,7 +88,6 @@ impl<'long: 'short, 'short> DataAllocator<'long> {
         let len = data.len();
         let ptr = NonNull::new(data.as_mut_ptr()).unwrap();
         Self {
-            pubkey,
             len,
             ptr,
             allocated_segments,

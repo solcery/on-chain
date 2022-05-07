@@ -4,6 +4,7 @@ use solana_program::pubkey::Pubkey;
 use std::fmt;
 
 use super::enums::*;
+use crate::account_fs::SegmentId;
 
 #[repr(C)]
 #[derive(Pod, Clone, Copy, Zeroable)]
@@ -32,12 +33,11 @@ impl Column {
         }
     }
 
-    pub fn account_pubkey(&self) -> Pubkey {
-        Pubkey::new_from_array(self.account_pubkey)
-    }
-
-    pub fn segment_id(&self) -> u32 {
-        u32::from_be_bytes(self.segment_id)
+    pub fn segment_id(&self) -> SegmentId {
+        SegmentId {
+            pubkey: Pubkey::new_from_array(self.account_pubkey),
+            id: u32::from_be_bytes(self.segment_id),
+        }
     }
 
     pub fn column_type(&self) -> ColumnType {
@@ -53,7 +53,6 @@ impl fmt::Debug for Column {
         f.debug_struct("Column")
             .field("name", &self.name())
             .field("value_type", &self.value_type())
-            .field("account_pubkey", &self.account_pubkey())
             .field("segment_id", &self.segment_id())
             .field("column_type", &self.column_type())
             .finish()

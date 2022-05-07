@@ -6,8 +6,7 @@ fn segments() {
     let mut account_vec = vec![0; AccountAllocator::account_size(10, 1000)];
 
     let slice = &mut account_vec;
-    let mut alloc =
-        unsafe { AccountAllocator::init_account(slice, 10, Pubkey::new_unique()).unwrap() };
+    let mut alloc = unsafe { AccountAllocator::init_account(slice, 10).unwrap() };
 
     let id_0 = alloc.allocate_chunk(10).unwrap();
     let id_1 = alloc.allocate_chunk(100).unwrap();
