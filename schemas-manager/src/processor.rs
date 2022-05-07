@@ -4,7 +4,6 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint,
     entrypoint::ProgramResult,
-    msg,
     program_error::ProgramError,
     pubkey::Pubkey,
 };
@@ -44,20 +43,23 @@ fn process_instruction(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let states_account_info = next_account_info(account_info_iter)?;
-    let mut data = states_account_info.try_borrow_mut_data()?;
+    let data = states_account_info.try_borrow_mut_data()?;
 
     match instruction {
         SchemasManagerInstruction::AddSchema { message } => {
             SchemasManager::add_schema(message, data)?;
         }
         SchemasManagerInstruction::RemoveSchema { message } => {
-            SchemasManager::remove_schema(message)?;
+            SchemasManager::remove_schema(message, data)?;
         }
         SchemasManagerInstruction::UpdateSchema { message } => {
-            SchemasManager::update_schema(message)?;
+            SchemasManager::update_schema(message, data)?;
         }
         SchemasManagerInstruction::GetSchema { message } => {
-            SchemasManager::get_schema(message)?;
+            let states_account_info = next_account_info(account_info_iter)?;
+            let res_data = states_account_info.try_borrow_mut_data()?;
+
+            SchemasManager::get_schema(message, data, res_data)?;
         }
     }
 
