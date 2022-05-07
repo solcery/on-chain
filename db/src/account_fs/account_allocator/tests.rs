@@ -6,9 +6,7 @@ use std::mem;
 fn account_initialization() {
     let mut account_vec = vec![0; AccountAllocator::account_size(10, 1000)];
 
-    let alloc = unsafe {
-        AccountAllocator::init_account(&mut account_vec, 10, Pubkey::new_unique()).unwrap()
-    };
+    let alloc = unsafe { AccountAllocator::init_account(&mut account_vec, 10).unwrap() };
 
     assert_eq!(alloc.allocation_table.inodes_count(), 1);
     assert_eq!(alloc.allocation_table.inodes_max(), 10);
@@ -16,8 +14,7 @@ fn account_initialization() {
 
     drop(alloc);
 
-    let alloc =
-        unsafe { AccountAllocator::from_account(&mut account_vec, Pubkey::new_unique()).unwrap() };
+    let alloc = unsafe { AccountAllocator::from_account(&mut account_vec).unwrap() };
 
     assert_eq!(alloc.allocation_table.inodes_count(), 1);
     assert_eq!(alloc.allocation_table.inodes_max(), 10);
@@ -32,9 +29,7 @@ fn account_initialization() {
 fn allocation() {
     let mut account_vec = vec![0; AccountAllocator::account_size(10, 1000)];
 
-    let mut alloc = unsafe {
-        AccountAllocator::init_account(&mut account_vec, 10, Pubkey::new_unique()).unwrap()
-    };
+    let mut alloc = unsafe { AccountAllocator::init_account(&mut account_vec, 10).unwrap() };
 
     let id = alloc.allocate_chunk(10).unwrap();
 
@@ -52,9 +47,7 @@ fn allocation() {
 fn deallocation() {
     let mut account_vec = vec![0; AccountAllocator::account_size(10, 1000)];
 
-    let mut alloc = unsafe {
-        AccountAllocator::init_account(&mut account_vec, 10, Pubkey::new_unique()).unwrap()
-    };
+    let mut alloc = unsafe { AccountAllocator::init_account(&mut account_vec, 10).unwrap() };
 
     let id = alloc.allocate_chunk(10).unwrap();
 

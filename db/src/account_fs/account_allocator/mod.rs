@@ -20,18 +20,13 @@ pub use allocation_table::AllocationTable;
 pub use inode::Inode;
 
 pub struct AccountAllocator<'long> {
-    pubkey: Pubkey,
     data: &'long mut [u8],
     inode_data: SliceVec<'long, Inode>,
     allocation_table: &'long mut AllocationTable,
 }
 
 impl<'long> AccountAllocator<'long> {
-    pub unsafe fn init_account(
-        data: &'long mut [u8],
-        max_inodes: usize,
-        pubkey: Pubkey,
-    ) -> Result<Self, Error> {
+    pub unsafe fn init_account(data: &'long mut [u8], max_inodes: usize) -> Result<Self, Error> {
         let account_data = data;
 
         if account_data.len() < mem::size_of::<AllocationTable>() {
@@ -63,7 +58,6 @@ impl<'long> AccountAllocator<'long> {
             allocation_table,
             data,
             inode_data,
-            pubkey,
         };
 
         debug_assert!(allocator.is_ordered());
@@ -71,10 +65,7 @@ impl<'long> AccountAllocator<'long> {
         Ok(allocator)
     }
 
-    pub unsafe fn from_account(
-        account_data: &'long mut [u8],
-        pubkey: Pubkey,
-    ) -> Result<Self, Error> {
+    pub unsafe fn from_account(account_data: &'long mut [u8]) -> Result<Self, Error> {
         if account_data.len() < mem::size_of::<AllocationTable>() {
             return Err(Error::TooSmall);
         }
@@ -90,7 +81,7 @@ impl<'long> AccountAllocator<'long> {
         }
 
         if tail.len() < allocation_table.inodes_max() * mem::size_of::<Inode>() {
-            return Err(Error::TooSmall);
+            return Err(Error::WrongSize);
         }
         let (inodes_slice, data) =
             tail.split_at_mut(allocation_table.inodes_max() * mem::size_of::<Inode>());
@@ -102,7 +93,6 @@ impl<'long> AccountAllocator<'long> {
             allocation_table,
             data,
             inode_data,
-            pubkey,
         };
 
         debug_assert!(allocator.is_ordered());
@@ -181,11 +171,8 @@ impl<'long> AccountAllocator<'long> {
         );
         let borrowed_serments = BTreeSet::new();
         let data = self.data;
-        let pubkey = self.pubkey;
 
-        unsafe {
-            DataAllocator::from_raw_parts(pubkey, data, allocated_segments, borrowed_serments)
-        }
+        unsafe { DataAllocator::from_raw_parts(data, allocated_segments, borrowed_serments) }
     }
 
     pub fn merge_chunks(&mut self) {
@@ -221,7 +208,6 @@ impl<'long> AccountAllocator<'long> {
 impl<'a> fmt::Debug for AccountAllocator<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("AccountAllocator")
-            .field("pubkey", &self.pubkey)
             .field("allocation_table", &self.allocation_table)
             .field("data_size", &self.data.len())
             .field("inodes", &self.inode_data)
@@ -233,6 +219,7 @@ impl<'a> fmt::Debug for AccountAllocator<'a> {
 pub enum Error {
     TooSmall,
     WrongMagic,
+    WrongSize,
     NoInodesLeft,
     NoSuitableChunkFound,
     NoSuchIndex,
