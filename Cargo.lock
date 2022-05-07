@@ -9,6 +9,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe438c63458706e03479442743baae6c88256498e6431708f6dfc520a26515d3"
 
 [[package]]
+name = "account-fs"
+version = "0.0.0"
+dependencies = [
+ "borsh",
+ "bytemuck",
+ "pretty_assertions 0.6.1",
+ "slice-rbtree",
+ "solana-program",
+ "tinyvec",
+]
+
+[[package]]
 name = "adler"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2791,6 +2803,7 @@ dependencies = [
 name = "solcery-db"
 version = "0.0.0"
 dependencies = [
+ "account-fs",
  "borsh",
  "bytemuck",
  "pretty_assertions 0.6.1",

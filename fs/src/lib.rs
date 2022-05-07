@@ -8,6 +8,8 @@
 //! [Inode](account_allocator::Inode) table with `inodes_max` elements. Size of each Inode is 13
 //! bytes. All the remaining space is usable for data.
 
+#![deny(unsafe_op_in_unsafe_fn)]
+#![feature(cell_leak)]
 use solana_program::{
     account_info::next_account_info, account_info::AccountInfo, program_error::ProgramError,
     pubkey::Pubkey,

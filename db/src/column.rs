@@ -4,7 +4,7 @@ use solana_program::pubkey::Pubkey;
 use std::fmt;
 
 use super::enums::*;
-use crate::account_fs::SegmentId;
+use account_fs::SegmentId;
 
 #[repr(C)]
 #[derive(Pod, Clone, Copy, Zeroable)]
