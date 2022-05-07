@@ -17,7 +17,6 @@ pub enum Instruction {
     Query { message: Query },
 }
 
-entrypoint!(process_instruction_bytes);
 pub fn process_instruction_bytes(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
