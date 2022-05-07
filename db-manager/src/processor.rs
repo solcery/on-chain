@@ -1,7 +1,10 @@
 use crate::db_manager::DBManager;
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
-    account_info::AccountInfo, entrypoint, entrypoint::ProgramResult, program_error::ProgramError,
+    account_info::{next_account_info, AccountInfo},
+    entrypoint,
+    entrypoint::ProgramResult,
+    program_error::ProgramError,
     pubkey::Pubkey,
 };
 use solcery_data_types::db::messages::db_manager::{CreateDB, Query, RemoveDB};
@@ -36,17 +39,19 @@ fn process_instruction(
     accounts: &[AccountInfo],
     instruction: Instruction,
 ) -> ProgramResult {
-    let _accounts_iter = &mut accounts.iter();
+    let account_info_iter = &mut accounts.iter();
+    let states_account_info = next_account_info(account_info_iter)?;
+    let data = states_account_info.try_borrow_mut_data()?;
 
     match instruction {
         Instruction::Create { message } => {
-            DBManager::create_db(message)?;
+            DBManager::create_db(message, data)?;
         }
         Instruction::Remove { message } => {
-            DBManager::remove_db(message)?;
+            DBManager::remove_db(message, data)?;
         }
         Instruction::Query { message } => {
-            DBManager::process_query(message)?;
+            DBManager::process_query(message, data)?;
         }
     }
 
