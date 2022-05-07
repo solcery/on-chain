@@ -1,5 +1,5 @@
 [package]
-name = "solcery-db"
+name = "account-fs"
 version = "0.0.0"
 edition = "2021"
 
@@ -9,7 +9,6 @@ edition = "2021"
 borsh = "0.9.1"
 bytemuck = {version = "1.7.2", features = ['derive','min_const_generics']}
 slice-rbtree = { path = "../slice-rbtree" }
-account-fs = { path = "../fs" }
 solana-program = "1.7.8"
 tinyvec = "1.0.0"
 
@@ -17,5 +16,5 @@ tinyvec = "1.0.0"
 pretty_assertions = "0.6.1"
 
 [lib]
-name = "solcery_db"
+name = "account_fs"
 crate-type = ["cdylib", "lib"]

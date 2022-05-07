@@ -3,6 +3,7 @@ members = [
 	"data-types",
 	"db",
 	"db-manager",
+	"fs",
 	"game",
 	"slice-rbtree",
 	"vm",
