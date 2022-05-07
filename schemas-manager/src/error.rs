@@ -10,6 +10,9 @@ pub enum SchemasManagerError {
     /// The column type is not supported.
     #[error("Unsupported column type")]
     UnsupportedType,
+    /// The inner schemas holder error.
+    #[error("Inner schemas holder error")]
+    InnerHolderError,
 }
 impl From<SchemasManagerError> for ProgramError {
     fn from(e: SchemasManagerError) -> Self {
