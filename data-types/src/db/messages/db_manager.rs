@@ -5,19 +5,22 @@ use borsh::{BorshDeserialize, BorshSerialize};
 pub type DBId = String;
 pub type DBQuery = String;
 
+// TODO: replase on DB address
+pub type DB = String;
+
 #[derive(Debug, BorshSerialize, BorshDeserialize)]
 pub struct CreateDB {
-    schema_id: SchemaId,
-    db_id: DBId,
+    pub schema_id: SchemaId,
+    pub db_id: DBId,
 }
 
 #[derive(Debug, BorshSerialize, BorshDeserialize)]
 pub struct RemoveDB {
-    db_id: DBId,
+    pub db_id: DBId,
 }
 
 #[derive(Debug, BorshSerialize, BorshDeserialize)]
 pub struct Query {
-    message: DBId,
-    query: DBQuery,
+    pub db_id: DBId,
+    pub query: DBQuery,
 }
