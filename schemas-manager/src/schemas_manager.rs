@@ -6,7 +6,7 @@ use solcery_data_types::db::{
     schema::Schema,
     schema_id::SchemaId,
 };
-use std::{borrow::Borrow, cell::RefMut};
+use std::cell::RefMut;
 
 pub type SchemasHolderTree<'a> = RBTree<'a, SchemaId, Schema, 1024, 1024>;
 
@@ -18,8 +18,13 @@ impl SchemasManager {
         message: AddSchema,
         mut data: RefMut<&mut [u8]>,
     ) -> Result<(), SchemasManagerError> {
-        let mut schemas_holder = SchemasHolderTree::init_slice(data.as_mut()).unwrap();
-        schemas_holder.insert(message.id, message.schema).unwrap();
+        unsafe {
+            let mut schemas_holder = match SchemasHolderTree::from_slice(data.as_mut()) {
+                Ok(schemas_holder) => schemas_holder,
+                Err(_) => SchemasHolderTree::init_slice(data.as_mut()).unwrap(),
+            };
+            schemas_holder.insert(message.id, message.schema).unwrap();
+        }
 
         Ok(())
     }
@@ -28,8 +33,13 @@ impl SchemasManager {
         message: RemoveSchema,
         mut data: RefMut<&mut [u8]>,
     ) -> Result<(), SchemasManagerError> {
-        let mut schemas_holder = SchemasHolderTree::init_slice(data.as_mut()).unwrap();
-        schemas_holder.delete(&message.id);
+        unsafe {
+            let mut schemas_holder = match SchemasHolderTree::from_slice(data.as_mut()) {
+                Ok(schemas_holder) => schemas_holder,
+                Err(_) => SchemasHolderTree::init_slice(data.as_mut()).unwrap(),
+            };
+            schemas_holder.delete(&message.id);
+        }
 
         Ok(())
     }
@@ -38,10 +48,15 @@ impl SchemasManager {
         message: UpdateSchema,
         mut data: RefMut<&mut [u8]>,
     ) -> Result<(), SchemasManagerError> {
-        let mut schemas_holder = SchemasHolderTree::init_slice(data.as_mut()).unwrap();
-        schemas_holder
-            .insert(message.id, message.new_schema)
-            .unwrap();
+        unsafe {
+            let mut schemas_holder = match SchemasHolderTree::from_slice(data.as_mut()) {
+                Ok(schemas_holder) => schemas_holder,
+                Err(_) => SchemasHolderTree::init_slice(data.as_mut()).unwrap(),
+            };
+            schemas_holder
+                .insert(message.id, message.new_schema)
+                .unwrap();
+        }
 
         Ok(())
     }
@@ -52,12 +67,19 @@ impl SchemasManager {
         mut res_data: RefMut<&mut [u8]>,
     ) -> Result<(), SchemasManagerError> {
         unsafe {
-            let schemas_holder = SchemasHolderTree::from_slice(data.as_mut()).unwrap();
-            let schema: Schema = schemas_holder.get(&message.id).unwrap();
+            let schemas_holder = match SchemasHolderTree::from_slice(data.as_mut()) {
+                Ok(schemas_holder) => schemas_holder,
+                Err(_) => SchemasHolderTree::init_slice(data.as_mut()).unwrap(),
+            };
 
-            let mut v = vec![];
-            schema.serialize(&mut v).unwrap();
-            res_data.copy_from_slice(v.as_slice());
+            match schemas_holder.get(&message.id) {
+                Some(schema) => {
+                    let mut v = vec![];
+                    schema.serialize(&mut v).unwrap();
+                    res_data.copy_from_slice(v.as_slice());
+                }
+                None => (),
+            };
         }
 
         Ok(())
