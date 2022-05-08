@@ -1,6 +1,5 @@
 use super::*;
 use pretty_assertions::assert_eq;
-use std::mem;
 
 #[test]
 fn account_initialization() {
@@ -31,7 +30,7 @@ fn allocation() {
 
     let mut alloc = unsafe { AccountAllocator::init_account(&mut account_vec, 10).unwrap() };
 
-    let id = alloc.allocate_chunk(10).unwrap();
+    let id = alloc.allocate_segment(10).unwrap();
 
     assert_eq!(alloc.allocation_table.inodes_count(), 2);
     assert_eq!(id, 0);
@@ -49,9 +48,9 @@ fn deallocation() {
 
     let mut alloc = unsafe { AccountAllocator::init_account(&mut account_vec, 10).unwrap() };
 
-    let id = alloc.allocate_chunk(10).unwrap();
+    let id = alloc.allocate_segment(10).unwrap();
 
-    alloc.deallocate_chunk(id).unwrap();
+    alloc.deallocate_segment(id).unwrap();
 
     assert_eq!(alloc.allocation_table.inodes_count(), 2);
     assert_eq!(alloc.inode_data[0], unsafe {

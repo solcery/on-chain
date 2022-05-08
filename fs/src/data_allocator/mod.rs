@@ -1,5 +1,4 @@
 use core::slice::from_raw_parts_mut;
-use solana_program::pubkey::Pubkey;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::marker::PhantomData;
@@ -101,6 +100,7 @@ impl<'long: 'short, 'short> DataAllocator<'long> {
 pub enum DataError {
     NoSuchSegment,
     AlreadyBorrowed,
+    NoSuchPubkey,
 }
 
 #[cfg(test)]

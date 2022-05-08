@@ -8,19 +8,19 @@ fn segments() {
     let slice = &mut account_vec;
     let mut alloc = unsafe { AccountAllocator::init_account(slice, 10).unwrap() };
 
-    let id_0 = alloc.allocate_chunk(10).unwrap();
-    let id_1 = alloc.allocate_chunk(100).unwrap();
-    let id_2 = alloc.allocate_chunk(132).unwrap();
-    let id_3 = alloc.allocate_chunk(12).unwrap();
-    let id_4 = alloc.allocate_chunk(15).unwrap();
-    let id_5 = alloc.allocate_chunk(17).unwrap();
+    let id_0 = alloc.allocate_segment(10).unwrap();
+    let id_1 = alloc.allocate_segment(100).unwrap();
+    let id_2 = alloc.allocate_segment(132).unwrap();
+    let id_3 = alloc.allocate_segment(12).unwrap();
+    let id_4 = alloc.allocate_segment(15).unwrap();
+    let id_5 = alloc.allocate_segment(17).unwrap();
 
-    alloc.deallocate_chunk(id_1).unwrap();
-    let id_6 = alloc.allocate_chunk(50).unwrap();
-    let id_7 = alloc.allocate_chunk(50).unwrap();
+    alloc.deallocate_segment(id_1).unwrap();
+    let id_6 = alloc.allocate_segment(50).unwrap();
+    let id_7 = alloc.allocate_segment(50).unwrap();
 
-    alloc.deallocate_chunk(id_2).unwrap();
-    let id_8 = alloc.allocate_chunk(40).unwrap();
+    alloc.deallocate_segment(id_2).unwrap();
+    let id_8 = alloc.allocate_segment(40).unwrap();
 
     let mut data_allocator = alloc.to_data_allocator();
 

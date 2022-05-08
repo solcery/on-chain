@@ -1,6 +1,5 @@
 use super::DataAllocator;
 use bytemuck::{cast_mut, cast_slice_mut};
-use solana_program::pubkey::Pubkey;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::mem;
@@ -100,7 +99,7 @@ impl<'long> AccountAllocator<'long> {
         Ok(allocator)
     }
 
-    pub fn allocate_chunk(&mut self, size: usize) -> Result<u32, Error> {
+    pub fn allocate_segment(&mut self, size: usize) -> Result<u32, Error> {
         if self.inode_data.len() == self.inode_data.capacity() {
             return Err(Error::NoInodesLeft);
         }
@@ -142,11 +141,11 @@ impl<'long> AccountAllocator<'long> {
 
             Ok(id)
         } else {
-            Err(Error::NoSuitableChunkFound)
+            Err(Error::NoSuitableSegmentFound)
         }
     }
 
-    pub fn deallocate_chunk(&mut self, id: u32) -> Result<(), Error> {
+    pub fn deallocate_segment(&mut self, id: u32) -> Result<(), Error> {
         let result = self
             .inode_data
             .iter_mut()
@@ -175,7 +174,7 @@ impl<'long> AccountAllocator<'long> {
         unsafe { DataAllocator::from_raw_parts(data, allocated_segments, borrowed_serments) }
     }
 
-    pub fn merge_chunks(&mut self) {
+    pub fn merge_segments(&mut self) {
         unimplemented!();
     }
 
@@ -221,8 +220,9 @@ pub enum Error {
     WrongMagic,
     WrongSize,
     NoInodesLeft,
-    NoSuitableChunkFound,
+    NoSuitableSegmentFound,
     NoSuchIndex,
+    NoSuchPubkey,
 }
 
 #[cfg(test)]
