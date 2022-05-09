@@ -8,27 +8,118 @@
 //! * then goes [Inode](account_allocator::Inode) table with `inodes_max` elements. Size of each
 //! Inode is 13 bytes.
 //! * All the remaining space is usable for data.
-//!
-//! Operation with FS is splitted into two stages:
-//! - First stage is represented by [FSAllocator]. At this stage you can allocate and deallocate
-//! segments of memory.
-//! - Second stage is represented by [FSDispatcher], which can only be condtructed from
-//! [FSAllocator]. At this stage you can get mutable slices to allocated memory segments.
 
 #![deny(unsafe_op_in_unsafe_fn)]
 #![feature(cell_leak)]
 
+use solana_program::{account_info::AccountInfo, pubkey::Pubkey};
+use std::cell::RefMut;
+use std::collections::BTreeMap;
+
 mod account_allocator;
-mod data_allocator;
-mod fs_allocator;
-mod fs_dispatcher;
 mod segment_id;
 
 use account_allocator::AccountAllocator;
-use data_allocator::DataAllocator;
 
 pub use account_allocator::Error as AllocatorError;
-pub use data_allocator::DataError;
-pub use fs_allocator::FSAllocator;
-pub use fs_dispatcher::FSDispatcher;
 pub use segment_id::SegmentId;
+
+#[derive(Debug)]
+pub struct FS<'a> {
+    allocators: BTreeMap<Pubkey, AccountAllocator<'a>>,
+}
+
+impl<'long: 'short, 'short> FS<'long> {
+    /// Constructs [FS], assuming that all accounts are initialized as filesystem accounts
+    pub fn from_account_iter<AccountIter>(
+        accounts_iter: &mut AccountIter,
+    ) -> Result<Self, AllocatorError>
+    where
+        AccountIter: Iterator<Item = &'long AccountInfo<'long>>,
+    {
+        let result: Result<BTreeMap<Pubkey, AccountAllocator<'long>>, _> = accounts_iter
+            .map(|account| {
+                let pubkey = *account.key;
+                let data = account.data.borrow_mut();
+                let data = RefMut::<'_, &'long mut [u8]>::leak(data);
+                unsafe { AccountAllocator::from_account(data).map(|alloc| (pubkey, alloc)) }
+            })
+            .collect();
+
+        result.map(|allocators| Self { allocators })
+    }
+
+    /// Constructs [FS], assuming that some (or all) accounts may be uninitialized as filesystem accounts
+    pub fn from_uninit_account_iter<AccountIter>(
+        accounts_iter: &mut AccountIter,
+    ) -> Result<Self, AllocatorError>
+    where
+        AccountIter: Iterator<Item = &'long AccountInfo<'long>>,
+    {
+        //let result: Result<BTreeMap<Pubkey, AccountAllocator<'long>>, _> = accounts_iter
+        //.map(|account| {
+        //let pubkey = *account.key;
+        //let data = account.data.borrow_mut();
+        //let data = RefMut::<'_, &'long mut [u8]>::leak(data);
+        //let maybe_alloc = unsafe { AccountAllocator::from_account(*data) };
+
+        //// We can't use match here because of borrow checker
+        //if let Ok(alloc) = maybe_alloc {
+        //return Ok((pubkey, alloc));
+        //} else if maybe_alloc.unwrap_err() == AllocatorError::TooSmall {
+        //Err(AllocatorError::TooSmall)
+        //} else {
+        //unsafe { AccountAllocator::init_account(*data).map(|alloc| (pubkey, alloc)) }
+        //}
+        //})
+        //.collect();
+
+        //result.map(|allocators| Self { allocators })
+        unimplemented!(); // Thanks to Borrow Checker
+    }
+
+    /// Allocates segment of data in the first account with available space
+    pub fn allocate_segment(&mut self, size: usize) -> Result<SegmentId, AllocatorError> {
+        use AllocatorError::{NoInodesLeft, NoSuitableSegmentFound};
+
+        let mut global_result = Err(NoSuitableSegmentFound);
+        for (key, alloc) in self.allocators.iter_mut() {
+            let allocation_result = alloc.allocate_segment(size);
+            match (allocation_result, global_result) {
+                (Ok(id), _) => {
+                    return Ok(SegmentId { pubkey: *key, id });
+                }
+                (Err(NoSuitableSegmentFound), Err(NoInodesLeft)) => {
+                    global_result = Err(NoSuitableSegmentFound);
+                }
+                (Err(_), Err(_)) => {}
+                (Err(_), Ok(_)) => unreachable!(),
+            }
+        }
+        return global_result;
+    }
+
+    /// Deallocates segment of data in the first account with available space
+    ///
+    /// Only unborrowed segments can be deallocated
+    pub fn deallocate_segment(&mut self, id: SegmentId) -> Result<(), AllocatorError> {
+        match self.allocators.get_mut(&id.pubkey) {
+            Some(alloc) => alloc.deallocate_segment(id.id),
+            None => Err(AllocatorError::NoSuchPubkey),
+        }
+    }
+
+    pub fn defragment_fs(&mut self) {
+        for (_, alloc) in self.allocators.iter_mut() {
+            alloc.merge_segments();
+        }
+    }
+
+    /// Borrows a segment with given [SegmentId]
+    pub fn segment(&mut self, id: SegmentId) -> Result<&'short mut [u8], AllocatorError> {
+        match self.allocators.get_mut(&id.pubkey) {
+            Some(alloc) => alloc.segment(id.id),
+            None => Err(AllocatorError::NoSuchPubkey),
+        }
+    }
+}

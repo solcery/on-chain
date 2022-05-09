@@ -1,8 +1,10 @@
-use super::DataAllocator;
 use bytemuck::{cast_mut, cast_slice_mut};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::fmt;
+use std::marker::PhantomData;
 use std::mem;
+use std::ptr::NonNull;
+use std::slice::from_raw_parts_mut;
 use tinyvec::SliceVec;
 
 mod allocation_table;
@@ -19,12 +21,15 @@ pub use allocation_table::AllocationTable;
 pub use inode::Inode;
 
 pub struct AccountAllocator<'long> {
-    data: &'long mut [u8],
+    ptr: NonNull<u8>,
+    len: usize,
     inode_data: SliceVec<'long, Inode>,
     allocation_table: &'long mut AllocationTable,
+    borrowed_serments: BTreeSet<u32>,
+    _ghost: PhantomData<&'long mut [u8]>,
 }
 
-impl<'long> AccountAllocator<'long> {
+impl<'long: 'short, 'short> AccountAllocator<'long> {
     pub unsafe fn init_account(data: &'long mut [u8], max_inodes: usize) -> Result<Self, Error> {
         let account_data = data;
 
@@ -53,10 +58,16 @@ impl<'long> AccountAllocator<'long> {
             inode_data.push(inode);
         }
 
+        let len = data.len();
+        let ptr = NonNull::new(data.as_mut_ptr()).unwrap();
+
         let allocator = Self {
             allocation_table,
-            data,
+            borrowed_serments: BTreeSet::new(),
             inode_data,
+            len,
+            ptr,
+            _ghost: PhantomData::<&'long mut [u8]>,
         };
 
         debug_assert!(allocator.is_ordered());
@@ -88,10 +99,16 @@ impl<'long> AccountAllocator<'long> {
         let inodes: &mut [Inode] = cast_slice_mut(inodes_slice);
         let inode_data = SliceVec::from_slice_len(inodes, allocation_table.inodes_count());
 
+        let len = data.len();
+        let ptr = NonNull::new(data.as_mut_ptr()).unwrap();
+
         let allocator = Self {
             allocation_table,
-            data,
+            borrowed_serments: BTreeSet::new(),
             inode_data,
+            len,
+            ptr,
+            _ghost: PhantomData::<&'long mut [u8]>,
         };
 
         debug_assert!(allocator.is_ordered());
@@ -159,19 +176,62 @@ impl<'long> AccountAllocator<'long> {
         result
     }
 
-    pub fn to_data_allocator(self) -> DataAllocator<'long> {
-        assert!(self.is_ordered());
-        let allocated_segments = BTreeMap::<u32, (usize, usize)>::from_iter(
-            self.inode_data
-                .iter()
-                .filter(|inode| inode.occupied())
-                // We have already filtered all unoccupied inodes, so unwrap will always succeed
-                .map(|inode| (inode.id().unwrap(), (inode.start_idx(), inode.end_idx()))),
-        );
-        let borrowed_serments = BTreeSet::new();
-        let data = self.data;
+    pub fn segment(&mut self, id: u32) -> Result<&'short mut [u8], Error> {
+        debug_assert!(self.is_ordered());
+        if self.borrowed_serments.contains(&id) {
+            return Err(Error::AlreadyBorrowed);
+        }
 
-        unsafe { DataAllocator::from_raw_parts(data, allocated_segments, borrowed_serments) }
+        let maybe_inode = self.inode_data.iter().find(|inode| inode.id() == Some(id));
+        if let Some(inode) = maybe_inode {
+            self.borrowed_serments.insert(id);
+
+            unsafe {
+                // Safety
+                //
+                // Safety contract of `from_raw_parts_mut`
+                // * `data` must be valid for both reads and writes for `len * mem::size_of::<T>()` many bytes,
+                //   and it must be properly aligned. This means in particular:
+                //   -- Check: the emitted slice has the lifetime 'short which is not longer than 'long.
+                //
+                //     * The entire memory range of this slice must be contained within a single allocated object!
+                //       Slices can never span across multiple allocated objects.
+                //       -- Check: we are offsetting inside one big slice.
+                //
+                //     * `data` must be non-null and aligned even for zero-length slices. One
+                //       reason for this is that enum layout optimizations may rely on references
+                //       (including slices of any length) being aligned and non-null to distinguish
+                //       them from other data. You can obtain a pointer that is usable as `data`
+                //       for zero-length slices using [`NonNull::dangling()`].
+                //       -- Check: data_ptr is not null and so does slice_ptr.
+                //
+                // * `data` must point to `len` consecutive properly initialized values of type `T`.
+                //    -- Check: the original slice of bytes was initialized,
+                //       offset bounds was checked to be inside the original slice.
+                //
+                // * The memory referenced by the returned slice must not be accessed through any other pointer
+                //   (not derived from the return value) for the duration of lifetime `'short`.
+                //   Both read and write accesses are forbidden.
+                //   -- Check: self.borrowed_segments guarantees, that this segment will not be emitted again.
+                //      Segments was checked to be non-overlapping.
+                //
+                // * The total size `len * mem::size_of::<T>()` of the slice must be no larger than `isize::MAX`.
+                //   -- Check: here we are limited by the maximum account size, which is far less than `isize::MAX`.
+                let offset_start = inode.start_idx();
+                let offset_end = inode.end_idx();
+
+                debug_assert!(offset_end <= self.len);
+                debug_assert!(offset_start < offset_end);
+
+                let data_ptr = self.ptr.as_ptr();
+                let len = offset_end - offset_start;
+                let slice_ptr = data_ptr.add(offset_start);
+
+                Ok(from_raw_parts_mut(slice_ptr, len))
+            }
+        } else {
+            Err(Error::NoSuchSegment)
+        }
     }
 
     pub fn merge_segments(&mut self) {
@@ -191,7 +251,7 @@ impl<'long> AccountAllocator<'long> {
             }
         }
 
-        if self.inode_data[self.inode_data.len() - 1].end_idx() != self.data.len() {
+        if self.inode_data[self.inode_data.len() - 1].end_idx() != self.len {
             return false;
         }
 
@@ -208,7 +268,7 @@ impl<'a> fmt::Debug for AccountAllocator<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("AccountAllocator")
             .field("allocation_table", &self.allocation_table)
-            .field("data_size", &self.data.len())
+            .field("data_size", &self.len)
             .field("inodes", &self.inode_data)
             .finish()
     }
@@ -216,13 +276,15 @@ impl<'a> fmt::Debug for AccountAllocator<'a> {
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum Error {
+    AlreadyBorrowed,
+    NoInodesLeft,
+    NoSuchIndex,
+    NoSuchPubkey,
+    NoSuchSegment,
+    NoSuitableSegmentFound,
     TooSmall,
     WrongMagic,
     WrongSize,
-    NoInodesLeft,
-    NoSuitableSegmentFound,
-    NoSuchIndex,
-    NoSuchPubkey,
 }
 
 #[cfg(test)]
