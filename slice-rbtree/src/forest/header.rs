@@ -1,8 +1,7 @@
 use bytemuck::{Pod, Zeroable};
 use std::fmt;
 
-// 'Slice_RBTree' in ascii
-const HEADER_MAGIC: [u8; 12] = [83, 108, 105, 99, 101, 95, 82, 66, 84, 114, 101, 101];
+const HEADER_MAGIC: [u8; 12] = *b"Slice_RBTree";
 
 #[repr(C)]
 #[derive(Pod, Clone, Copy, Zeroable)]

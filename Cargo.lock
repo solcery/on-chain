@@ -16,10 +16,8 @@ dependencies = [
 name = "account-fs"
 version = "0.0.0"
 dependencies = [
- "borsh",
  "bytemuck",
  "pretty_assertions 0.6.1",
- "slice-rbtree",
  "solana-program",
  "tinyvec",
 ]
@@ -3727,11 +3725,11 @@ dependencies = [
  "num_enum",
 =======
  "borsh",
- "bytemuck",
  "pretty_assertions 0.6.1",
->>>>>>> DBmanager api init
- "solana-program",
- "thiserror",
+ "solana-program-test",
+ "solana-sdk",
+ "solcery-data-types",
+ "test-case",
 ]
 
 [[package]]
