@@ -16,10 +16,8 @@ dependencies = [
 name = "account-fs"
 version = "0.0.0"
 dependencies = [
- "borsh",
  "bytemuck",
  "pretty_assertions 0.6.1",
- "slice-rbtree",
  "solana-program",
  "tinyvec",
 ]
@@ -3711,14 +3709,11 @@ name = "solcery-vm"
 version = "0.0.0"
 dependencies = [
  "borsh",
- "bytemuck",
  "pretty_assertions 0.6.1",
- "solana-program",
  "solana-program-test",
  "solana-sdk",
  "solcery-data-types",
  "test-case",
- "thiserror",
 ]
 
 [[package]]
