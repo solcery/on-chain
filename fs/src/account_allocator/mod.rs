@@ -116,6 +116,45 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
         Ok(allocator)
     }
 
+    pub fn is_initialized(account_data: &'long mut [u8]) -> bool {
+        if account_data.len() < mem::size_of::<AllocationTable>() {
+            return false;
+        }
+        let (allocation_table, tail): (&'long mut [u8], &'long mut [u8]) =
+            account_data.split_at_mut(mem::size_of::<AllocationTable>());
+
+        let allocation_table: &mut [[u8; mem::size_of::<AllocationTable>()]] =
+            cast_slice_mut(allocation_table);
+        let allocation_table: &mut AllocationTable = cast_mut(&mut allocation_table[0]);
+
+        if !allocation_table.check_magic() {
+            return false;
+        }
+
+        if tail.len() < allocation_table.inodes_max() * mem::size_of::<Inode>() {
+            return false;
+        }
+        let (inodes_slice, data) =
+            tail.split_at_mut(allocation_table.inodes_max() * mem::size_of::<Inode>());
+
+        let inodes: &mut [Inode] = cast_slice_mut(inodes_slice);
+        let inode_data = SliceVec::from_slice_len(inodes, allocation_table.inodes_count());
+
+        let len = data.len();
+        let ptr = NonNull::new(data.as_mut_ptr()).unwrap();
+
+        let allocator = Self {
+            allocation_table,
+            borrowed_serments: BTreeSet::new(),
+            inode_data,
+            len,
+            ptr,
+            _ghost: PhantomData::<&'long mut [u8]>,
+        };
+
+        allocator.is_ordered()
+    }
+
     pub fn allocate_segment(&mut self, size: usize) -> Result<u32, Error> {
         if self.inode_data.len() == self.inode_data.capacity() {
             return Err(Error::NoInodesLeft);
