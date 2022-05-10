@@ -52,30 +52,28 @@ impl<'long: 'short, 'short> FS<'long> {
     /// Constructs [FS], assuming that some (or all) accounts may be uninitialized as filesystem accounts
     pub fn from_uninit_account_iter<AccountIter>(
         accounts_iter: &mut AccountIter,
+        inode_table_size: usize,
     ) -> Result<Self, AllocatorError>
     where
         AccountIter: Iterator<Item = &'long AccountInfo<'long>>,
     {
-        //let result: Result<BTreeMap<Pubkey, AccountAllocator<'long>>, _> = accounts_iter
-        //.map(|account| {
-        //let pubkey = *account.key;
-        //let data = account.data.borrow_mut();
-        //let data = RefMut::<'_, &'long mut [u8]>::leak(data);
-        //let maybe_alloc = unsafe { AccountAllocator::from_account(*data) };
+        let result: Result<BTreeMap<Pubkey, AccountAllocator<'long>>, _> = accounts_iter
+            .map(|account| {
+                let pubkey = *account.key;
+                let data = account.data.borrow_mut();
+                let data = RefMut::<'_, &'long mut [u8]>::leak(data);
+                if AccountAllocator::is_initialized(*data) {
+                    unsafe { AccountAllocator::from_account(data).map(|alloc| (pubkey, alloc)) }
+                } else {
+                    unsafe {
+                        AccountAllocator::init_account(data, inode_table_size)
+                            .map(|alloc| (pubkey, alloc))
+                    }
+                }
+            })
+            .collect();
 
-        //// We can't use match here because of borrow checker
-        //if let Ok(alloc) = maybe_alloc {
-        //return Ok((pubkey, alloc));
-        //} else if maybe_alloc.unwrap_err() == AllocatorError::TooSmall {
-        //Err(AllocatorError::TooSmall)
-        //} else {
-        //unsafe { AccountAllocator::init_account(*data).map(|alloc| (pubkey, alloc)) }
-        //}
-        //})
-        //.collect();
-
-        //result.map(|allocators| Self { allocators })
-        unimplemented!(); // Thanks to Borrow Checker
+        result.map(|allocators| Self { allocators })
     }
 
     /// Allocates segment of data in the first account with available space
