@@ -1,4 +1,6 @@
 #![deny(unsafe_op_in_unsafe_fn)]
+#![deny(missing_debug_implementations)]
+//#![deny(missing_docs)]
 
 mod forest;
 mod tree;

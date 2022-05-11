@@ -10,6 +10,8 @@
 //! * All the remaining space is usable for data.
 
 #![deny(unsafe_op_in_unsafe_fn)]
+#![deny(missing_debug_implementations)]
+//#![deny(missing_docs)]
 #![feature(cell_leak)]
 
 use solana_program::{account_info::AccountInfo, pubkey::Pubkey};

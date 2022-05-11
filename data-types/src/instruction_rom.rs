@@ -55,6 +55,7 @@ impl<'a> InstructionRom<'a> {
     }
 }
 
+#[derive(Debug)]
 pub enum Error {
     WrongSize,
 }
