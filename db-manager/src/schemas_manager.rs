@@ -46,13 +46,13 @@ impl SchemasManager {
         mut data: RefMut<&mut [u8]>,
     ) -> Result<(), SchemasManagerError> {
         unsafe {
-            let mut schemas_holder = match SchemasHolderTree::from_slice(data.as_mut()) {
-                Ok(schemas_holder) => schemas_holder,
-                Err(_) => SchemasHolderTree::init_slice(data.as_mut()).unwrap(),
-            };
-            schemas_holder
-                .insert(message.id, message.new_schema)
-                .unwrap();
+            let mut schemas_holder = SchemasHolderTree::from_slice(data.as_mut()).unwrap();
+
+            if schemas_holder.contains_key(&message.id) {
+                schemas_holder
+                    .insert(message.id, message.new_schema)
+                    .unwrap();
+            }
         }
 
         Ok(())
