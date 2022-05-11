@@ -64,10 +64,7 @@ impl SchemasManager {
         mut res_data: RefMut<&mut [u8]>,
     ) -> Result<(), SchemasManagerError> {
         unsafe {
-            let schemas_holder = match SchemasHolderTree::from_slice(data.as_mut()) {
-                Ok(schemas_holder) => schemas_holder,
-                Err(_) => SchemasHolderTree::init_slice(data.as_mut()).unwrap(),
-            };
+            let schemas_holder = SchemasHolderTree::from_slice(data.as_mut()).unwrap();
 
             match schemas_holder.get(&message.id) {
                 Some(schema) => {
