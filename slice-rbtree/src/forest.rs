@@ -951,6 +951,7 @@ where
     }
 }
 
+#[derive(Debug)]
 pub struct PairsIterator<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,
@@ -996,6 +997,7 @@ where
     }
 }
 
+#[derive(Debug)]
 pub struct KeysIterator<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,
@@ -1040,6 +1042,7 @@ where
     }
 }
 
+#[derive(Debug)]
 pub struct ValuesIterator<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,
