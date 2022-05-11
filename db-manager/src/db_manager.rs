@@ -3,7 +3,7 @@ use std::cell::RefMut;
 use slice_rbtree::RBTree;
 use solcery_data_types::db::messages::db_manager::{CreateDB, DBId, Query, RemoveDB, DB};
 
-use crate::error::DBManagerError;
+use crate::db_error::DBManagerError;
 
 pub type DataBaseHolderTree<'a> = RBTree<'a, DBId, DB, 1024, 1024>;
 pub struct DBManager {}
