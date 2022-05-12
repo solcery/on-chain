@@ -48,6 +48,7 @@ async fn test_add_schema() {
                 message: AddSchema {
                     id: "test_schema_id".to_owned(),
                     schema: new_schema.clone(),
+                    need_init: true,
                 },
             },
             vec![AccountMeta::new(app_pubkey, false)],
@@ -131,6 +132,7 @@ async fn test_remove_schema() {
                 message: AddSchema {
                     id: "test_schema_id".to_owned(),
                     schema: new_schema.clone(),
+                    need_init: true,
                 },
             },
             vec![AccountMeta::new(app_pubkey, false)],
@@ -234,6 +236,7 @@ async fn test_update_schema() {
                         version: 1u64,
                         tables: vec![AllowedTypes::Int, AllowedTypes::String],
                     },
+                    need_init: true,
                 },
             },
             vec![AccountMeta::new(app_pubkey, false)],
@@ -249,15 +252,12 @@ async fn test_update_schema() {
 
     // Update
 
-    let new_schema = Schema {
-        version: 1u64,
-        tables: vec![
-            AllowedTypes::Int,
-            AllowedTypes::Int,
-            AllowedTypes::String,
-            AllowedTypes::String,
-        ],
-    };
+    let new_tables = vec![
+        AllowedTypes::Int,
+        AllowedTypes::Int,
+        AllowedTypes::String,
+        AllowedTypes::String,
+    ];
 
     let mut update_schema_transaction = Transaction::new_with_payer(
         &[SolanaInstruction::new_with_borsh(
@@ -265,7 +265,7 @@ async fn test_update_schema() {
             &DataBaseInstruction::UpdateSchema {
                 message: UpdateSchema {
                     id: "test_schema_id".to_owned(),
-                    new_schema: new_schema.clone(),
+                    tables: new_tables.clone(),
                 },
             },
             vec![
@@ -313,5 +313,6 @@ async fn test_update_schema() {
         .unwrap();
     let schema: Schema = <Schema>::deserialize(&mut schema_info.data.as_slice()).unwrap();
 
-    assert_eq!(schema, new_schema);
+    assert_eq!(schema.tables, new_tables);
+    assert_eq!(schema.version, 2u64);
 }
