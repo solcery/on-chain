@@ -36,9 +36,9 @@ impl DBManager {
         mut data: RefMut<&mut [u8]>,
         mut _res_data: RefMut<&mut [u8]>,
     ) -> Result<(), DBManagerError> {
-        let mut db_holder = unsafe { DataBaseHolderTree::from_slice(data.as_mut()).unwrap() };
+        let mut _db_holder = unsafe { DataBaseHolderTree::from_slice(data.as_mut()).unwrap() };
 
-        let _db = db_holder.get(&message.db_id).unwrap();
+        let _db = _db_holder.get(&message.db_id).unwrap();
 
         // TODO: process query
         unimplemented!();
