@@ -73,13 +73,10 @@ impl SchemasManager {
     ) -> Result<(), SchemasManagerError> {
         let schemas_holder = unsafe { SchemasHolderTree::from_slice(data.as_mut()).unwrap() };
 
-        match schemas_holder.get(&message.id) {
-            Some(schema) => {
-                let mut v = vec![];
-                schema.serialize(&mut v).unwrap();
-                res_data.copy_from_slice(v.as_slice());
-            }
-            None => (),
+        if let Some(schema) = schemas_holder.get(&message.id) {
+            let mut v = vec![];
+            schema.serialize(&mut v).unwrap();
+            res_data.copy_from_slice(v.as_slice());
         };
 
         Ok(())
