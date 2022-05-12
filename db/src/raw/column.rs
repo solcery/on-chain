@@ -8,17 +8,22 @@ use account_fs::SegmentId;
 
 #[repr(C)]
 #[derive(Pod, Clone, Copy, Zeroable)]
-pub struct Column {
+pub struct ColumnHeader {
     name: [u8; 64],
+    id: [u8; 4],
     value_type: u8,
     account_pubkey: [u8; 32],
     segment_id: [u8; 4],
     column_type: u8, // I'm sure, that we'll never invent more than 256 table types
 }
 
-impl Column {
+impl ColumnHeader {
     pub fn name(&self) -> String {
         String::deserialize(&mut self.name.as_slice()).unwrap()
+    }
+
+    pub fn id(&self) -> u32 {
+        u32::from_be_bytes(self.id)
     }
 
     pub fn value_type(&self) -> DataType {
@@ -48,10 +53,11 @@ impl Column {
     }
 }
 
-impl fmt::Debug for Column {
+impl fmt::Debug for ColumnHeader {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Column")
+        f.debug_struct("ColumnHeader")
             .field("name", &self.name())
+            .field("id", &self.id())
             .field("value_type", &self.value_type())
             .field("segment_id", &self.segment_id())
             .field("column_type", &self.column_type())
