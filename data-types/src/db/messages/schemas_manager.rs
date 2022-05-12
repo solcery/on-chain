@@ -1,5 +1,5 @@
 use crate::db::{
-    schema::{AllowedTypes, Schema},
+    schema::{Schema, Tables},
     schema_id::SchemaId,
 };
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -19,7 +19,7 @@ pub struct RemoveSchema {
 #[derive(Debug, BorshSerialize, BorshDeserialize)]
 pub struct UpdateSchema {
     pub id: SchemaId,
-    pub tables: Vec<AllowedTypes>,
+    pub tables: Tables,
 }
 #[derive(Debug, BorshSerialize, BorshDeserialize)]
 pub struct GetSchema {
