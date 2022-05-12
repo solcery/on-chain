@@ -3,7 +3,7 @@ use borsh::BorshSerialize;
 use slice_rbtree::RBTree;
 use solcery_data_types::db::{
     messages::schemas_manager::{AddSchema, GetSchema, RemoveSchema, UpdateSchema},
-    schema::Schema,
+    schema::{contains_one_primary_key, Schema},
     schema_id::SchemaId,
 };
 use std::cell::RefMut;
@@ -26,6 +26,10 @@ impl SchemasManager {
             }
         };
 
+        if !contains_one_primary_key(&message.schema.tables) {
+            return Err(SchemasManagerError::PrimaryKeyError);
+        }
+
         schemas_holder.insert(message.id, message.schema).unwrap();
 
         Ok(())
@@ -46,6 +50,10 @@ impl SchemasManager {
         mut data: RefMut<&mut [u8]>,
     ) -> Result<(), SchemasManagerError> {
         let mut schemas_holder = unsafe { SchemasHolderTree::from_slice(data.as_mut()).unwrap() };
+
+        if !contains_one_primary_key(&message.tables) {
+            return Err(SchemasManagerError::PrimaryKeyError);
+        }
 
         if schemas_holder.contains_key(&message.id) {
             let mut schema = schemas_holder.get(&message.id).unwrap();

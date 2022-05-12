@@ -13,6 +13,9 @@ pub enum SchemasManagerError {
     /// The inner schemas holder error.
     #[error("Inner schemas holder error")]
     InnerHolderError,
+    /// The primary key error.
+    #[error("Primary key error")]
+    PrimaryKeyError,
 }
 impl From<SchemasManagerError> for ProgramError {
     fn from(e: SchemasManagerError) -> Self {

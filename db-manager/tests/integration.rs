@@ -39,7 +39,7 @@ async fn test_add_schema() {
     let new_schema = Schema {
         version: 1u64,
         tables: vec![
-            AllowedTypes::Int(KeyType::NotKey),
+            AllowedTypes::Int(KeyType::Primary),
             AllowedTypes::String(KeyType::NotKey),
         ],
     };
@@ -126,7 +126,7 @@ async fn test_remove_schema() {
     let new_schema = Schema {
         version: 1u64,
         tables: vec![
-            AllowedTypes::Int(KeyType::NotKey),
+            AllowedTypes::Int(KeyType::Primary),
             AllowedTypes::String(KeyType::NotKey),
         ],
     };
@@ -241,7 +241,7 @@ async fn test_update_schema() {
                     schema: Schema {
                         version: 1u64,
                         tables: vec![
-                            AllowedTypes::Int(KeyType::NotKey),
+                            AllowedTypes::Int(KeyType::Primary),
                             AllowedTypes::String(KeyType::NotKey),
                         ],
                     },
@@ -262,7 +262,7 @@ async fn test_update_schema() {
     // Update
 
     let new_tables: Tables = vec![
-        AllowedTypes::Int(KeyType::NotKey),
+        AllowedTypes::Int(KeyType::Primary),
         AllowedTypes::Int(KeyType::NotKey),
         AllowedTypes::String(KeyType::NotKey),
         AllowedTypes::String(KeyType::NotKey),
