@@ -2,7 +2,9 @@ use borsh::BorshDeserialize;
 use borsh::BorshSerialize;
 use bytemuck::{Pod, Zeroable};
 use std::fmt;
+use std::mem;
 
+use super::column::ColumnHeader;
 use super::enums::DataType;
 
 const INDEX_MAGIC: [u8; 16] = *b"Solcery_DB_Index";
@@ -17,6 +19,7 @@ pub struct Index {
     primary_key_type: u8,
     column_count: u8,
     column_max: u8,
+    column_id_autoincrement: [u8; 4],
 }
 
 impl Index {
@@ -53,6 +56,20 @@ impl Index {
         u16::from_be_bytes(self.db_version)
     }
 
+    pub fn generate_id(&mut self) -> u32 {
+        let id = u32::from_be_bytes(self.column_id_autoincrement);
+        self.column_id_autoincrement = u32::to_be_bytes(id + 1);
+        id
+    }
+
+    pub const fn size(num_columns: usize) -> usize {
+        mem::size_of::<Self>() + mem::size_of::<ColumnHeader>() * num_columns
+    }
+
+    pub const fn columns_size(&self) -> usize {
+        mem::size_of::<ColumnHeader>() * self.column_max as usize
+    }
+
     pub unsafe fn set_column_count(&mut self, count: usize) {
         assert!(count <= u8::MAX as usize);
         self.column_count = count as u8;
@@ -80,6 +97,7 @@ impl Index {
         self.column_count = 0;
         assert!(column_max <= u8::MAX as usize);
         self.column_max = column_max as u8;
+        self.column_id_autoincrement = u32::to_be_bytes(0);
     }
 }
 
