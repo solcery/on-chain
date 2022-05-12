@@ -74,7 +74,10 @@ fn process_instruction(
             DBManager::remove_db(message, data)?;
         }
         DataBaseInstruction::Query { message } => {
-            DBManager::process_query(message, data)?;
+            let states_account_info = next_account_info(account_info_iter)?;
+            let res_data = states_account_info.try_borrow_mut_data()?;
+
+            DBManager::process_query(message, data, res_data)?;
         }
     }
 

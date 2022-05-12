@@ -34,6 +34,7 @@ impl DBManager {
     pub fn process_query(
         message: Query,
         mut data: RefMut<&mut [u8]>,
+        mut _res_data: RefMut<&mut [u8]>,
     ) -> Result<(), DBManagerError> {
         let mut db_holder = unsafe { DataBaseHolderTree::from_slice(data.as_mut()).unwrap() };
 
