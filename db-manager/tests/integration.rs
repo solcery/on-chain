@@ -29,7 +29,7 @@ async fn test_add_schema() {
     let schemas_holder_data = AccountSharedData::new(1_000, 2093, &program_id);
     schemas_manager_app.add_account(app_pubkey, Account::from(schemas_holder_data));
 
-    let schema_result_data = AccountSharedData::new(1_000, 14, &program_id);
+    let schema_result_data = AccountSharedData::new(1_000, 16, &program_id);
     schemas_manager_app.add_account(schema_result, Account::from(schema_result_data));
 
     let (mut banks_client, payer, recent_blockhash) = schemas_manager_app.start().await;
