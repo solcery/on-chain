@@ -10,7 +10,7 @@ use solana_sdk::{
 };
 use solcery_data_types::db::{
     messages::schemas_manager::{AddSchema, GetSchema, RemoveSchema, UpdateSchema},
-    schema::{AllowedTypes, Schema},
+    schema::{AllowedTypes, KeyType, Schema, Tables},
 };
 use std::str::FromStr;
 
@@ -38,7 +38,10 @@ async fn test_add_schema() {
 
     let new_schema = Schema {
         version: 1u64,
-        tables: vec![AllowedTypes::Int, AllowedTypes::String],
+        tables: vec![
+            AllowedTypes::Int(KeyType::NotKey),
+            AllowedTypes::String(KeyType::NotKey),
+        ],
     };
 
     let mut add_schema_transaction = Transaction::new_with_payer(
@@ -122,7 +125,10 @@ async fn test_remove_schema() {
 
     let new_schema = Schema {
         version: 1u64,
-        tables: vec![AllowedTypes::Int, AllowedTypes::String],
+        tables: vec![
+            AllowedTypes::Int(KeyType::NotKey),
+            AllowedTypes::String(KeyType::NotKey),
+        ],
     };
 
     let mut add_schema_transaction = Transaction::new_with_payer(
@@ -219,7 +225,7 @@ async fn test_update_schema() {
     let schemas_holder_data = AccountSharedData::new(1_000, 2093, &program_id);
     schemas_manager_app.add_account(app_pubkey, Account::from(schemas_holder_data));
 
-    let schema_result_data = AccountSharedData::new(1_000, 16, &program_id);
+    let schema_result_data = AccountSharedData::new(1_000, 20, &program_id);
     schemas_manager_app.add_account(schema_result, Account::from(schema_result_data));
 
     let (mut banks_client, payer, recent_blockhash) = schemas_manager_app.start().await;
@@ -234,7 +240,10 @@ async fn test_update_schema() {
                     id: "test_schema_id".to_owned(),
                     schema: Schema {
                         version: 1u64,
-                        tables: vec![AllowedTypes::Int, AllowedTypes::String],
+                        tables: vec![
+                            AllowedTypes::Int(KeyType::NotKey),
+                            AllowedTypes::String(KeyType::NotKey),
+                        ],
                     },
                     need_init: true,
                 },
@@ -252,11 +261,11 @@ async fn test_update_schema() {
 
     // Update
 
-    let new_tables = vec![
-        AllowedTypes::Int,
-        AllowedTypes::Int,
-        AllowedTypes::String,
-        AllowedTypes::String,
+    let new_tables: Tables = vec![
+        AllowedTypes::Int(KeyType::NotKey),
+        AllowedTypes::Int(KeyType::NotKey),
+        AllowedTypes::String(KeyType::NotKey),
+        AllowedTypes::String(KeyType::NotKey),
     ];
 
     let mut update_schema_transaction = Transaction::new_with_payer(
