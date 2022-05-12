@@ -10,27 +10,23 @@ pub struct DBManager {}
 
 impl DBManager {
     pub fn create_db(message: CreateDB, mut data: RefMut<&mut [u8]>) -> Result<(), DBManagerError> {
-        unsafe {
-            let mut db_holder = match DataBaseHolderTree::from_slice(data.as_mut()) {
-                Ok(db_holder) => db_holder,
-                Err(_) => DataBaseHolderTree::init_slice(data.as_mut()).unwrap(),
-            };
+        let mut db_holder = unsafe {
+            if message.need_init {
+                DataBaseHolderTree::init_slice(data.as_mut()).unwrap()
+            } else {
+                DataBaseHolderTree::from_slice(data.as_mut()).unwrap()
+            }
+        };
 
-            // TODO: db creation
-            db_holder.insert(message.db_id, DB::default()).unwrap();
-        }
+        // TODO: db creation
+        db_holder.insert(message.db_id, DB::default()).unwrap();
 
         Ok(())
     }
 
     pub fn remove_db(message: RemoveDB, mut data: RefMut<&mut [u8]>) -> Result<(), DBManagerError> {
-        unsafe {
-            let mut db_holder = match DataBaseHolderTree::from_slice(data.as_mut()) {
-                Ok(db_holder) => db_holder,
-                Err(_) => DataBaseHolderTree::init_slice(data.as_mut()).unwrap(),
-            };
-            db_holder.delete(&message.db_id);
-        }
+        let mut db_holder = unsafe { DataBaseHolderTree::from_slice(data.as_mut()).unwrap() };
+        db_holder.delete(&message.db_id);
 
         Ok(())
     }
@@ -39,18 +35,13 @@ impl DBManager {
         message: Query,
         mut data: RefMut<&mut [u8]>,
     ) -> Result<(), DBManagerError> {
-        unsafe {
-            let db_holder = match DataBaseHolderTree::from_slice(data.as_mut()) {
-                Ok(db_holder) => db_holder,
-                Err(_) => DataBaseHolderTree::init_slice(data.as_mut()).unwrap(),
-            };
+        let mut db_holder = unsafe { DataBaseHolderTree::from_slice(data.as_mut()).unwrap() };
 
-            let _db = db_holder.get(&message.db_id).unwrap();
+        let _db = db_holder.get(&message.db_id).unwrap();
 
-            // TODO: process query
-            unimplemented!();
-        }
+        // TODO: process query
+        unimplemented!();
 
-        Ok(())
+        // Ok(())
     }
 }
