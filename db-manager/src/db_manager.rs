@@ -45,7 +45,7 @@ impl DBManager {
                 Err(_) => DataBaseHolderTree::init_slice(data.as_mut()).unwrap(),
             };
 
-            let db = db_holder.get(&message.db_id).unwrap();
+            let _db = db_holder.get(&message.db_id).unwrap();
 
             // TODO: process query
             unimplemented!();
