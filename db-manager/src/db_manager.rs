@@ -20,6 +20,11 @@ impl DBManager {
 
         // TODO: db creation
         db_holder.insert(message.db_id, DB::default()).unwrap();
+        // Obtain Schema
+        // extract index_size
+        // allocate index_size bytes
+        // initialize DB in segment (DB::init_in_segment())
+        // for each column: initialize columns (DB::add_column())
 
         Ok(())
     }
@@ -27,6 +32,8 @@ impl DBManager {
     pub fn remove_db(message: RemoveDB, mut data: RefMut<&mut [u8]>) -> Result<(), DBManagerError> {
         let mut db_holder = unsafe { DataBaseHolderTree::from_slice(data.as_mut()).unwrap() };
         db_holder.delete(&message.db_id);
+        // Obtain DB from its SegmentId
+        // DB::remove()
 
         Ok(())
     }

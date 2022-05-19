@@ -1,5 +1,6 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize};
+use solana_program::pubkey::Pubkey;
 
 pub type Tables = Vec<AllowedTypes>;
 
@@ -12,16 +13,35 @@ pub fn contains_one_primary_key(tables: &Tables) -> bool {
     }) == 1u64
 }
 
-#[derive(
-    PartialEq, Copy, Clone, Eq, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize,
-)]
+#[derive(PartialEq, Clone, Eq, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub enum KeyType {
     Primary,
     Secondary,
     NotKey,
+    LongString(String), // 256 bytes
 }
 
-//TODO: fill other allowed types
+#[derive(
+    PartialEq, Copy, Clone, Eq, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize,
+)]
+pub enum DataType {
+    Int,
+    Float,
+    Pubkey,
+    ShortString,  // 16 bytes
+    MediumString, // 64 bytes
+    LongString,   // 256 bytes
+}
+
+#[derive(PartialEq, Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+pub enum Data {
+    Int(i64),
+    Float(f64),
+    Pubkey(Pubkey),
+    ShortString(String),  // 16 bytes
+    MediumString(String), // 64 bytes
+    LongString(String),   // 256 bytes
+}
 
 #[derive(PartialEq, Clone, Eq, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub enum AllowedTypes {
@@ -30,8 +50,41 @@ pub enum AllowedTypes {
     Pubkey(KeyType),
 }
 
+#[derive(PartialEq, Clone, Eq, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+pub struct Column {
+    name: String,
+    typ: DataType,
+    is_secondary_key: bool,
+}
+
 #[derive(PartialEq, Eq, Debug, Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct Schema {
     pub version: u64,
     pub tables: Tables,
+}
+
+#[derive(PartialEq, Eq, Debug, Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+pub struct NewSchema {
+    pub version: u64,
+    pub primary_key: DataType,
+    pub colums: Vec<DataType>,
+    pub max_colums: u32,
+    pub max_rows: u32,
+}
+
+impl Schema {
+    pub fn index_size(&self) -> usize {
+        unimplemented!();
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+pub enum ColumnType {
+    RBTree,
+    // This types are not implemented yet
+    //OneToOne,
+    //OneToMany,
+    //ManyToOne,
+    //ManyToMany,
+    //RBSet,
 }

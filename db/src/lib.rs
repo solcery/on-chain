@@ -1,5 +1,8 @@
 //! Solcery DB internal structures
 #![deny(unsafe_op_in_unsafe_fn)]
+// Temporary added this, so the output of the compiler is not flooded with unused warnings
+#![allow(unused_variables)]
+#![allow(dead_code)]
 
 use bytemuck::{cast_mut, cast_slice_mut};
 use std::cell::RefCell;
@@ -14,8 +17,8 @@ mod raw;
 use account_fs::{SegmentId, FS};
 use column::Column;
 use raw::column::ColumnHeader;
-use raw::enums::{ColumnType, Data, DataType};
 use raw::index::Index;
+use solcery_data_types::db::schema::{Data, DataType};
 
 type FSCell<'a> = Rc<RefCell<FS<'a>>>;
 
@@ -23,7 +26,7 @@ pub struct DB<'a> {
     fs: FSCell<'a>,
     index: &'a mut Index,
     column_headers: SliceVec<'a, ColumnHeader>,
-    accessed_columns: BTreeMap<String, Box<dyn Column>>,
+    accessed_columns: BTreeMap<u32, Box<dyn Column>>,
 }
 
 impl<'a> DB<'a> {
@@ -40,7 +43,7 @@ impl<'a> DB<'a> {
 
         let columns: &mut [ColumnHeader] = cast_slice_mut(columns);
 
-        let mut column_headers = SliceVec::from_slice_len(columns, index.column_count());
+        let column_headers = SliceVec::from_slice_len(columns, index.column_count());
 
         Ok(Self {
             fs,
@@ -88,6 +91,7 @@ impl<'a> DB<'a> {
     ) {
         unimplemented!();
     }
+
     pub fn set_row(&self, row: Vec<DataType>) {
         unimplemented!();
     }
@@ -97,6 +101,10 @@ impl<'a> DB<'a> {
     }
 
     pub fn row_secondary_key(&self, key_column: u32, secondary_key: DataType) -> Vec<DataType> {
+        unimplemented!();
+    }
+
+    pub fn remove_db(self) -> Result<(), ()> {
         unimplemented!();
     }
 }
