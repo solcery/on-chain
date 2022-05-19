@@ -3,8 +3,8 @@ use bytemuck::{Pod, Zeroable};
 use solana_program::pubkey::Pubkey;
 use std::fmt;
 
-use super::enums::*;
 use account_fs::SegmentId;
+use solcery_data_types::db::schema::{ColumnType, DataType};
 
 #[repr(C)]
 #[derive(Pod, Clone, Copy, Zeroable)]

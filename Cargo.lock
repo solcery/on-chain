@@ -3628,6 +3628,7 @@ dependencies = [
  "pretty_assertions 0.6.1",
  "slice-rbtree",
  "solana-program",
+ "solcery-data-types",
  "tinyvec",
 ]
 
