@@ -1,5 +1,5 @@
 use borsh::BorshDeserialize;
-use schemas_manager::processor::{process_instruction_bytes, SchemasManagerInstruction};
+use db_manager::processor::{process_instruction_bytes, DataBaseInstruction};
 use solana_program::{instruction::Instruction as SolanaInstruction, pubkey::Pubkey};
 use solana_program_test::{processor, tokio, ProgramTest};
 use solana_sdk::{
@@ -10,7 +10,7 @@ use solana_sdk::{
 };
 use solcery_data_types::db::{
     messages::schemas_manager::{AddSchema, GetSchema, RemoveSchema, UpdateSchema},
-    schema::{AllowedTypes, Schema},
+    schema::{AllowedTypes, KeyType, Schema, Tables},
 };
 use std::str::FromStr;
 
@@ -29,7 +29,7 @@ async fn test_add_schema() {
     let schemas_holder_data = AccountSharedData::new(1_000, 2093, &program_id);
     schemas_manager_app.add_account(app_pubkey, Account::from(schemas_holder_data));
 
-    let schema_result_data = AccountSharedData::new(1_000, 14, &program_id);
+    let schema_result_data = AccountSharedData::new(1_000, 16, &program_id);
     schemas_manager_app.add_account(schema_result, Account::from(schema_result_data));
 
     let (mut banks_client, payer, recent_blockhash) = schemas_manager_app.start().await;
@@ -38,16 +38,20 @@ async fn test_add_schema() {
 
     let new_schema = Schema {
         version: 1u64,
-        tables: vec![AllowedTypes::Int, AllowedTypes::String],
+        tables: vec![
+            AllowedTypes::Int(KeyType::Primary),
+            AllowedTypes::String(KeyType::NotKey),
+        ],
     };
 
     let mut add_schema_transaction = Transaction::new_with_payer(
         &[SolanaInstruction::new_with_borsh(
             program_id,
-            &SchemasManagerInstruction::AddSchema {
+            &DataBaseInstruction::AddSchema {
                 message: AddSchema {
                     id: "test_schema_id".to_owned(),
                     schema: new_schema.clone(),
+                    need_init: true,
                 },
             },
             vec![AccountMeta::new(app_pubkey, false)],
@@ -66,7 +70,7 @@ async fn test_add_schema() {
     let mut get_schema_transaction = Transaction::new_with_payer(
         &[SolanaInstruction::new_with_borsh(
             program_id,
-            &SchemasManagerInstruction::GetSchema {
+            &DataBaseInstruction::GetSchema {
                 message: GetSchema {
                     id: "test_schema_id".to_owned(),
                 },
@@ -121,16 +125,20 @@ async fn test_remove_schema() {
 
     let new_schema = Schema {
         version: 1u64,
-        tables: vec![AllowedTypes::Int, AllowedTypes::String],
+        tables: vec![
+            AllowedTypes::Int(KeyType::Primary),
+            AllowedTypes::String(KeyType::NotKey),
+        ],
     };
 
     let mut add_schema_transaction = Transaction::new_with_payer(
         &[SolanaInstruction::new_with_borsh(
             program_id,
-            &SchemasManagerInstruction::AddSchema {
+            &DataBaseInstruction::AddSchema {
                 message: AddSchema {
                     id: "test_schema_id".to_owned(),
                     schema: new_schema.clone(),
+                    need_init: true,
                 },
             },
             vec![AccountMeta::new(app_pubkey, false)],
@@ -149,7 +157,7 @@ async fn test_remove_schema() {
     let mut remove_schema_transaction = Transaction::new_with_payer(
         &[SolanaInstruction::new_with_borsh(
             program_id,
-            &SchemasManagerInstruction::RemoveSchema {
+            &DataBaseInstruction::RemoveSchema {
                 message: RemoveSchema {
                     id: "test_schema_id".to_owned(),
                 },
@@ -173,7 +181,7 @@ async fn test_remove_schema() {
     let mut get_schema_transaction = Transaction::new_with_payer(
         &[SolanaInstruction::new_with_borsh(
             program_id,
-            &SchemasManagerInstruction::GetSchema {
+            &DataBaseInstruction::GetSchema {
                 message: GetSchema {
                     id: "test_schema_id".to_owned(),
                 },
@@ -217,7 +225,7 @@ async fn test_update_schema() {
     let schemas_holder_data = AccountSharedData::new(1_000, 2093, &program_id);
     schemas_manager_app.add_account(app_pubkey, Account::from(schemas_holder_data));
 
-    let schema_result_data = AccountSharedData::new(1_000, 16, &program_id);
+    let schema_result_data = AccountSharedData::new(1_000, 20, &program_id);
     schemas_manager_app.add_account(schema_result, Account::from(schema_result_data));
 
     let (mut banks_client, payer, recent_blockhash) = schemas_manager_app.start().await;
@@ -227,13 +235,17 @@ async fn test_update_schema() {
     let mut add_schema_transaction = Transaction::new_with_payer(
         &[SolanaInstruction::new_with_borsh(
             program_id,
-            &SchemasManagerInstruction::AddSchema {
+            &DataBaseInstruction::AddSchema {
                 message: AddSchema {
                     id: "test_schema_id".to_owned(),
                     schema: Schema {
                         version: 1u64,
-                        tables: vec![AllowedTypes::Int, AllowedTypes::String],
+                        tables: vec![
+                            AllowedTypes::Int(KeyType::Primary),
+                            AllowedTypes::String(KeyType::NotKey),
+                        ],
                     },
+                    need_init: true,
                 },
             },
             vec![AccountMeta::new(app_pubkey, false)],
@@ -249,23 +261,20 @@ async fn test_update_schema() {
 
     // Update
 
-    let new_schema = Schema {
-        version: 1u64,
-        tables: vec![
-            AllowedTypes::Int,
-            AllowedTypes::Int,
-            AllowedTypes::String,
-            AllowedTypes::String,
-        ],
-    };
+    let new_tables: Tables = vec![
+        AllowedTypes::Int(KeyType::Primary),
+        AllowedTypes::Int(KeyType::NotKey),
+        AllowedTypes::String(KeyType::NotKey),
+        AllowedTypes::String(KeyType::NotKey),
+    ];
 
     let mut update_schema_transaction = Transaction::new_with_payer(
         &[SolanaInstruction::new_with_borsh(
             program_id,
-            &SchemasManagerInstruction::UpdateSchema {
+            &DataBaseInstruction::UpdateSchema {
                 message: UpdateSchema {
                     id: "test_schema_id".to_owned(),
-                    new_schema: new_schema.clone(),
+                    tables: new_tables.clone(),
                 },
             },
             vec![
@@ -287,7 +296,7 @@ async fn test_update_schema() {
     let mut get_schema_transaction = Transaction::new_with_payer(
         &[SolanaInstruction::new_with_borsh(
             program_id,
-            &SchemasManagerInstruction::GetSchema {
+            &DataBaseInstruction::GetSchema {
                 message: GetSchema {
                     id: "test_schema_id".to_owned(),
                 },
@@ -313,5 +322,6 @@ async fn test_update_schema() {
         .unwrap();
     let schema: Schema = <Schema>::deserialize(&mut schema_info.data.as_slice()).unwrap();
 
-    assert_eq!(schema, new_schema);
+    assert_eq!(schema.tables, new_tables);
+    assert_eq!(schema.version, 2u64);
 }

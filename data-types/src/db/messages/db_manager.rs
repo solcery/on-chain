@@ -12,6 +12,7 @@ pub type DB = String;
 pub struct CreateDB {
     pub schema_id: SchemaId,
     pub db_id: DBId,
+    pub need_init: bool,
 }
 
 #[derive(Debug, BorshSerialize, BorshDeserialize)]

@@ -1,11 +1,7 @@
 [package]
 name = "db-manager"
 version = "0.1.0"
-license = "Apache-2.0"
 edition = "2021"
-
-[features]
-no-entrypoint = []
 
 [dependencies]
 solana-program = "1.7.8"
@@ -16,13 +12,8 @@ num-derive = "0.3"
 spl-token = { version = "3.3.0", features = ["no-entrypoint"] }
 solcery-data-types = { path = "../data-types" }
 slice-rbtree = { path = "../slice-rbtree" }
-schemas-manager = { path = "../schemas-manager" }
 
 [dev-dependencies]
 pretty_assertions = "1.2.0"
 solana-program-test = "1.7.8"
 solana-sdk = "1.7.8"
-
-[lib]
-name = "db_manager"
-crate-type = ["cdylib", "lib"]
