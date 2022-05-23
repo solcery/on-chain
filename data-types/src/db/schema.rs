@@ -1,4 +1,6 @@
 use borsh::{BorshDeserialize, BorshSerialize};
+use num_enum::IntoPrimitive;
+use num_enum::TryFromPrimitive;
 use serde::{Deserialize, Serialize};
 use solana_program::pubkey::Pubkey;
 
@@ -22,8 +24,19 @@ pub enum KeyType {
 }
 
 #[derive(
-    PartialEq, Copy, Clone, Eq, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize,
+    PartialEq,
+    Copy,
+    Clone,
+    Eq,
+    Debug,
+    BorshSerialize,
+    BorshDeserialize,
+    Serialize,
+    Deserialize,
+    TryFromPrimitive,
+    IntoPrimitive,
 )]
+#[repr(u8)]
 pub enum DataType {
     Int,
     Float,
@@ -78,7 +91,20 @@ impl Schema {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+#[derive(
+    PartialEq,
+    Copy,
+    Clone,
+    Eq,
+    Debug,
+    BorshSerialize,
+    BorshDeserialize,
+    Serialize,
+    Deserialize,
+    TryFromPrimitive,
+    IntoPrimitive,
+)]
+#[repr(u8)]
 pub enum ColumnType {
     RBTree,
     // This types are not implemented yet

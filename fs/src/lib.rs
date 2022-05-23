@@ -23,7 +23,7 @@ mod segment_id;
 
 use account_allocator::AccountAllocator;
 
-pub use account_allocator::Error as AllocatorError;
+pub use account_allocator::Error as FSError;
 pub use segment_id::SegmentId;
 
 #[derive(Debug)]
@@ -33,9 +33,7 @@ pub struct FS<'a> {
 
 impl<'long: 'short, 'short> FS<'long> {
     /// Constructs [FS], assuming that all accounts are initialized as filesystem accounts
-    pub fn from_account_iter<AccountIter>(
-        accounts_iter: &mut AccountIter,
-    ) -> Result<Self, AllocatorError>
+    pub fn from_account_iter<AccountIter>(accounts_iter: &mut AccountIter) -> Result<Self, FSError>
     where
         AccountIter: Iterator<Item = &'long AccountInfo<'long>>,
     {
@@ -55,7 +53,7 @@ impl<'long: 'short, 'short> FS<'long> {
     pub fn from_uninit_account_iter<AccountIter>(
         accounts_iter: &mut AccountIter,
         inode_table_size: usize,
-    ) -> Result<Self, AllocatorError>
+    ) -> Result<Self, FSError>
     where
         AccountIter: Iterator<Item = &'long AccountInfo<'long>>,
     {
@@ -79,8 +77,8 @@ impl<'long: 'short, 'short> FS<'long> {
     }
 
     /// Allocates segment of data in the first account with available space
-    pub fn allocate_segment(&mut self, size: usize) -> Result<SegmentId, AllocatorError> {
-        use AllocatorError::{NoInodesLeft, NoSuitableSegmentFound};
+    pub fn allocate_segment(&mut self, size: usize) -> Result<SegmentId, FSError> {
+        use FSError::{NoInodesLeft, NoSuitableSegmentFound};
 
         let mut global_result = Err(NoSuitableSegmentFound);
         for (key, alloc) in self.allocators.iter_mut() {
@@ -102,10 +100,10 @@ impl<'long: 'short, 'short> FS<'long> {
     /// Deallocates segment of data in the first account with available space
     ///
     /// Only unborrowed segments can be deallocated
-    pub fn deallocate_segment(&mut self, id: SegmentId) -> Result<(), AllocatorError> {
+    pub fn deallocate_segment(&mut self, id: SegmentId) -> Result<(), FSError> {
         match self.allocators.get_mut(&id.pubkey) {
             Some(alloc) => alloc.deallocate_segment(id.id),
-            None => Err(AllocatorError::NoSuchPubkey),
+            None => Err(FSError::NoSuchPubkey),
         }
     }
 
@@ -116,10 +114,10 @@ impl<'long: 'short, 'short> FS<'long> {
     }
 
     /// Borrows a segment with given [SegmentId]
-    pub fn segment(&mut self, id: SegmentId) -> Result<&'short mut [u8], AllocatorError> {
+    pub fn segment(&mut self, id: SegmentId) -> Result<&'short mut [u8], FSError> {
         match self.allocators.get_mut(&id.pubkey) {
             Some(alloc) => alloc.segment(id.id),
-            None => Err(AllocatorError::NoSuchPubkey),
+            None => Err(FSError::NoSuchPubkey),
         }
     }
 }

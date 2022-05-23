@@ -20,6 +20,7 @@ pub struct Index {
     column_count: u8,
     column_max: u8,
     column_id_autoincrement: [u8; 4],
+    max_rows: [u8; 4],
 }
 
 impl Index {
@@ -36,15 +37,9 @@ impl Index {
     }
 
     pub fn primary_key_type(&self) -> DataType {
-        //FIXME: reimplement with From trait
-        match self.primary_key_type {
-            0 => DataType::Int,
-            1 => DataType::Float,
-            3 => DataType::Pubkey,
-            4 => DataType::ShortString,
-            5 => DataType::MediumString,
-            6 => DataType::LongString,
-            _ => unreachable!("Unknown primary key type, it is a sign of data corruption"),
+        match DataType::try_from(self.primary_key_type) {
+            Ok(val) => val,
+            Err(_) => unreachable!("Unknown primary key type, it is a sign of data corruption"),
         }
     }
 
@@ -70,6 +65,10 @@ impl Index {
         mem::size_of::<ColumnHeader>() * self.column_max as usize
     }
 
+    pub fn max_rows(&self) -> usize {
+        u32::from_be_bytes(self.max_rows) as usize
+    }
+
     pub unsafe fn set_column_count(&mut self, count: usize) {
         assert!(count <= u8::MAX as usize);
         self.column_count = count as u8;
@@ -77,27 +76,23 @@ impl Index {
 
     pub unsafe fn fill(
         &mut self,
-        table_name: String,
+        table_name: &str,
         primary_key_type: DataType,
         column_max: usize,
+        max_rows: usize,
     ) {
         self.magic = INDEX_MAGIC;
         self.db_version = CURRENT_VERSION;
         table_name
             .serialize(&mut self.table_name.as_mut_slice())
             .unwrap(); // TODO: Document unwrap
-        self.primary_key_type = match primary_key_type {
-            DataType::Int => 0,
-            DataType::Float => 1,
-            DataType::Pubkey => 3,
-            DataType::ShortString => 4,
-            DataType::MediumString => 5,
-            DataType::LongString => 6,
-        };
+        self.primary_key_type = u8::from(primary_key_type);
         self.column_count = 0;
         assert!(column_max <= u8::MAX as usize);
         self.column_max = column_max as u8;
         self.column_id_autoincrement = u32::to_be_bytes(0);
+        assert!(max_rows <= u32::MAX as usize);
+        self.max_rows = u32::to_be_bytes(max_rows as u32);
     }
 }
 

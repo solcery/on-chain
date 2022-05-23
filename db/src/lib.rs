@@ -14,7 +14,7 @@ use tinyvec::SliceVec;
 mod column;
 mod raw;
 
-use account_fs::{SegmentId, FS};
+use account_fs::{FSError, SegmentId, FS};
 use column::Column;
 use raw::column::ColumnHeader;
 use raw::index::Index;
@@ -27,10 +27,11 @@ pub struct DB<'a> {
     index: &'a mut Index,
     column_headers: SliceVec<'a, ColumnHeader>,
     accessed_columns: BTreeMap<u32, Box<dyn Column>>,
+    segment: SegmentId,
 }
 
 impl<'a> DB<'a> {
-    pub fn from_segment(fs: FSCell<'a>, segment: SegmentId) -> Result<Self, ()> {
+    pub fn from_segment(fs: FSCell<'a>, segment: SegmentId) -> Result<Self, Error> {
         let db_segment = fs.borrow_mut().segment(segment).unwrap(); //TODO: Error handing
 
         let (index, columns): (&'a mut [u8], &'a mut [u8]) =
@@ -50,11 +51,47 @@ impl<'a> DB<'a> {
             index,
             column_headers,
             accessed_columns: BTreeMap::new(),
+            segment,
         })
     }
 
-    pub fn init_in_segment(fs: FSCell<'a>, max_colums: usize, max_rows: usize) -> Result<Self, ()> {
-        unimplemented!();
+    pub fn init_in_segment(
+        fs: FSCell<'a>,
+        table_name: &str,
+        max_columns: usize,
+        max_rows: usize,
+        primary_key_type: DataType,
+    ) -> Result<Self, Error> {
+        let index_size = Index::size(max_columns);
+        let mut borrowed_fs = fs.borrow_mut();
+        let segment = borrowed_fs.allocate_segment(index_size)?;
+
+        // We've just successfully allocated this segment, so this operation is infailible;
+        let index_slice = borrowed_fs.segment(segment).unwrap();
+
+        drop(borrowed_fs);
+
+        let (index, columns): (&'a mut [u8], &'a mut [u8]) =
+            index_slice.split_at_mut(mem::size_of::<Index>());
+
+        let index: &mut [[u8; mem::size_of::<Index>()]] = cast_slice_mut(index);
+        let index: &mut Index = cast_mut(&mut index[0]);
+
+        unsafe {
+            index.fill(table_name, primary_key_type, max_columns, max_rows);
+        }
+
+        let columns: &mut [ColumnHeader] = cast_slice_mut(columns);
+
+        let column_headers = SliceVec::from_slice_len(columns, 0);
+
+        Ok(Self {
+            fs,
+            index,
+            column_headers,
+            accessed_columns: BTreeMap::new(),
+            segment,
+        })
     }
 
     pub fn add_column(&mut self, name: &str, dtype: DataType, is_secondary_key: bool) {
@@ -106,5 +143,16 @@ impl<'a> DB<'a> {
 
     pub fn remove_db(self) -> Result<(), ()> {
         unimplemented!();
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, Copy)]
+pub enum Error {
+    FSError(FSError),
+}
+
+impl From<FSError> for Error {
+    fn from(err: FSError) -> Self {
+        Self::FSError(err)
     }
 }

@@ -3609,6 +3609,7 @@ version = "0.0.0"
 dependencies = [
  "borsh",
  "bytemuck",
+ "num_enum",
  "pretty_assertions 0.6.1",
  "serde",
  "solana-program",
@@ -3625,6 +3626,8 @@ dependencies = [
  "account-fs",
  "borsh",
  "bytemuck",
+ "num-derive",
+ "num-traits",
  "pretty_assertions 0.6.1",
  "slice-rbtree",
  "solana-program",

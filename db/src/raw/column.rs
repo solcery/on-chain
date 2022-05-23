@@ -46,9 +46,9 @@ impl ColumnHeader {
     }
 
     pub fn column_type(&self) -> ColumnType {
-        match self.value_type {
-            0 => ColumnType::RBTree,
-            _ => unreachable!("Unknown column type, it is a sign of data corruption"),
+        match ColumnType::try_from(self.value_type) {
+            Ok(val) => val,
+            Err(_) => unreachable!("Unknown column type, it is a sign of data corruption"),
         }
     }
 }

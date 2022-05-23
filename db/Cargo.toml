@@ -13,6 +13,8 @@ account-fs = { path = "../fs" }
 solcery-data-types = { path = "../data-types" }
 solana-program = "1.7.8"
 tinyvec = "1.0.0"
+num-traits = "0.2"
+num-derive = "0.3"
 
 [dev-dependencies]
 pretty_assertions = "0.6.1"
