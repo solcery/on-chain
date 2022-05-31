@@ -2,7 +2,13 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use std::borrow::Borrow;
 use std::cmp::Ord;
 
-use super::{Error, KeysIterator, PairsIterator, RBForest, ValuesIterator};
+use super::{forest_size, Error, KeysIterator, PairsIterator, RBForest, ValuesIterator};
+
+#[must_use]
+#[inline]
+pub fn tree_size(k_size: usize, v_size: usize, max_nodes: usize) -> usize {
+    forest_size(k_size, v_size, max_nodes, 1)
+}
 
 #[derive(Debug)]
 pub struct RBTree<'a, K, V, const KSIZE: usize, const VSIZE: usize>(
@@ -19,11 +25,6 @@ where
 {
     pub fn init_slice(slice: &'a mut [u8]) -> Result<Self, Error> {
         RBForest::<'a, K, V, KSIZE, VSIZE>::init_slice(slice, 1).map(|tree| Self(tree))
-    }
-
-    #[must_use]
-    pub fn expected_size(num_entries: usize) -> usize {
-        RBForest::<'a, K, V, KSIZE, VSIZE>::expected_size(num_entries, 1)
     }
 
     pub unsafe fn from_slice(slice: &'a mut [u8]) -> Result<Self, Error> {

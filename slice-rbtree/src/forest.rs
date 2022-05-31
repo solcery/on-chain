@@ -14,6 +14,14 @@ pub(crate) use node::Node;
 
 use super::Error;
 
+#[must_use]
+#[inline]
+pub fn forest_size(k_size: usize, v_size: usize, max_nodes: usize, max_roots: usize) -> usize {
+    mem::size_of::<Header>()
+        + (mem::size_of::<Node<0, 0>>() + k_size + v_size) * max_nodes
+        + 4 * max_roots
+}
+
 #[derive(Debug)]
 pub struct RBForest<'a, K, V, const KSIZE: usize, const VSIZE: usize>
 where
@@ -82,13 +90,6 @@ where
             _phantom_key: PhantomData::<K>,
             _phantom_value: PhantomData::<V>,
         })
-    }
-
-    #[must_use]
-    pub fn expected_size(num_entries: usize, max_roots: usize) -> usize {
-        mem::size_of::<Header>()
-            + (mem::size_of::<Node<0, 0>>() + KSIZE + VSIZE) * num_entries
-            + 4 * max_roots
     }
 
     pub unsafe fn from_slice(slice: &'a mut [u8]) -> Result<Self, Error> {

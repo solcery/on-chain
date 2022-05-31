@@ -455,7 +455,7 @@ fn too_small() {
 
 #[test]
 fn fractional_node_count() {
-    let mut vec = vec![0; RBForest::<u8, u8, 1, 1>::expected_size(1, 1) + 1];
+    let mut vec = vec![0; forest_size(1, 1, 1, 1) + 1];
     let tree = RBForest::<u8, u8, 1, 1>::init_slice(vec.as_mut_slice(), 1).unwrap_err();
     assert_eq!(tree, Error::WrongNodePoolSize);
 }

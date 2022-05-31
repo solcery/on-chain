@@ -5,9 +5,9 @@
 mod forest;
 mod tree;
 
-pub use forest::RBForest;
+pub use forest::{forest_size, RBForest};
 use forest::{KeysIterator, PairsIterator, ValuesIterator};
-pub use tree::RBTree;
+pub use tree::{tree_size, RBTree};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
