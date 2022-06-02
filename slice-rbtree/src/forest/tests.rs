@@ -516,3 +516,43 @@ pub fn assert_rm<K, V, const KSIZE: usize, const VSIZE: usize>(
     assert_eq!(tree.get_key_index(tree_id, val), None);
     assert!(tree.is_balanced(tree_id));
 }
+
+mod init_forest_tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    fn assert_init_test<const KSIZE: usize, const VSIZE: usize>(
+        num_entries: usize,
+        max_roots: usize,
+    ) {
+        let mut reference_vec = create_vec(KSIZE, VSIZE, num_entries, max_roots);
+        let mut testing_vec = create_vec(KSIZE, VSIZE, num_entries, max_roots);
+
+        RBForest::<i32, u32, KSIZE, VSIZE>::init_slice(reference_vec.as_mut_slice(), max_roots)
+            .unwrap();
+
+        init_forest(KSIZE, VSIZE, testing_vec.as_mut_slice(), max_roots).unwrap();
+
+        assert_eq!(testing_vec, reference_vec);
+    }
+
+    #[test]
+    fn one_one_tree() {
+        assert_init_test::<1, 1>(10, 1);
+    }
+
+    #[test]
+    fn one_ten_tree() {
+        assert_init_test::<1, 10>(10, 1);
+    }
+
+    #[test]
+    fn one_one_forest() {
+        assert_init_test::<1, 1>(10, 10);
+    }
+
+    #[test]
+    fn one_ten_forest() {
+        assert_init_test::<1, 10>(10, 10);
+    }
+}
