@@ -39,11 +39,23 @@ pub enum KeyType {
 #[repr(u8)]
 pub enum DataType {
     Int,
-    Float,
     Pubkey,
     ShortString,  // 16 bytes
     MediumString, // 64 bytes
     LongString,   // 256 bytes
+}
+
+impl DataType {
+    pub const fn size(&self) -> usize {
+        use DataType::*;
+        match self {
+            Int => 4,
+            Pubkey => 64,
+            ShortString => 16,
+            MediumString => 64,
+            LongString => 256,
+        }
+    }
 }
 
 #[derive(PartialEq, Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
