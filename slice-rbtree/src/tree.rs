@@ -2,12 +2,18 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use std::borrow::Borrow;
 use std::cmp::Ord;
 
-use super::{forest_size, Error, KeysIterator, PairsIterator, RBForest, ValuesIterator};
+use super::{
+    forest_size, init_forest, Error, KeysIterator, PairsIterator, RBForest, ValuesIterator,
+};
 
 #[must_use]
 #[inline]
 pub fn tree_size(k_size: usize, v_size: usize, max_nodes: usize) -> usize {
     forest_size(k_size, v_size, max_nodes, 1)
+}
+
+pub fn init_tree(k_size: usize, v_size: usize, slice: &mut [u8]) -> Result<(), Error> {
+    init_forest(k_size, v_size, slice, 1)
 }
 
 #[derive(Debug)]
