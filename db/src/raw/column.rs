@@ -41,7 +41,7 @@ impl ColumnHeader {
     }
 
     pub fn column_type(&self) -> ColumnType {
-        ColumnType::try_from(self.value_type)
+        ColumnType::try_from(self.column_type)
             .expect("Unknown column type, it is a sign of data corruption")
     }
 
@@ -82,5 +82,18 @@ impl fmt::Debug for ColumnHeader {
             .field("segment_id", &self.segment_id())
             .field("column_type", &self.column_type())
             .finish()
+    }
+}
+
+impl Default for ColumnHeader {
+    fn default() -> Self {
+        Self {
+            name: [0; NAME_LEN],
+            id: [0; 4],
+            value_type: 0,
+            account_pubkey: [0; 32],
+            segment_id: [0; 4],
+            column_type: 0,
+        }
     }
 }

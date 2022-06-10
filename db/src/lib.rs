@@ -140,12 +140,52 @@ impl<'a> DB<'a> {
         Ok(id)
     }
 
-    pub fn remove_column(&mut self, name: &str) {
-        unimplemented!();
+    pub fn remove_column(&mut self, column_id: u32) -> Result<(), Error> {
+        let (index, segment_id) = self
+            .column_headers
+            .iter()
+            .enumerate()
+            .find(|(_, &column)| column.id() == column_id)
+            .map(|(index, col)| (index, col.segment_id()))
+            .ok_or(Error::NoSuchColumn)?;
+
+        self.fs.borrow_mut().deallocate_segment(segment_id)?;
+        self.column_headers.remove(index);
+
+        unsafe {
+            self.index.set_column_count(self.column_headers.len());
+        }
+        Ok(())
     }
 
-    pub fn value(&self, primary_key: DataType, column: u32) -> DataType {
-        unimplemented!();
+    pub fn value(&mut self, primary_key: Data, column_id: u32) -> Result<Option<Data>, Error> {
+        if let Some(column) = self.accessed_columns.get(&column_id) {
+            Ok(column.get_value(primary_key))
+        } else {
+            let column_header = self
+                .column_headers
+                .iter()
+                .find(|&col| col.id() == column_id)
+                .ok_or(Error::NoSuchColumn)?;
+
+            let column_slice = self.fs.borrow_mut().segment(column_header.segment_id())?;
+
+            //FIXME: we need to pass an actual is_secondary_key value
+            let column = Self::from_slice(
+                self.index.primary_key_type(),
+                column_header.value_type(),
+                false,
+                column_slice,
+            )?;
+
+            let value = column.get_value(primary_key);
+
+            //FIXME: move accessed_colums into RefCell, so functions like this will be able to take
+            //&self instead of &mut self
+            self.accessed_columns.insert(column_header.id(), column);
+
+            Ok(value)
+        }
     }
 
     pub fn value_secondary(
@@ -405,6 +445,7 @@ pub enum Error {
     NoColumnsLeft,
     RBTreeError(RBTreeError),
     WrongSegment,
+    NoSuchColumn,
 }
 
 impl From<FSError> for Error {
