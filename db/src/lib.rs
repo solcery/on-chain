@@ -189,12 +189,40 @@ impl<'a> DB<'a> {
     }
 
     pub fn value_secondary(
-        &self,
-        key_column: &str,
-        secondary_key: DataType,
-        column: &str,
-    ) -> DataType {
-        unimplemented!();
+        &mut self,
+        key_column_id: u32,
+        secondary_key: Data,
+        column_id: u32,
+    ) -> Result<Option<Data>, Error> {
+        let mut accessed_columns = self.accessed_columns.borrow_mut();
+        let primary_key = if let Some(key_column) = accessed_columns.get(&key_column_id) {
+            key_column.get_key(secondary_key)
+        } else {
+            let column_header = self
+                .column_headers
+                .iter()
+                .find(|&col| col.id() == key_column_id)
+                .ok_or(Error::NoSuchColumn)?;
+
+            let column_slice = self.fs.borrow_mut().segment(column_header.segment_id())?;
+
+            //FIXME: we need to pass an actual is_secondary_key value
+            let key_column = Self::from_column_slice(
+                self.index.primary_key_type(),
+                column_header.value_type(),
+                true,
+                column_slice,
+            )?;
+
+            let primary_key = key_column.get_value(secondary_key);
+
+            accessed_columns.insert(column_header.id(), key_column);
+
+            primary_key
+        };
+
+        drop(accessed_columns);
+        primary_key.map_or(Ok(None), |key| self.value(key, column_id))
     }
 
     pub fn set_value(&self, primary_key: DataType, column: u32, value: DataType) {
