@@ -29,7 +29,7 @@ pub struct DB<'a> {
     fs: FSCell<'a>,
     index: &'a mut Index,
     column_headers: SliceVec<'a, ColumnHeader>,
-    accessed_columns: BTreeMap<u32, Box<dyn Column + 'a>>,
+    accessed_columns: RefCell<BTreeMap<u32, Box<dyn Column + 'a>>>,
     segment: SegmentId,
 }
 
@@ -59,7 +59,7 @@ impl<'a> DB<'a> {
             fs,
             index,
             column_headers,
-            accessed_columns: BTreeMap::new(),
+            accessed_columns: RefCell::new(BTreeMap::new()),
             segment,
         })
     }
@@ -98,7 +98,7 @@ impl<'a> DB<'a> {
             fs,
             index,
             column_headers,
-            accessed_columns: BTreeMap::new(),
+            accessed_columns: RefCell::new(BTreeMap::new()),
             segment,
         })
     }
@@ -123,7 +123,8 @@ impl<'a> DB<'a> {
         // We've just successfully allocated this segment, so this operation is infailible;
         let tree = borrowed_fs.segment(segment).unwrap();
         let column =
-            Self::init_slice(self.index.primary_key_type(), dtype, is_secondary_key, tree).unwrap();
+            Self::init_column_slice(self.index.primary_key_type(), dtype, is_secondary_key, tree)
+                .unwrap();
         drop(borrowed_fs);
 
         let id = self.index.generate_id();
@@ -136,7 +137,7 @@ impl<'a> DB<'a> {
             self.index.set_column_count(self.column_headers.len());
         }
 
-        self.accessed_columns.insert(id, column);
+        self.accessed_columns.borrow_mut().insert(id, column);
         Ok(id)
     }
 
@@ -159,7 +160,8 @@ impl<'a> DB<'a> {
     }
 
     pub fn value(&mut self, primary_key: Data, column_id: u32) -> Result<Option<Data>, Error> {
-        if let Some(column) = self.accessed_columns.get(&column_id) {
+        let mut accessed_columns = self.accessed_columns.borrow_mut();
+        if let Some(column) = accessed_columns.get(&column_id) {
             Ok(column.get_value(primary_key))
         } else {
             let column_header = self
@@ -171,7 +173,7 @@ impl<'a> DB<'a> {
             let column_slice = self.fs.borrow_mut().segment(column_header.segment_id())?;
 
             //FIXME: we need to pass an actual is_secondary_key value
-            let column = Self::from_slice(
+            let column = Self::from_column_slice(
                 self.index.primary_key_type(),
                 column_header.value_type(),
                 false,
@@ -180,9 +182,7 @@ impl<'a> DB<'a> {
 
             let value = column.get_value(primary_key);
 
-            //FIXME: move accessed_colums into RefCell, so functions like this will be able to take
-            //&self instead of &mut self
-            self.accessed_columns.insert(column_header.id(), column);
+            accessed_columns.insert(column_header.id(), column);
 
             Ok(value)
         }
@@ -227,7 +227,7 @@ impl<'a> DB<'a> {
         unimplemented!();
     }
 
-    fn init_slice<'b: 'a>(
+    fn init_column_slice<'b: 'a>(
         pk_type: DataType,
         val_type: DataType,
         is_secondary_key: bool,
@@ -323,7 +323,7 @@ impl<'a> DB<'a> {
         }
     }
 
-    fn from_slice<'b: 'a>(
+    fn from_column_slice<'b: 'a>(
         pk_type: DataType,
         val_type: DataType,
         is_secondary_key: bool,
