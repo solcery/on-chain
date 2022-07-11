@@ -40,9 +40,9 @@ pub enum KeyType {
 pub enum DataType {
     Int,
     Pubkey,
-    ShortString,  // 16 bytes
-    MediumString, // 64 bytes
-    LongString,   // 256 bytes
+    ShortString,
+    MediumString,
+    LongString,
 }
 
 impl DataType {
@@ -61,7 +61,6 @@ impl DataType {
 #[derive(PartialEq, Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub enum Data {
     Int(i64),
-    Float(f64),
     Pubkey(Pubkey),
     ShortString(String),  // 16 bytes
     MediumString(String), // 64 bytes

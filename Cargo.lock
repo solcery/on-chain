@@ -1137,6 +1137,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "generator"
+version = "0.0.0"
+dependencies = [
+ "borsh",
+ "num_enum",
+ "proc-macro2 1.0.40",
+ "quote 1.0.20",
+ "serde",
+ "solana-program",
+ "syn 1.0.98",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
