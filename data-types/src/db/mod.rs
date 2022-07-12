@@ -1,3 +1,4 @@
+pub mod column;
 pub mod messages;
 pub mod query;
 pub mod schema;

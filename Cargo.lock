@@ -1140,12 +1140,8 @@ dependencies = [
 name = "generator"
 version = "0.0.0"
 dependencies = [
- "borsh",
- "num_enum",
  "proc-macro2 1.0.40",
  "quote 1.0.20",
- "serde",
- "solana-program",
  "syn 1.0.98",
 ]
 
@@ -3645,9 +3641,11 @@ version = "0.0.0"
 dependencies = [
  "borsh",
  "bytemuck",
+ "generator",
  "num_enum",
  "pretty_assertions 0.6.1",
  "serde",
+ "slice-rbtree",
  "solana-program",
  "solana-program-test",
  "solana-sdk",

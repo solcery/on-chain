@@ -22,11 +22,11 @@ fn column_impls(attr: &TokenStream, input: proc_macro::TokenStream) -> TokenStre
         .collect();
 
     let (holder_vars, fn_vars): (TokenStream, TokenStream) = variants
-        .into_iter()
+        .iter()
         .map(|var| {
-            let ident = var.ident;
-            let typ = var.typ;
-            let size = var.size;
+            let ident = var.ident.clone();
+            let typ = var.typ.clone();
+            let size = var.size.clone();
 
             let data_holder_variant = quote! {
                 #ident(#typ),
@@ -42,7 +42,7 @@ fn column_impls(attr: &TokenStream, input: proc_macro::TokenStream) -> TokenStre
 
     let holder_enum = quote! {
         #[derive(PartialEq, Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
-        enum Data {
+        pub enum Data {
             #holder_vars
         }
     };
@@ -73,15 +73,65 @@ fn column_impls(attr: &TokenStream, input: proc_macro::TokenStream) -> TokenStre
         #[repr(u8)]
     };
 
-    //todo!();
-    let result = quote!(
+    let column_trait_implementations = variants.iter().map(|key| {
+        let key_ident = key.ident.clone();
+        let key_type = key.typ.clone();
+        let key_size = key.size.clone();
+
+        variants.iter().map(|value| {
+            let value_ident = value.ident.clone();
+            let value_type = value.typ.clone();
+            let value_size = value.size.clone();
+            quote!{
+                impl<'a> ColumnTrait for RBTree<'a, #key_type, #value_type, #key_size, #value_size> {
+                    fn get_key(&self, value: Data) -> Option<Data> {
+                        None
+                    }
+
+                    fn get_value(&self, key: Data) -> Option<Data> {
+                        if let Data::#key_ident(unwrapped_key) = key {
+                            self.get(&unwrapped_key).map(|val| Data::#value_ident(val))
+                        } else {
+                            panic!("Type mismatch!");
+                        }
+                    }
+
+                    fn set(&mut self, key: Data, value: Data) -> Option<Data> {
+                        if let (Data::#key_ident(unwrapped_key), Data::#value_ident(unwrapped_value)) = (key, value) {
+                            self.insert(unwrapped_key, unwrapped_value)
+                                .expect("Unexpected RBTree error")
+                                .map(|old_value| Data::#value_ident(old_value))
+                        } else {
+                            panic!("Type mismatch!");
+                        }
+                    }
+
+                    fn delete_by_key(&mut self, key: Data) -> bool {
+                        if let Data::#key_ident(unwrapped_key) = key {
+                            self.delete(&unwrapped_key)
+                        } else {
+                            panic!("Type mismatch!");
+                        }
+                    }
+
+                    fn delete_by_value(&mut self, value: Data) -> bool {
+                        panic!("It is impossible to delete by value in RBTree");
+                    }
+                }
+            }
+        }).collect::<TokenStream>()
+    }).collect::<TokenStream>();
+
+    quote!(
         #attrs
         #enumeration
-        #holder_enum
+
         #impl_enum
-    );
-    println!("{}", result);
-    result
+
+        #holder_enum
+
+        #column_trait_implementations
+    )
 }
 
 fn get_params(var: &mut Variant) -> Option<Params> {

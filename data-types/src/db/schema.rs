@@ -4,6 +4,10 @@ use num_enum::TryFromPrimitive;
 use serde::{Deserialize, Serialize};
 use solana_program::pubkey::Pubkey;
 
+use super::column::Column as ColumnTrait;
+use generator::generate_column_impls;
+use slice_rbtree::RBTree;
+
 pub type Tables = Vec<AllowedTypes>;
 
 pub fn contains_one_primary_key(tables: &Tables) -> bool {
@@ -23,48 +27,18 @@ pub enum KeyType {
     LongString(String), // 256 bytes
 }
 
-#[derive(
-    PartialEq,
-    Copy,
-    Clone,
-    Eq,
-    Debug,
-    BorshSerialize,
-    BorshDeserialize,
-    Serialize,
-    Deserialize,
-    TryFromPrimitive,
-    IntoPrimitive,
-)]
-#[repr(u8)]
+#[generate_column_impls]
 pub enum DataType {
+    #[type_params(i32, 4)]
     Int,
+    #[type_params(Pubkey, 64)]
     Pubkey,
+    #[type_params(String, 16)]
     ShortString,
+    #[type_params(String, 64)]
     MediumString,
+    #[type_params(String, 256)]
     LongString,
-}
-
-impl DataType {
-    pub const fn size(&self) -> usize {
-        use DataType::*;
-        match self {
-            Int => 4,
-            Pubkey => 64,
-            ShortString => 16,
-            MediumString => 64,
-            LongString => 256,
-        }
-    }
-}
-
-#[derive(PartialEq, Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
-pub enum Data {
-    Int(i64),
-    Pubkey(Pubkey),
-    ShortString(String),  // 16 bytes
-    MediumString(String), // 64 bytes
-    LongString(String),   // 256 bytes
 }
 
 #[derive(PartialEq, Clone, Eq, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]

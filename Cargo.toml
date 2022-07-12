@@ -1,8 +1,8 @@
 [workspace]
 members = [
 	"data-types",
+	"data-types/generator",
 	"db",
-	"db/generator",
 	"db-manager",
 	"fs",
 	"game",

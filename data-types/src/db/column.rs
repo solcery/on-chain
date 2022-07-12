@@ -1,11 +1,15 @@
-use super::Data;
+use super::schema::Data;
 use borsh::{BorshDeserialize, BorshSerialize};
-use slice_rbtree::RBTree;
+use slice_rbtree::{Error as RBTreeError, RBTree};
 
 pub trait Column {
+    //type K;
+    //type V;
     fn get_key(&self, value: Data) -> Option<Data>;
     fn get_value(&self, key: Data) -> Option<Data>;
-    fn set(&mut self, key: Data, value: Data);
+    fn set(&mut self, key: Data, value: Data) -> Option<Data>;
+    fn delete_by_key(&mut self, key: Data) -> bool;
+    fn delete_by_value(&mut self, value: Data) -> bool;
     //fn keys(&self) -> KeysAscendingIterator;
     //fn values(&self) -> ValuesAscendingIterator;
     //fn pairs(&self) -> PairsAscendingIterator;
@@ -20,19 +24,3 @@ pub trait Column {
 //pub struct KeysDescendingIterator {}
 //pub struct ValuesDescendingIterator {}
 //pub struct PairsDescendingIterator {}
-
-impl<'a, K, V, const KSIZE: usize, const VSIZE: usize> Column for RBTree<'a, K, V, KSIZE, VSIZE>
-where
-    K: Ord + BorshDeserialize + BorshSerialize,
-    V: BorshDeserialize + BorshSerialize,
-{
-    fn get_key(&self, value: Data) -> Option<Data> {
-        unimplemented!();
-    }
-    fn get_value(&self, key: Data) -> Option<Data> {
-        unimplemented!();
-    }
-    fn set(&mut self, key: Data, value: Data) {
-        unimplemented!();
-    }
-}
