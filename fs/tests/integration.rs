@@ -1,7 +1,6 @@
 use account_fs::FS;
 use pretty_assertions::assert_eq;
 use solana_program::{account_info::AccountInfo, pubkey::Pubkey};
-use std::rc::Rc;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct AccountParams {
@@ -35,7 +34,7 @@ fn prepare_account_info(params: AccountParams) -> AccountInfo<'static> {
         Box::leak(Box::new(InternalAccountInfo {
             key: Pubkey::new_unique(),
             lamports: 1,
-            data: data,
+            data,
             owner: params.owner,
         }));
 

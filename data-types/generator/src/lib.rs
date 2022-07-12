@@ -1,7 +1,6 @@
 use proc_macro2::{Literal, TokenStream, TokenTree};
-use quote::{format_ident, quote};
-use syn::parse::{Parse, ParseStream};
-use syn::{Attribute, Ident, ImplItem, ItemEnum, ItemFn, ItemImpl, Result, Token, Variant};
+use quote::quote;
+use syn::{Ident, ItemEnum, Variant};
 
 #[proc_macro_attribute]
 pub fn generate_column_impls(
@@ -12,7 +11,7 @@ pub fn generate_column_impls(
     proc_macro::TokenStream::from(output)
 }
 
-fn column_impls(attr: &TokenStream, input: proc_macro::TokenStream) -> TokenStream {
+fn column_impls(_attr: &TokenStream, input: proc_macro::TokenStream) -> TokenStream {
     let mut enumeration: ItemEnum = syn::parse(input).expect("Failed to parse input");
     let enum_ident = enumeration.ident.clone();
     let variants: Vec<Params> = enumeration
@@ -122,6 +121,68 @@ fn column_impls(attr: &TokenStream, input: proc_macro::TokenStream) -> TokenStre
         }).collect::<TokenStream>()
     }).collect::<TokenStream>();
 
+    let (slice_init_variants, slice_from_variants): (TokenStream, TokenStream)  = variants.iter().map(|key| {
+        let key_ident = key.ident.clone();
+        let key_type = key.typ.clone();
+        let key_size = key.size.clone();
+
+        variants.iter().map(|value| {
+            let value_ident = value.ident.clone();
+            let value_type = value.typ.clone();
+            let value_size = value.size.clone();
+
+            let init_variant = quote! {
+                (DataType::#key_ident, DataType::#value_ident) => RBTree::<#key_type, #value_type, #key_size, #value_size>::init_slice(slice)
+                    .map(|tree| Box::new(tree) as Box<dyn ColumnTrait>)
+                    .map_err(|e| Error::from(e)),
+            };
+
+            let from_variant = quote! {
+                (DataType::#key_ident, DataType::#value_ident) => RBTree::<#key_type, #value_type, #key_size, #value_size>::from_slice(slice)
+                    .map(|tree| Box::new(tree) as Box<dyn ColumnTrait>)
+                    .map_err(|e| Error::from(e)),
+            };
+
+            (init_variant, from_variant)
+        }).unzip::<TokenStream, TokenStream, TokenStream, TokenStream>()
+    }).unzip();
+
+    let from_slice_fn = quote! {
+        pub fn from_column_slice<'a,'b: 'a>(
+            pk_type: DataType,
+            val_type: DataType,
+            is_secondary_key: bool,
+            slice: &'b mut [u8],
+        ) -> Result<Box<dyn ColumnTrait + 'a>, Error> {
+            if is_secondary_key {
+                unimplemented!();
+            } else {
+                unsafe {
+                    match (pk_type, val_type) {
+                        #slice_from_variants
+                    }
+                }
+            }
+        }
+    };
+
+    let init_slice_fn = quote! {
+        pub fn init_column_slice<'a,'b: 'a>(
+            pk_type: DataType,
+            val_type: DataType,
+            is_secondary_key: bool,
+            slice: &'b mut [u8],
+        ) -> Result<Box<dyn ColumnTrait + 'a>, Error> {
+            if is_secondary_key {
+                unimplemented!();
+            } else {
+                match (pk_type, val_type) {
+                    #slice_init_variants
+                }
+            }
+        }
+    };
+
     quote!(
         #attrs
         #enumeration
@@ -131,6 +192,10 @@ fn column_impls(attr: &TokenStream, input: proc_macro::TokenStream) -> TokenStre
         #holder_enum
 
         #column_trait_implementations
+
+        #init_slice_fn
+
+        #from_slice_fn
     )
 }
 
@@ -146,7 +211,7 @@ fn get_params(var: &mut Variant) -> Option<Params> {
             attr.path.get_ident().map(|ident| format!("{}", ident))
                 == Some("type_params".to_string())
         })
-        .map(|attr| attr.clone());
+        .cloned();
 
     let attr = params_attr?;
 

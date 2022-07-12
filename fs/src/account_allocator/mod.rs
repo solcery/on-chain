@@ -294,7 +294,7 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
             return false;
         }
 
-        return true;
+        true
     }
 
     #[cfg(test)]

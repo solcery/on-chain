@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use solana_program::pubkey::Pubkey;
 
 use super::column::Column as ColumnTrait;
+use super::error::Error;
 use generator::generate_column_impls;
 use slice_rbtree::RBTree;
 

@@ -3639,6 +3639,7 @@ dependencies = [
 name = "solcery-data-types"
 version = "0.0.0"
 dependencies = [
+ "account-fs",
  "borsh",
  "bytemuck",
  "generator",

@@ -94,7 +94,7 @@ impl<'long: 'short, 'short> FS<'long> {
                 (Err(_), Ok(_)) => unreachable!(),
             }
         }
-        return global_result;
+        global_result
     }
 
     /// Deallocates segment of data in the first account with available space

@@ -2,7 +2,7 @@ use bytemuck::{Pod, Zeroable};
 use std::fmt;
 
 #[repr(C)]
-#[derive(Pod, Clone, Copy, Zeroable, PartialEq)]
+#[derive(Default, Pod, Clone, Copy, Zeroable, PartialEq)]
 pub struct Inode {
     occupied: u8, // == 0 then inode is occupied
     start_idx: [u8; 4],
@@ -89,17 +89,6 @@ impl fmt::Debug for Inode {
             .field("end_idx", &self.end_idx())
             .field("id", &self.id())
             .finish()
-    }
-}
-
-impl Default for Inode {
-    fn default() -> Self {
-        Self {
-            occupied: 0,
-            start_idx: [0, 0, 0, 0],
-            end_idx: [0, 0, 0, 0],
-            id: [0, 0, 0, 0],
-        }
     }
 }
 
