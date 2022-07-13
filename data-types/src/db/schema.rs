@@ -28,7 +28,35 @@ pub enum KeyType {
     LongString(String), // 256 bytes
 }
 
-#[generate_column_impls]
+#[generate_column_impls(
+    Data,
+    ColumnTrait,
+    Error,
+    derives(
+        PartialEq,
+        Clone,
+        Eq,
+        Debug,
+        BorshSerialize,
+        BorshDeserialize,
+        Serialize,
+        Deserialize
+    )
+)]
+#[derive(
+    PartialEq,
+    Copy,
+    Clone,
+    Eq,
+    Debug,
+    BorshSerialize,
+    BorshDeserialize,
+    Serialize,
+    Deserialize,
+    TryFromPrimitive,
+    IntoPrimitive,
+)]
+#[repr(u8)]
 pub enum DataType {
     #[type_params(i32, 4)]
     Int,

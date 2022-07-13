@@ -1,8 +1,6 @@
 use super::schema::Data;
 
 pub trait Column {
-    //type K;
-    //type V;
     fn get_key(&self, value: Data) -> Option<Data>;
     fn get_value(&self, key: Data) -> Option<Data>;
     fn set(&mut self, key: Data, value: Data) -> Option<Data>;

@@ -4,116 +4,74 @@ use syn::{Ident, ItemEnum, Variant};
 
 #[proc_macro_attribute]
 pub fn generate_column_impls(
-    attr: proc_macro::TokenStream,
+    attrs: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
-    let output = column_impls(&TokenStream::from(attr), input);
+    let output = column_impls(&TokenStream::from(attrs), input);
     proc_macro::TokenStream::from(output)
 }
 
-fn column_impls(_attr: &TokenStream, input: proc_macro::TokenStream) -> TokenStream {
+fn column_impls(attrs: &TokenStream, input: proc_macro::TokenStream) -> TokenStream {
+    let (holder_ident, trait_ident, error_ident, derive_attrs) = parse_attrs(attrs);
     let mut enumeration: ItemEnum = syn::parse(input).expect("Failed to parse input");
     let enum_ident = enumeration.ident.clone();
     let variants: Vec<Params> = enumeration
         .variants
         .iter_mut()
-        .map(|var| get_params(var).expect("No parameter attributes present"))
+        .map(|var| parse_params(var).expect("No parameter attributes present"))
         .collect();
 
-    let (holder_vars, fn_vars): (TokenStream, TokenStream) = variants
-        .iter()
-        .map(|var| {
-            let ident = var.ident.clone();
-            let typ = var.typ.clone();
-            let size = var.size.clone();
+    let holder_enum = generate_holder_enum(&holder_ident, &variants);
 
-            let data_holder_variant = quote! {
-                #ident(#typ),
-            };
+    let impl_enum = generate_enum_impl(&enum_ident, &variants);
 
-            let size_fn_variant = quote! {
-                #enum_ident::#ident => #size,
-            };
-
-            (data_holder_variant, size_fn_variant)
-        })
-        .unzip();
-
-    let holder_enum = quote! {
-        #[derive(PartialEq, Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
-        pub enum Data {
-            #holder_vars
-        }
-    };
-    let impl_enum = quote! {
-        impl #enum_ident {
-            pub const fn size(&self) -> usize {
-                match self {
-                    #fn_vars
-                }
-            }
-        }
-    };
-
-    let attrs = quote! {
-        #[derive(
-            PartialEq,
-            Copy,
-            Clone,
-            Eq,
-            Debug,
-            BorshSerialize,
-            BorshDeserialize,
-            Serialize,
-            Deserialize,
-            TryFromPrimitive,
-            IntoPrimitive,
-        )]
-        #[repr(u8)]
+    let holder_attrs = quote! {
+        #[derive #derive_attrs]
+        //#[derive(PartialEq, Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
     };
 
     let column_trait_implementations = variants.iter().map(|key| {
-        let key_ident = key.ident.clone();
-        let key_type = key.typ.clone();
-        let key_size = key.size.clone();
+        let key_ident = &key.ident;
+        let key_type = &key.typ;
+        let key_size = &key.size;
 
         variants.iter().map(|value| {
-            let value_ident = value.ident.clone();
-            let value_type = value.typ.clone();
-            let value_size = value.size.clone();
+            let value_ident = &value.ident;
+            let value_type = &value.typ;
+            let value_size = &value.size;
             quote!{
-                impl<'a> ColumnTrait for RBTree<'a, #key_type, #value_type, #key_size, #value_size> {
-                    fn get_key(&self, value: Data) -> Option<Data> {
+                impl<'a> #trait_ident for RBTree<'a, #key_type, #value_type, #key_size, #value_size> {
+                    fn get_key(&self, value: #holder_ident) -> Option<#holder_ident> {
                         None
                     }
 
-                    fn get_value(&self, key: Data) -> Option<Data> {
-                        if let Data::#key_ident(unwrapped_key) = key {
-                            self.get(&unwrapped_key).map(|val| Data::#value_ident(val))
+                    fn get_value(&self, key: #holder_ident) -> Option<#holder_ident> {
+                        if let #holder_ident::#key_ident(unwrapped_key) = key {
+                            self.get(&unwrapped_key).map(|val| #holder_ident::#value_ident(val))
                         } else {
                             panic!("Type mismatch!");
                         }
                     }
 
-                    fn set(&mut self, key: Data, value: Data) -> Option<Data> {
-                        if let (Data::#key_ident(unwrapped_key), Data::#value_ident(unwrapped_value)) = (key, value) {
+                    fn set(&mut self, key: #holder_ident, value: #holder_ident) -> Option<#holder_ident> {
+                        if let (#holder_ident::#key_ident(unwrapped_key), #holder_ident::#value_ident(unwrapped_value)) = (key, value) {
                             self.insert(unwrapped_key, unwrapped_value)
                                 .expect("Unexpected RBTree error")
-                                .map(|old_value| Data::#value_ident(old_value))
+                                .map(|old_value| #holder_ident::#value_ident(old_value))
                         } else {
                             panic!("Type mismatch!");
                         }
                     }
 
-                    fn delete_by_key(&mut self, key: Data) -> bool {
-                        if let Data::#key_ident(unwrapped_key) = key {
+                    fn delete_by_key(&mut self, key: #holder_ident) -> bool {
+                        if let #holder_ident::#key_ident(unwrapped_key) = key {
                             self.delete(&unwrapped_key)
                         } else {
                             panic!("Type mismatch!");
                         }
                     }
 
-                    fn delete_by_value(&mut self, value: Data) -> bool {
+                    fn delete_by_value(&mut self, value: #holder_ident) -> bool {
                         panic!("It is impossible to delete by value in RBTree");
                     }
                 }
@@ -132,15 +90,15 @@ fn column_impls(_attr: &TokenStream, input: proc_macro::TokenStream) -> TokenStr
             let value_size = value.size.clone();
 
             let init_variant = quote! {
-                (DataType::#key_ident, DataType::#value_ident) => RBTree::<#key_type, #value_type, #key_size, #value_size>::init_slice(slice)
-                    .map(|tree| Box::new(tree) as Box<dyn ColumnTrait>)
-                    .map_err(|e| Error::from(e)),
+                (#enum_ident::#key_ident, #enum_ident::#value_ident) => RBTree::<#key_type, #value_type, #key_size, #value_size>::init_slice(slice)
+                    .map(|tree| Box::new(tree) as Box<dyn #trait_ident>)
+                    .map_err(|e| #error_ident::from(e)),
             };
 
             let from_variant = quote! {
-                (DataType::#key_ident, DataType::#value_ident) => RBTree::<#key_type, #value_type, #key_size, #value_size>::from_slice(slice)
-                    .map(|tree| Box::new(tree) as Box<dyn ColumnTrait>)
-                    .map_err(|e| Error::from(e)),
+                (#enum_ident::#key_ident, #enum_ident::#value_ident) => RBTree::<#key_type, #value_type, #key_size, #value_size>::from_slice(slice)
+                    .map(|tree| Box::new(tree) as Box<dyn #trait_ident>)
+                    .map_err(|e| #error_ident::from(e)),
             };
 
             (init_variant, from_variant)
@@ -149,11 +107,11 @@ fn column_impls(_attr: &TokenStream, input: proc_macro::TokenStream) -> TokenStr
 
     let from_slice_fn = quote! {
         pub fn from_column_slice<'a,'b: 'a>(
-            pk_type: DataType,
-            val_type: DataType,
+            pk_type: #enum_ident,
+            val_type: #enum_ident,
             is_secondary_key: bool,
             slice: &'b mut [u8],
-        ) -> Result<Box<dyn ColumnTrait + 'a>, Error> {
+        ) -> Result<Box<dyn #trait_ident + 'a>, #error_ident> {
             if is_secondary_key {
                 unimplemented!();
             } else {
@@ -168,11 +126,11 @@ fn column_impls(_attr: &TokenStream, input: proc_macro::TokenStream) -> TokenStr
 
     let init_slice_fn = quote! {
         pub fn init_column_slice<'a,'b: 'a>(
-            pk_type: DataType,
-            val_type: DataType,
+            pk_type: #enum_ident,
+            val_type: #enum_ident,
             is_secondary_key: bool,
             slice: &'b mut [u8],
-        ) -> Result<Box<dyn ColumnTrait + 'a>, Error> {
+        ) -> Result<Box<dyn #trait_ident + 'a>, #error_ident> {
             if is_secondary_key {
                 unimplemented!();
             } else {
@@ -184,11 +142,11 @@ fn column_impls(_attr: &TokenStream, input: proc_macro::TokenStream) -> TokenStr
     };
 
     quote!(
-        #attrs
         #enumeration
 
         #impl_enum
 
+        #holder_attrs
         #holder_enum
 
         #column_trait_implementations
@@ -199,7 +157,7 @@ fn column_impls(_attr: &TokenStream, input: proc_macro::TokenStream) -> TokenStr
     )
 }
 
-fn get_params(var: &mut Variant) -> Option<Params> {
+fn parse_params(var: &mut Variant) -> Option<Params> {
     let attrs = &mut var.attrs;
     let ident = var.ident.clone();
 
@@ -247,8 +205,99 @@ fn get_params(var: &mut Variant) -> Option<Params> {
     Some(Params { ident, typ, size })
 }
 
+#[derive(Debug, Clone)]
 struct Params {
     ident: Ident,
     typ: Ident,
     size: Literal,
+}
+
+fn generate_holder_enum(holder_ident: &Ident, variants: &[Params]) -> TokenStream {
+    let holder_vars: TokenStream = variants
+        .iter()
+        .map(|var| {
+            let ident = &var.ident;
+            let typ = &var.typ;
+
+            quote! {
+                #ident(#typ),
+            }
+        })
+        .collect();
+
+    quote! {
+        pub enum #holder_ident {
+            #holder_vars
+        }
+    }
+}
+
+fn generate_enum_impl(enum_ident: &Ident, variants: &[Params]) -> TokenStream {
+    let fn_vars: TokenStream = variants
+        .iter()
+        .map(|var| {
+            let ident = &var.ident;
+            let size = &var.size;
+
+            quote! {
+                #enum_ident::#ident => #size,
+            }
+        })
+        .collect();
+
+    quote! {
+        impl #enum_ident {
+            pub const fn size(&self) -> usize {
+                match self {
+                    #fn_vars
+                }
+            }
+        }
+    }
+}
+
+fn parse_attrs(attrs: &TokenStream) -> (Ident, Ident, Ident, TokenTree) {
+    let mut token_iterator = attrs.clone().into_iter();
+
+    let holder_ident = match token_iterator.next() {
+        Some(TokenTree::Ident(ident)) => ident,
+        Some(tokens) => panic!("Unexpected tokens: {}", tokens),
+        None => panic!("Not enough arguments"),
+    };
+
+    token_iterator.next(); // skip punct
+
+    let trait_ident = match token_iterator.next() {
+        Some(TokenTree::Ident(ident)) => ident,
+        Some(tokens) => panic!("Unexpected tokens: {}", tokens),
+        None => panic!("Not enough arguments"),
+    };
+
+    token_iterator.next(); // skip punct
+
+    let error_ident = match token_iterator.next() {
+        Some(TokenTree::Ident(ident)) => ident,
+        Some(tokens) => panic!("Unexpected tokens: {}", tokens),
+        None => panic!("Not enough arguments"),
+    };
+
+    token_iterator.next(); // skip punct
+
+    match token_iterator.next() {
+        Some(TokenTree::Ident(ident)) => {
+            if format!("{}", ident) != "derives".to_string() {
+                panic!("Unexpected keyword: {}", ident)
+            }
+        }
+        Some(tokens) => panic!("Unexpected tokens: {}", tokens),
+        None => panic!("Not enough arguments"),
+    }
+
+    let derives = match token_iterator.next() {
+        Some(TokenTree::Group(group)) => TokenTree::Group(group),
+        Some(tokens) => panic!("Unexpected tokens: {}", tokens),
+        None => panic!("Not enough arguments"),
+    };
+
+    (holder_ident, trait_ident, error_ident, derives)
 }
