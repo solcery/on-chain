@@ -8,6 +8,9 @@ pub enum Error {
     RBTreeError(RBTreeError),
     WrongSegment,
     NoSuchColumn,
+    // This error occurs, than set_value_secondary() is called on secondary key which does not have
+    // a corresponding primary key
+    SecondaryKeyWithNonExistentPrimaryKey,
 }
 
 impl From<FSError> for Error {

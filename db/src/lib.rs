@@ -15,10 +15,10 @@ use tinyvec::SliceVec;
 
 use account_fs::{SegmentId, FS};
 use slice_rbtree::tree_size;
-use solcery_data_types::db::column::Column;
-use solcery_data_types::db::error::Error;
-use solcery_data_types::db::schema::{
-    from_column_slice, init_column_slice, ColumnType, Data, DataType,
+use solcery_data_types::db::{
+    column::Column,
+    error::Error,
+    schema::{from_column_slice, init_column_slice, ColumnType, Data, DataType},
 };
 
 mod raw;
@@ -173,7 +173,7 @@ impl<'a> DB<'a> {
         Ok(())
     }
 
-    pub fn value(&mut self, primary_key: Data, column_id: ColumnId) -> Result<Option<Data>, Error> {
+    pub fn value(&self, primary_key: Data, column_id: ColumnId) -> Result<Option<Data>, Error> {
         let mut accessed_columns = self.accessed_columns.borrow_mut();
 
         if let Some(column) = accessed_columns.get(&column_id) {
@@ -203,40 +203,17 @@ impl<'a> DB<'a> {
     }
 
     pub fn value_secondary(
-        &mut self,
+        &self,
         key_column_id: ColumnId,
         secondary_key: Data,
         column_id: ColumnId,
     ) -> Result<Option<Data>, Error> {
-        let mut accessed_columns = self.accessed_columns.borrow_mut();
+        let primary_key = self.get_primary_key(key_column_id, secondary_key)?;
 
-        let primary_key = if let Some(key_column) = accessed_columns.get(&key_column_id) {
-            key_column.get_key(secondary_key)
-        } else {
-            let column_header = self
-                .column_headers
-                .iter()
-                .find(|&col| col.id() == key_column_id)
-                .ok_or(Error::NoSuchColumn)?;
-
-            let column_slice = self.fs.borrow_mut().segment(column_header.segment_id())?;
-
-            let key_column = from_column_slice(
-                self.index.primary_key_type(),
-                column_header.value_type(),
-                column_header.column_type(),
-                column_slice,
-            )?;
-
-            let primary_key = key_column.get_value(secondary_key);
-
-            accessed_columns.insert(column_header.id(), key_column);
-
-            primary_key
-        };
-
-        drop(accessed_columns);
-        primary_key.map_or(Ok(None), |key| self.value(key, column_id))
+        match primary_key {
+            Some(key) => self.value(key, column_id),
+            None => Ok(None),
+        }
     }
 
     pub fn set_value(
@@ -274,32 +251,114 @@ impl<'a> DB<'a> {
     }
 
     pub fn set_value_secondary(
-        &self,
-        key_column: ColumnId,
-        secondary_key: DataType,
-        column: ColumnId,
-        value: DataType,
-    ) {
-        unimplemented!();
+        &mut self,
+        key_column_id: ColumnId,
+        secondary_key: Data,
+        column_id: ColumnId,
+        value: Data,
+    ) -> Result<Option<Data>, Error> {
+        let primary_key = self.get_primary_key(key_column_id, secondary_key)?;
+
+        match primary_key {
+            Some(key) => self.set_value(key, column_id, value),
+            None => Err(Error::SecondaryKeyWithNonExistentPrimaryKey),
+        }
     }
 
-    pub fn set_row(&self, row: Vec<DataType>) {
-        unimplemented!();
+    pub fn set_row(
+        &mut self,
+        primary_key: Data,
+        row: BTreeMap<ColumnId, Data>,
+    ) -> Result<bool, Error> {
+        row.into_iter()
+            .map(|(column, value)| {
+                self.set_value(primary_key.clone(), column, value)
+                    .map(|old_val| old_val.is_some())
+            })
+            .reduce(|acc, result| match (acc, result) {
+                (Ok(sum), Ok(value)) => Ok(sum || value),
+                (Err(err), _) => Err(err),
+                (Ok(_), Err(err)) => Err(err),
+            })
+            .expect("Row should be non-empty")
     }
 
-    pub fn row(&self, primary_key: DataType) -> Vec<DataType> {
-        unimplemented!();
+    pub fn row(&self, primary_key: Data) -> Result<BTreeMap<ColumnId, Option<Data>>, Error> {
+        let mut accessed_columns = self.accessed_columns.borrow_mut();
+        self.column_headers
+            .iter()
+            .map(|column_header| {
+                let column_id = column_header.id();
+
+                if let Some(column) = accessed_columns.get(&column_id) {
+                    Ok((column_id, column.get_value(primary_key.clone())))
+                } else {
+                    let column_slice = self.fs.borrow_mut().segment(column_header.segment_id())?;
+
+                    let column = from_column_slice(
+                        self.index.primary_key_type(),
+                        column_header.value_type(),
+                        column_header.column_type(),
+                        column_slice,
+                    )?;
+
+                    let value = column.get_value(primary_key.clone());
+
+                    accessed_columns.insert(column_header.id(), column);
+
+                    Ok((column_id, value))
+                }
+            })
+            .collect()
     }
 
     pub fn row_secondary_key(
         &self,
-        key_column: ColumnId,
-        secondary_key: DataType,
-    ) -> Vec<DataType> {
-        unimplemented!();
+        key_column_id: ColumnId,
+        secondary_key: Data,
+    ) -> Result<BTreeMap<ColumnId, Option<Data>>, Error> {
+        let primary_key = self.get_primary_key(key_column_id, secondary_key)?;
+
+        match primary_key {
+            Some(key) => self.row(key),
+            None => Err(Error::SecondaryKeyWithNonExistentPrimaryKey),
+        }
     }
 
     pub fn remove_db(self) -> Result<(), ()> {
         unimplemented!();
+    }
+
+    fn get_primary_key(
+        &self,
+        key_column_id: ColumnId,
+        secondary_key: Data,
+    ) -> Result<Option<Data>, Error> {
+        let mut accessed_columns = self.accessed_columns.borrow_mut();
+
+        if let Some(key_column) = accessed_columns.get(&key_column_id) {
+            Ok(key_column.get_key(secondary_key))
+        } else {
+            let column_header = self
+                .column_headers
+                .iter()
+                .find(|&col| col.id() == key_column_id)
+                .ok_or(Error::NoSuchColumn)?;
+
+            let column_slice = self.fs.borrow_mut().segment(column_header.segment_id())?;
+
+            let key_column = from_column_slice(
+                self.index.primary_key_type(),
+                column_header.value_type(),
+                column_header.column_type(),
+                column_slice,
+            )?;
+
+            let primary_key = key_column.get_value(secondary_key);
+
+            accessed_columns.insert(column_header.id(), key_column);
+
+            Ok(primary_key)
+        }
     }
 }
