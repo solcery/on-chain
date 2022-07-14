@@ -6,6 +6,8 @@ use solcery_data_types::db::messages::db_manager::{CreateDB, DBId, Query, Remove
 use crate::db_error::DBManagerError;
 
 pub type DataBaseHolderTree<'a> = RBTree<'a, DBId, DB, 1024, 1024>;
+
+#[derive(Debug)]
 pub struct DBManager {}
 
 impl DBManager {

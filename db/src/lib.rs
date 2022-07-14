@@ -1,5 +1,6 @@
 //! Solcery DB internal structures
 #![deny(unsafe_op_in_unsafe_fn)]
+#![deny(missing_debug_implementations)]
 // Temporary added this, so the output of the compiler is not flooded with unused warnings
 #![allow(unused_variables)]
 #![allow(dead_code)]
@@ -27,6 +28,7 @@ use raw::index::Index;
 
 type FSCell<'a> = Rc<RefCell<FS<'a>>>;
 
+#[derive(Debug)]
 pub struct DB<'a> {
     fs: FSCell<'a>,
     index: &'a mut Index,

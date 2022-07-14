@@ -10,9 +10,9 @@ use std::cell::RefMut;
 
 pub type SchemasHolderTree<'a> = RBTree<'a, SchemaId, Schema, 1024, 1024>;
 
+#[derive(Debug)]
 pub struct SchemasManager {}
 
-#[allow(missing_docs)]
 impl SchemasManager {
     pub fn add_schema(
         message: AddSchema,

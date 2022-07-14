@@ -1,6 +1,8 @@
+use std::fmt::Debug;
+
 use super::schema::Data;
 
-pub trait Column {
+pub trait Column: Debug {
     fn get_key(&self, value: Data) -> Option<Data>;
     fn get_value(&self, key: Data) -> Option<Data>;
     fn set(&mut self, key: Data, value: Data) -> Option<Data>;
