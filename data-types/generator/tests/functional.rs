@@ -13,6 +13,10 @@ pub enum ErrorType {
     Test,
 }
 
+pub enum ColumnType {
+    RBTree,
+}
+
 impl From<Error> for ErrorType {
     fn from(_err: Error) -> Self {
         Self::Test

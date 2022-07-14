@@ -3,6 +3,7 @@ use bytemuck::{Pod, Zeroable};
 use solana_program::pubkey::Pubkey;
 use std::fmt;
 
+use super::column_id::ColumnId;
 use account_fs::SegmentId;
 use solcery_data_types::db::schema::{ColumnType, DataType};
 
@@ -24,8 +25,8 @@ impl ColumnHeader {
         String::deserialize(&mut self.name.as_slice()).unwrap()
     }
 
-    pub fn id(&self) -> u32 {
-        u32::from_be_bytes(self.id)
+    pub fn id(&self) -> ColumnId {
+        ColumnId::new(u32::from_be_bytes(self.id))
     }
 
     pub fn value_type(&self) -> DataType {
@@ -47,7 +48,7 @@ impl ColumnHeader {
 
     pub unsafe fn new(
         name: &str,
-        id: u32,
+        id: ColumnId,
         segment_id: SegmentId,
         value_type: DataType,
         column_type: ColumnType,

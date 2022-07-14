@@ -109,17 +109,17 @@ fn column_impls(attrs: &TokenStream, input: proc_macro::TokenStream) -> TokenStr
         pub fn from_column_slice<'a,'b: 'a>(
             pk_type: #enum_ident,
             val_type: #enum_ident,
-            is_secondary_key: bool,
+            column_type: ColumnType,
             slice: &'b mut [u8],
         ) -> Result<Box<dyn #trait_ident + 'a>, #error_ident> {
-            if is_secondary_key {
-                unimplemented!();
-            } else {
-                unsafe {
-                    match (pk_type, val_type) {
-                        #slice_from_variants
+            match column_type {
+                ColumnType::RBTree => {
+                    unsafe {
+                        match (pk_type, val_type) {
+                            #slice_from_variants
+                        }
                     }
-                }
+                },
             }
         }
     };
@@ -128,14 +128,14 @@ fn column_impls(attrs: &TokenStream, input: proc_macro::TokenStream) -> TokenStr
         pub fn init_column_slice<'a,'b: 'a>(
             pk_type: #enum_ident,
             val_type: #enum_ident,
-            is_secondary_key: bool,
+            column_type: ColumnType,
             slice: &'b mut [u8],
         ) -> Result<Box<dyn #trait_ident + 'a>, #error_ident> {
-            if is_secondary_key {
-                unimplemented!();
-            } else {
-                match (pk_type, val_type) {
-                    #slice_init_variants
+            match column_type {
+                ColumnType::RBTree => {
+                    match (pk_type, val_type) {
+                        #slice_init_variants
+                    }
                 }
             }
         }

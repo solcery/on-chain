@@ -24,6 +24,7 @@ use solcery_data_types::db::schema::{
 mod raw;
 
 use raw::column::ColumnHeader;
+use raw::column_id::ColumnId;
 use raw::index::Index;
 
 type FSCell<'a> = Rc<RefCell<FS<'a>>>;
@@ -33,7 +34,7 @@ pub struct DB<'a> {
     fs: FSCell<'a>,
     index: &'a mut Index,
     column_headers: SliceVec<'a, ColumnHeader>,
-    accessed_columns: RefCell<BTreeMap<u32, Box<dyn Column + 'a>>>,
+    accessed_columns: RefCell<BTreeMap<ColumnId, Box<dyn Column + 'a>>>,
     segment: SegmentId,
 }
 
@@ -112,7 +113,7 @@ impl<'a> DB<'a> {
         name: &str,
         dtype: DataType,
         is_secondary_key: bool,
-    ) -> Result<u32, Error> {
+    ) -> Result<ColumnId, Error> {
         if self.index.column_count() == self.index.column_max() {
             return Err(Error::NoColumnsLeft);
         }
@@ -126,12 +127,21 @@ impl<'a> DB<'a> {
 
         // We've just successfully allocated this segment, so this operation is infailible;
         let tree = borrowed_fs.segment(segment).unwrap();
-        let column =
-            init_column_slice(self.index.primary_key_type(), dtype, is_secondary_key, tree)
-                .unwrap();
+        let column = if is_secondary_key {
+            unimplemented!();
+        } else {
+            init_column_slice(
+                self.index.primary_key_type(),
+                dtype,
+                ColumnType::RBTree,
+                tree,
+            )
+        }
+        .unwrap();
+
         drop(borrowed_fs);
 
-        let id = self.index.generate_id();
+        let id = ColumnId::new(self.index.generate_id());
         let column_header =
             unsafe { ColumnHeader::new(name, id, segment, dtype, ColumnType::RBTree) };
 
@@ -145,7 +155,7 @@ impl<'a> DB<'a> {
         Ok(id)
     }
 
-    pub fn remove_column(&mut self, column_id: u32) -> Result<(), Error> {
+    pub fn remove_column(&mut self, column_id: ColumnId) -> Result<(), Error> {
         let (index, segment_id) = self
             .column_headers
             .iter()
@@ -163,8 +173,9 @@ impl<'a> DB<'a> {
         Ok(())
     }
 
-    pub fn value(&mut self, primary_key: Data, column_id: u32) -> Result<Option<Data>, Error> {
+    pub fn value(&mut self, primary_key: Data, column_id: ColumnId) -> Result<Option<Data>, Error> {
         let mut accessed_columns = self.accessed_columns.borrow_mut();
+
         if let Some(column) = accessed_columns.get(&column_id) {
             Ok(column.get_value(primary_key))
         } else {
@@ -176,11 +187,10 @@ impl<'a> DB<'a> {
 
             let column_slice = self.fs.borrow_mut().segment(column_header.segment_id())?;
 
-            //FIXME: we need to pass an actual is_secondary_key value
             let column = from_column_slice(
                 self.index.primary_key_type(),
                 column_header.value_type(),
-                false,
+                column_header.column_type(),
                 column_slice,
             )?;
 
@@ -194,11 +204,12 @@ impl<'a> DB<'a> {
 
     pub fn value_secondary(
         &mut self,
-        key_column_id: u32,
+        key_column_id: ColumnId,
         secondary_key: Data,
-        column_id: u32,
+        column_id: ColumnId,
     ) -> Result<Option<Data>, Error> {
         let mut accessed_columns = self.accessed_columns.borrow_mut();
+
         let primary_key = if let Some(key_column) = accessed_columns.get(&key_column_id) {
             key_column.get_key(secondary_key)
         } else {
@@ -210,11 +221,10 @@ impl<'a> DB<'a> {
 
             let column_slice = self.fs.borrow_mut().segment(column_header.segment_id())?;
 
-            //FIXME: we need to pass an actual is_secondary_key value
             let key_column = from_column_slice(
                 self.index.primary_key_type(),
                 column_header.value_type(),
-                true,
+                column_header.column_type(),
                 column_slice,
             )?;
 
@@ -229,15 +239,45 @@ impl<'a> DB<'a> {
         primary_key.map_or(Ok(None), |key| self.value(key, column_id))
     }
 
-    pub fn set_value(&self, primary_key: DataType, column: u32, value: DataType) {
-        unimplemented!();
+    pub fn set_value(
+        &mut self,
+        primary_key: Data,
+        column_id: ColumnId,
+        value: Data,
+    ) -> Result<Option<Data>, Error> {
+        let mut accessed_columns = self.accessed_columns.borrow_mut();
+
+        if let Some(column) = accessed_columns.get_mut(&column_id) {
+            Ok(column.set(primary_key, value))
+        } else {
+            let column_header = self
+                .column_headers
+                .iter()
+                .find(|&col| col.id() == column_id)
+                .ok_or(Error::NoSuchColumn)?;
+
+            let column_slice = self.fs.borrow_mut().segment(column_header.segment_id())?;
+
+            let mut column = from_column_slice(
+                self.index.primary_key_type(),
+                column_header.value_type(),
+                column_header.column_type(),
+                column_slice,
+            )?;
+
+            let old_value = column.set(primary_key, value);
+
+            accessed_columns.insert(column_header.id(), column);
+
+            Ok(old_value)
+        }
     }
 
     pub fn set_value_secondary(
         &self,
-        key_column: u32,
+        key_column: ColumnId,
         secondary_key: DataType,
-        column: u32,
+        column: ColumnId,
         value: DataType,
     ) {
         unimplemented!();
@@ -251,7 +291,11 @@ impl<'a> DB<'a> {
         unimplemented!();
     }
 
-    pub fn row_secondary_key(&self, key_column: u32, secondary_key: DataType) -> Vec<DataType> {
+    pub fn row_secondary_key(
+        &self,
+        key_column: ColumnId,
+        secondary_key: DataType,
+    ) -> Vec<DataType> {
         unimplemented!();
     }
 
