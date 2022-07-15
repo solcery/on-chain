@@ -40,7 +40,7 @@ pub struct DB<'a> {
 
 impl<'a> DB<'a> {
     pub fn from_segment(fs: FSCell<'a>, segment: SegmentId) -> Result<Self, Error> {
-        let db_segment = fs.borrow_mut().segment(segment)?;
+        let db_segment = fs.borrow_mut().segment(&segment)?;
 
         if db_segment.len() < mem::size_of::<Index>() {
             return Err(Error::WrongSegment);
@@ -81,7 +81,7 @@ impl<'a> DB<'a> {
         let segment = borrowed_fs.allocate_segment(index_size)?;
 
         // We've just successfully allocated this segment, so this operation is infailible;
-        let index_slice = borrowed_fs.segment(segment).unwrap();
+        let index_slice = borrowed_fs.segment(&segment).unwrap();
 
         drop(borrowed_fs);
 
@@ -126,7 +126,7 @@ impl<'a> DB<'a> {
         ))?;
 
         // We've just successfully allocated this segment, so this operation is infailible;
-        let tree = borrowed_fs.segment(segment).unwrap();
+        let tree = borrowed_fs.segment(&segment).unwrap();
         let column = if is_secondary_key {
             unimplemented!();
         } else {
@@ -164,7 +164,7 @@ impl<'a> DB<'a> {
             .map(|(index, col)| (index, col.segment_id()))
             .ok_or(Error::NoSuchColumn)?;
 
-        self.fs.borrow_mut().deallocate_segment(segment_id)?;
+        self.fs.borrow_mut().deallocate_segment(&segment_id)?;
         self.column_headers.remove(index);
 
         unsafe {
@@ -185,7 +185,7 @@ impl<'a> DB<'a> {
                 .find(|&col| col.id() == column_id)
                 .ok_or(Error::NoSuchColumn)?;
 
-            let column_slice = self.fs.borrow_mut().segment(column_header.segment_id())?;
+            let column_slice = self.fs.borrow_mut().segment(&column_header.segment_id())?;
 
             let column = from_column_slice(
                 self.index.primary_key_type(),
@@ -233,7 +233,7 @@ impl<'a> DB<'a> {
                 .find(|&col| col.id() == column_id)
                 .ok_or(Error::NoSuchColumn)?;
 
-            let column_slice = self.fs.borrow_mut().segment(column_header.segment_id())?;
+            let column_slice = self.fs.borrow_mut().segment(&column_header.segment_id())?;
 
             let mut column = from_column_slice(
                 self.index.primary_key_type(),
@@ -293,7 +293,7 @@ impl<'a> DB<'a> {
                 if let Some(column) = accessed_columns.get(&column_id) {
                     Ok((column_id, column.get_value(primary_key.clone())))
                 } else {
-                    let column_slice = self.fs.borrow_mut().segment(column_header.segment_id())?;
+                    let column_slice = self.fs.borrow_mut().segment(&column_header.segment_id())?;
 
                     let column = from_column_slice(
                         self.index.primary_key_type(),
@@ -325,8 +325,48 @@ impl<'a> DB<'a> {
         }
     }
 
-    pub fn remove_db(self) -> Result<(), ()> {
-        unimplemented!();
+    pub fn drop_db(self) -> Result<(), Error> {
+        let DB {
+            fs,
+            index,
+            column_headers,
+            accessed_columns,
+            segment,
+        } = self;
+
+        let mut fs = fs.borrow_mut();
+
+        for &header in column_headers.iter() {
+            if !fs.is_accessible(&header.segment_id()) {
+                return Err(Error::NotAllColumnsArePresent);
+            }
+        }
+
+        drop(accessed_columns);
+
+        for &header in column_headers.iter() {
+            let segment_id = header.segment_id();
+            unsafe {
+                // # Safety
+                // All the borrows of the segments where placed inside the `accessed_columns`,
+                // which we've just dropped, so there are no dangling pointers
+                fs.release_borrowed_segment(&segment_id);
+                fs.deallocate_segment(&segment_id)?;
+            }
+        }
+
+        drop(index);
+        drop(column_headers);
+
+        unsafe {
+            // # Safety
+            // The header segment of the DB was splitted into two parts: `index` and `column_header`
+            // Both were dropped, so there are no dangling pointers
+            fs.release_borrowed_segment(&segment);
+            fs.deallocate_segment(&segment)?;
+        }
+
+        Ok(())
     }
 
     fn get_primary_key(
@@ -345,7 +385,7 @@ impl<'a> DB<'a> {
                 .find(|&col| col.id() == key_column_id)
                 .ok_or(Error::NoSuchColumn)?;
 
-            let column_slice = self.fs.borrow_mut().segment(column_header.segment_id())?;
+            let column_slice = self.fs.borrow_mut().segment(&column_header.segment_id())?;
 
             let key_column = from_column_slice(
                 self.index.primary_key_type(),

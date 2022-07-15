@@ -100,10 +100,22 @@ impl<'long: 'short, 'short> FS<'long> {
     /// Deallocates segment of data in the first account with available space
     ///
     /// Only unborrowed segments can be deallocated
-    pub fn deallocate_segment(&mut self, id: SegmentId) -> Result<(), FSError> {
+    pub fn deallocate_segment(&mut self, id: &SegmentId) -> Result<(), FSError> {
         match self.allocators.get_mut(&id.pubkey) {
             Some(alloc) => alloc.deallocate_segment(id.id),
             None => Err(FSError::NoSuchPubkey),
+        }
+    }
+
+    /// Marks a segment as unborrowed
+    ///
+    /// # Safety
+    /// The caller must assert, that all borrows pointing to this segment are dropped
+    pub unsafe fn release_borrowed_segment(&mut self, id: &SegmentId) {
+        if let Some(alloc) = self.allocators.get_mut(&id.pubkey) {
+            unsafe {
+                alloc.release_borrowed_segment(id.id);
+            }
         }
     }
 
@@ -114,10 +126,15 @@ impl<'long: 'short, 'short> FS<'long> {
     }
 
     /// Borrows a segment with given [SegmentId]
-    pub fn segment(&mut self, id: SegmentId) -> Result<&'short mut [u8], FSError> {
+    pub fn segment(&mut self, id: &SegmentId) -> Result<&'short mut [u8], FSError> {
         match self.allocators.get_mut(&id.pubkey) {
             Some(alloc) => alloc.segment(id.id),
             None => Err(FSError::NoSuchPubkey),
         }
+    }
+
+    /// Checks if a segment with given [SegmentId] is present in the FS
+    pub fn is_accessible(&self, id: &SegmentId) -> bool {
+        self.allocators.contains_key(&id.pubkey)
     }
 }

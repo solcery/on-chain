@@ -11,6 +11,8 @@ pub enum Error {
     // This error occurs, than set_value_secondary() is called on secondary key which does not have
     // a corresponding primary key
     SecondaryKeyWithNonExistentPrimaryKey,
+    // It happens, if not all columns are accessible during DB deletion
+    NotAllColumnsArePresent,
 }
 
 impl From<FSError> for Error {

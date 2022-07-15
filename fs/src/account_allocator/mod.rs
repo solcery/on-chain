@@ -202,6 +202,10 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
     }
 
     pub fn deallocate_segment(&mut self, id: u32) -> Result<(), Error> {
+        if self.borrowed_serments.contains(&id) {
+            return Err(Error::Borrowed);
+        }
+
         let result = self
             .inode_data
             .iter_mut()
@@ -277,6 +281,14 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
         unimplemented!();
     }
 
+    /// Marks a segment as unborrowed
+    ///
+    /// # Safety
+    /// The caller must assert, that the borrows pointing to this segment are dropped
+    pub unsafe fn release_borrowed_segment(&mut self, id: u32) {
+        self.borrowed_serments.remove(&id);
+    }
+
     fn is_ordered(&self) -> bool {
         if self.inode_data[0].start_idx() != 0 {
             return false;
@@ -315,7 +327,10 @@ impl<'a> fmt::Debug for AccountAllocator<'a> {
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum Error {
+    // attempt to borrow one segment twice
     AlreadyBorrowed,
+    // attempt to deallocate borrowed segment
+    Borrowed,
     NoInodesLeft,
     NoSuchIndex,
     NoSuchPubkey,
