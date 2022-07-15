@@ -72,7 +72,7 @@ fn full_initialization() {
 
     let segment_id = fs.allocate_segment(150).unwrap();
 
-    let segment = fs.segment(segment_id).unwrap();
+    let segment = fs.segment(&segment_id).unwrap();
 
     assert_eq!(segment, vec![0; 150]);
 }
