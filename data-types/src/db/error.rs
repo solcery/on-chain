@@ -1,5 +1,6 @@
 use account_fs::FSError;
 use slice_rbtree::Error as RBTreeError;
+use solana_program::program_error::ProgramError;
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
 pub enum Error {
@@ -24,5 +25,11 @@ impl From<FSError> for Error {
 impl From<RBTreeError> for Error {
     fn from(err: RBTreeError) -> Self {
         Self::RBTreeError(err)
+    }
+}
+
+impl From<Error> for ProgramError {
+    fn from(err: Error) -> Self {
+        todo!("Error conversion");
     }
 }

@@ -1,4 +1,8 @@
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Clone, Copy)]
+use borsh::{BorshDeserialize, BorshSerialize};
+
+#[derive(
+    BorshDeserialize, BorshSerialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd,
+)]
 #[repr(transparent)]
 pub struct ColumnId(u32);
 

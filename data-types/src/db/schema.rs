@@ -78,10 +78,10 @@ pub enum AllowedTypes {
 }
 
 #[derive(PartialEq, Clone, Eq, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
-pub struct Column {
+pub struct ColumnParams {
     name: String,
-    typ: DataType,
-    is_secondary_key: bool,
+    data_type: DataType,
+    column_type: ColumnType,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]

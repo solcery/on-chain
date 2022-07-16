@@ -31,13 +31,13 @@ pub struct FS<'a> {
     allocators: BTreeMap<Pubkey, AccountAllocator<'a>>,
 }
 
-impl<'long: 'short, 'short> FS<'long> {
+impl<'long: 'short, 'short> FS<'short> {
     /// Constructs [FS], assuming that all accounts are initialized as filesystem accounts
     pub fn from_account_iter<AccountIter>(accounts_iter: &mut AccountIter) -> Result<Self, FSError>
     where
-        AccountIter: Iterator<Item = &'long AccountInfo<'long>>,
+        AccountIter: Iterator<Item = &'short AccountInfo<'long>>,
     {
-        let result: Result<BTreeMap<Pubkey, AccountAllocator<'long>>, _> = accounts_iter
+        let result: Result<BTreeMap<Pubkey, AccountAllocator<'short>>, _> = accounts_iter
             .map(|account| {
                 let pubkey = *account.key;
                 let data = account.data.borrow_mut();

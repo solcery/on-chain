@@ -12,17 +12,20 @@ use tinyvec::SliceVec;
 
 use account_fs::{SegmentId, FS};
 use slice_rbtree::tree_size;
-use solcery_data_types::db::{
+use solcery_data_types::db::schema::{from_column_slice, init_column_slice};
+
+pub use solcery_data_types::db::{
     column::Column,
     error::Error,
-    schema::{from_column_slice, init_column_slice, ColumnType, Data, DataType},
+    schema::{ColumnParams, ColumnType, Data, DataType},
 };
 
 mod raw;
 
 use raw::column::ColumnHeader;
-use raw::column_id::ColumnId;
 use raw::index::Index;
+
+pub use raw::column_id::ColumnId;
 
 type FSCell<'a> = Rc<RefCell<FS<'a>>>;
 
