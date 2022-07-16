@@ -1,5 +1,5 @@
-use generator::generate_column_impls;
 use slice_rbtree::{Error, RBTree};
+use solcery_impl_generator::generate_column_impls;
 
 pub trait Column {
     fn get_key(&self, value: HolderName) -> Option<HolderName>;

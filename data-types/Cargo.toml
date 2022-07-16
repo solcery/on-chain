@@ -9,7 +9,7 @@ edition = "2021"
 account-fs = { path = "../fs" }
 borsh = "0.9.1"
 bytemuck = "1.7.2"
-generator = { path = "generator" }
+solcery-impl-generator = { path = "generator" }
 num_enum = "0.5.7"
 serde = { version = "1.0", features = ["derive"] }
 slice-rbtree = { path = "../slice-rbtree" }

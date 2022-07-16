@@ -1,5 +1,5 @@
 [package]
-name = "generator"
+name = "solcery-impl-generator"
 version = "0.0.0"
 edition = "2021"
 
