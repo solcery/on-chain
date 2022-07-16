@@ -16,6 +16,7 @@ dependencies = [
 name = "account-fs"
 version = "0.0.0"
 dependencies = [
+ "borsh",
  "bytemuck",
  "pretty_assertions 0.6.1",
  "solana-program",
@@ -3892,6 +3893,16 @@ dependencies = [
  "solana-program",
  "solcery-data-types",
  "tinyvec",
+]
+
+[[package]]
+name = "solcery-db-program"
+version = "0.0.0"
+dependencies = [
+ "account-fs",
+ "borsh",
+ "solana-program",
+ "solcery-db",
 ]
 
 [[package]]

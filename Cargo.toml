@@ -4,6 +4,7 @@ members = [
 	"data-types/generator",
 	"db",
 	"db-manager",
+	"db-program",
 	"fs",
 	"game",
 	"slice-rbtree",
