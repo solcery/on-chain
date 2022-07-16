@@ -1,9 +1,6 @@
 //! Solcery DB internal structures
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(missing_debug_implementations)]
-// Temporary added this, so the output of the compiler is not flooded with unused warnings
-#![allow(unused_variables)]
-#![allow(dead_code)]
 
 use bytemuck::{cast_mut, cast_slice_mut};
 
