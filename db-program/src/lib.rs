@@ -41,6 +41,7 @@ fn process_instruction(
     use DBInstruction::*;
     match instruction {
         SetValue(params) => process_set_value(program_id, accounts, params),
+        SetValueSecondary(params) => process_set_value_secondary(program_id, accounts, params),
         _ => unimplemented!(),
     }
 }
@@ -51,23 +52,29 @@ fn process_set_value(
     params: SetValueParams,
 ) -> Result<(), DBError> {
     let mut db = prepare_db(accounts, params.db)?;
-    let result = db.set_value(params.key, params.column, params.value);
-    match result {
-        Ok(_) => Ok(()),
-        Err(err) => Err(DBError::from(err)),
-    }
+    db.set_value(params.key, params.column, params.value)
+        .map(|_| ())
+}
+
+fn process_set_value_secondary(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    params: SetValueSecondaryParams,
+) -> Result<(), DBError> {
+    let mut db = prepare_db(accounts, params.db)?;
+    db.set_value_secondary(
+        params.key_column,
+        params.secondary_key,
+        params.value_column,
+        params.value,
+    )
+    .map(|_| ())
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Eq, PartialEq)]
 pub enum DBInstruction {
     SetValue(SetValueParams),
-    SetValueSecondary {
-        db: SegmentId,
-        key_column: ColumnId,
-        secondary_key: Data,
-        value_column: ColumnId,
-        value: Data,
-    },
+    SetValueSecondary(SetValueSecondaryParams),
     SetRow {
         db: SegmentId,
         key: Data,
@@ -97,6 +104,15 @@ pub struct SetValueParams {
     db: SegmentId,
     column: ColumnId,
     key: Data,
+    value: Data,
+}
+
+#[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Eq, PartialEq)]
+pub struct SetValueSecondaryParams {
+    db: SegmentId,
+    key_column: ColumnId,
+    secondary_key: Data,
+    value_column: ColumnId,
     value: Data,
 }
 

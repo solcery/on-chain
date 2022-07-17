@@ -3903,6 +3903,7 @@ dependencies = [
  "borsh",
  "solana-program",
  "solcery-db",
+ "spl-token",
 ]
 
 [[package]]
