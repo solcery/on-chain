@@ -265,6 +265,49 @@ impl<'a> DB<'a> {
         }
     }
 
+    pub fn delete_value(&mut self, primary_key: Data, column_id: ColumnId) -> Result<bool, Error> {
+        let mut accessed_columns = self.accessed_columns.borrow_mut();
+
+        if let Some(column) = accessed_columns.get_mut(&column_id) {
+            Ok(column.delete_by_key(primary_key))
+        } else {
+            let column_header = self
+                .column_headers
+                .iter()
+                .find(|&col| col.id() == column_id)
+                .ok_or(Error::NoSuchColumn)?;
+
+            let column_slice = self.fs.borrow_mut().segment(&column_header.segment_id())?;
+
+            let mut column = from_column_slice(
+                self.index.primary_key_type(),
+                column_header.value_type(),
+                column_header.column_type(),
+                column_slice,
+            )?;
+
+            let was_value_present = column.delete_by_key(primary_key);
+
+            accessed_columns.insert(column_header.id(), column);
+
+            Ok(was_value_present)
+        }
+    }
+
+    pub fn delete_value_secondary(
+        &mut self,
+        key_column_id: ColumnId,
+        secondary_key: Data,
+        column_id: ColumnId,
+    ) -> Result<bool, Error> {
+        let primary_key = self.get_primary_key(key_column_id, secondary_key)?;
+
+        match primary_key {
+            Some(key) => self.delete_value(key, column_id),
+            None => Err(Error::SecondaryKeyWithNonExistentPrimaryKey),
+        }
+    }
+
     pub fn set_row<Row>(&mut self, primary_key: Data, row: Row) -> Result<bool, Error>
     where
         Row: IntoIterator<Item = (ColumnId, Data)>,
@@ -320,6 +363,38 @@ impl<'a> DB<'a> {
 
         match primary_key {
             Some(key) => self.row(key),
+            None => Err(Error::SecondaryKeyWithNonExistentPrimaryKey),
+        }
+    }
+
+    pub fn delete_row(&mut self, primary_key: Data) -> Result<(), Error> {
+        let fs = self.fs.borrow();
+        let mut columns = Vec::with_capacity(self.column_headers.len());
+        for &header in self.column_headers.iter() {
+            if !fs.is_accessible(&header.segment_id()) {
+                return Err(Error::NotAllColumnsArePresent);
+            }
+            columns.push(header.id());
+        }
+
+        drop(fs);
+
+        for id in columns {
+            self.delete_value(primary_key.clone(), id)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn delete_row_secondary(
+        &mut self,
+        key_column_id: ColumnId,
+        secondary_key: Data,
+    ) -> Result<(), Error> {
+        let primary_key = self.get_primary_key(key_column_id, secondary_key)?;
+
+        match primary_key {
+            Some(key) => self.delete_row(key),
             None => Err(Error::SecondaryKeyWithNonExistentPrimaryKey),
         }
     }

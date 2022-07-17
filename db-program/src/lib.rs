@@ -11,7 +11,6 @@ use solana_program::{
     pubkey::Pubkey,
 };
 use std::cell::RefCell;
-use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use account_fs::{SegmentId, FS};
@@ -45,6 +44,7 @@ fn process_instruction(
         SetValue(params) => process_set_value(program_id, accounts, params),
         SetValueSecondary(params) => process_set_value_secondary(program_id, accounts, params),
         SetRow(params) => process_set_row(program_id, accounts, params),
+        DeleteRow(params) => process_delete_row(program_id, accounts, params),
         _ => unimplemented!(),
     }
 }
@@ -80,11 +80,25 @@ fn process_set_row(
     params: SetRowParams,
 ) -> Result<(), DBError> {
     let mut db = prepare_db(program_id, accounts, params.db, params.is_initialized)?;
-    db.set_row(
-        params.key,
-        params.row,
-    )
-    .map(|_| ())
+    db.set_row(params.key, params.row).map(|_| ())
+}
+
+fn process_delete_row(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    params: DeleteRowParams,
+) -> Result<(), DBError> {
+    let mut db = prepare_db(program_id, accounts, params.db, params.is_initialized)?;
+    db.delete_row(params.key)
+}
+fn process_delete_row_secondary(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    params: DeleteRowSecondaryParams,
+) -> Result<(), DBError> {
+    let mut db = prepare_db(program_id, accounts, params.db, params.is_initialized)?;
+    db.delete_row_secondary(params.key_column, params.secondary_key)
+        .map(|_| ())
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Eq, PartialEq)]
@@ -92,10 +106,7 @@ pub enum DBInstruction {
     SetValue(SetValueParams),
     SetValueSecondary(SetValueSecondaryParams),
     SetRow(SetRowParams),
-    DeleteRow {
-        db: SegmentId,
-        key: Data,
-    },
+    DeleteRow(DeleteRowParams),
     DeleteRowSecondary {
         db: SegmentId,
         secondary_key: Data,
@@ -137,6 +148,23 @@ pub struct SetRowParams {
     db: SegmentId,
     key: Data,
     row: Vec<(ColumnId, Data)>,
+    /// Are all the FS accounts initialized
+    is_initialized: bool,
+}
+
+#[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Eq, PartialEq)]
+pub struct DeleteRowParams {
+    db: SegmentId,
+    key: Data,
+    /// Are all the FS accounts initialized
+    is_initialized: bool,
+}
+
+#[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Eq, PartialEq)]
+pub struct DeleteRowSecondaryParams {
+    db: SegmentId,
+    secondary_key: Data,
+    key_column: ColumnId,
     /// Are all the FS accounts initialized
     is_initialized: bool,
 }
