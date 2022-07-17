@@ -10,7 +10,7 @@ use std::mem;
 use std::rc::Rc;
 use tinyvec::SliceVec;
 
-use account_fs::{FSError, SegmentId, FS};
+use account_fs::{SegmentId, FS};
 use slice_rbtree::tree_size;
 use solcery_data_types::db::schema::{from_column_slice, init_column_slice};
 
