@@ -51,7 +51,7 @@ fn process_set_value(
     accounts: &[AccountInfo],
     params: SetValueParams,
 ) -> Result<(), DBError> {
-    let mut db = prepare_db(accounts, params.db)?;
+    let mut db = prepare_db(program_id, accounts, params.db)?;
     db.set_value(params.key, params.column, params.value)
         .map(|_| ())
 }
@@ -61,7 +61,7 @@ fn process_set_value_secondary(
     accounts: &[AccountInfo],
     params: SetValueSecondaryParams,
 ) -> Result<(), DBError> {
-    let mut db = prepare_db(accounts, params.db)?;
+    let mut db = prepare_db(program_id, accounts, params.db)?;
     db.set_value_secondary(
         params.key_column,
         params.secondary_key,
@@ -116,9 +116,13 @@ pub struct SetValueSecondaryParams {
     value: Data,
 }
 
-fn prepare_db<'a>(accounts: &'a [AccountInfo], segment: SegmentId) -> Result<DB<'a>, DBError> {
+fn prepare_db<'a>(
+    program_id: &Pubkey,
+    accounts: &'a [AccountInfo],
+    segment: SegmentId,
+) -> Result<DB<'a>, DBError> {
     let account_iter = &mut accounts.iter();
-    let fs = FS::from_account_iter(account_iter)?;
+    let fs = FS::from_account_iter(program_id, account_iter)?;
     let fs_cell = Rc::new(RefCell::new(fs));
 
     DB::from_segment(fs_cell, segment)

@@ -339,6 +339,7 @@ pub enum Error {
     TooSmall,
     WrongMagic,
     WrongSize,
+    WrongOwner,
 }
 
 #[cfg(test)]
