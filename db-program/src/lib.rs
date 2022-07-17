@@ -44,6 +44,7 @@ fn process_instruction(
     match instruction {
         SetValue(params) => process_set_value(program_id, accounts, params),
         SetValueSecondary(params) => process_set_value_secondary(program_id, accounts, params),
+        SetRow(params) => process_set_row(program_id, accounts, params),
         _ => unimplemented!(),
     }
 }
@@ -73,15 +74,24 @@ fn process_set_value_secondary(
     .map(|_| ())
 }
 
+fn process_set_row(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    params: SetRowParams,
+) -> Result<(), DBError> {
+    let mut db = prepare_db(program_id, accounts, params.db, params.is_initialized)?;
+    db.set_row(
+        params.key,
+        params.row,
+    )
+    .map(|_| ())
+}
+
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Eq, PartialEq)]
 pub enum DBInstruction {
     SetValue(SetValueParams),
     SetValueSecondary(SetValueSecondaryParams),
-    SetRow {
-        db: SegmentId,
-        key: Data,
-        row: BTreeMap<ColumnId, Data>,
-    },
+    SetRow(SetRowParams),
     DeleteRow {
         db: SegmentId,
         key: Data,
@@ -118,6 +128,15 @@ pub struct SetValueSecondaryParams {
     secondary_key: Data,
     value_column: ColumnId,
     value: Data,
+    /// Are all the FS accounts initialized
+    is_initialized: bool,
+}
+
+#[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Eq, PartialEq)]
+pub struct SetRowParams {
+    db: SegmentId,
+    key: Data,
+    row: Vec<(ColumnId, Data)>,
     /// Are all the FS accounts initialized
     is_initialized: bool,
 }

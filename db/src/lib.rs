@@ -10,7 +10,7 @@ use std::mem;
 use std::rc::Rc;
 use tinyvec::SliceVec;
 
-use account_fs::{SegmentId, FS};
+use account_fs::{FSError, SegmentId, FS};
 use slice_rbtree::tree_size;
 use solcery_data_types::db::schema::{from_column_slice, init_column_slice};
 
@@ -265,11 +265,10 @@ impl<'a> DB<'a> {
         }
     }
 
-    pub fn set_row(
-        &mut self,
-        primary_key: Data,
-        row: BTreeMap<ColumnId, Data>,
-    ) -> Result<bool, Error> {
+    pub fn set_row<Row>(&mut self, primary_key: Data, row: Row) -> Result<bool, Error>
+    where
+        Row: IntoIterator<Item = (ColumnId, Data)>,
+    {
         row.into_iter()
             .map(|(column, value)| {
                 self.set_value(primary_key.clone(), column, value)
