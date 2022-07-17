@@ -62,9 +62,9 @@ impl<'long: 'short, 'short> FS<'short> {
         inode_table_size: usize,
     ) -> Result<Self, FSError>
     where
-        AccountIter: Iterator<Item = &'long AccountInfo<'long>>,
+        AccountIter: Iterator<Item = &'short AccountInfo<'long>>,
     {
-        let result: Result<BTreeMap<Pubkey, AccountAllocator<'long>>, _> = accounts_iter
+        let result: Result<BTreeMap<Pubkey, AccountAllocator<'short>>, _> = accounts_iter
             .map(|account| {
                 if account.owner != program_id {
                     return Err(FSError::WrongOwner);

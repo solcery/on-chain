@@ -17,6 +17,8 @@ use std::rc::Rc;
 use account_fs::{SegmentId, FS};
 use solcery_db::{ColumnId, ColumnParams, Data, DataType, Error as DBError, DB};
 
+const INODE_TABLE_SIZE: usize = 100;
+
 entrypoint!(process_instruction_bytes);
 pub fn process_instruction_bytes(
     program_id: &Pubkey,
@@ -51,7 +53,7 @@ fn process_set_value(
     accounts: &[AccountInfo],
     params: SetValueParams,
 ) -> Result<(), DBError> {
-    let mut db = prepare_db(program_id, accounts, params.db)?;
+    let mut db = prepare_db(program_id, accounts, params.db, params.is_initialized)?;
     db.set_value(params.key, params.column, params.value)
         .map(|_| ())
 }
@@ -61,7 +63,7 @@ fn process_set_value_secondary(
     accounts: &[AccountInfo],
     params: SetValueSecondaryParams,
 ) -> Result<(), DBError> {
-    let mut db = prepare_db(program_id, accounts, params.db)?;
+    let mut db = prepare_db(program_id, accounts, params.db, params.is_initialized)?;
     db.set_value_secondary(
         params.key_column,
         params.secondary_key,
@@ -105,6 +107,8 @@ pub struct SetValueParams {
     column: ColumnId,
     key: Data,
     value: Data,
+    /// Are all the FS accounts initialized
+    is_initialized: bool,
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Eq, PartialEq)]
@@ -114,15 +118,24 @@ pub struct SetValueSecondaryParams {
     secondary_key: Data,
     value_column: ColumnId,
     value: Data,
+    /// Are all the FS accounts initialized
+    is_initialized: bool,
 }
 
 fn prepare_db<'a>(
     program_id: &Pubkey,
     accounts: &'a [AccountInfo],
     segment: SegmentId,
+    is_initialized: bool,
 ) -> Result<DB<'a>, DBError> {
     let account_iter = &mut accounts.iter();
-    let fs = FS::from_account_iter(program_id, account_iter)?;
+
+    let fs = if is_initialized {
+        FS::from_account_iter(program_id, account_iter)?
+    } else {
+        FS::from_uninit_account_iter(program_id, account_iter, INODE_TABLE_SIZE)?
+    };
+
     let fs_cell = Rc::new(RefCell::new(fs));
 
     DB::from_segment(fs_cell, segment)
