@@ -7,14 +7,19 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint,
     entrypoint::ProgramResult,
+    program::{invoke, invoke_signed},
     program_error::ProgramError,
     pubkey::Pubkey,
 };
+use spl_token::id;
 use std::cell::RefCell;
 use std::rc::Rc;
 
 use account_fs::{SegmentId, FS};
 use solcery_db::{ColumnId, ColumnParams, Data, DataType, Error as DBError, DB};
+
+pub const MINT_SEED: &[u8; 4] = b"mint";
+pub const MINT_AUTHORITY_SEED: &[u8; 14] = b"mint_authority";
 
 const INODE_TABLE_SIZE: usize = 100;
 
@@ -28,10 +33,101 @@ pub fn process_instruction_bytes(
     let instruction = DBInstruction::deserialize(&mut buf)?;
 
     let mut account_iter = &mut accounts.iter();
-    if cfg!(debug_assertions) {
-        dbg!(process_instruction(program_id, account_iter, instruction)).map_err(ProgramError::from)
+
+    if instruction == DBInstruction::Bootstrap {
+        let admin = next_account_info(&mut account_iter)?;
+        let mint = next_account_info(&mut account_iter)?;
+        let mint_authority = next_account_info(&mut account_iter)?;
+        let token_program = next_account_info(&mut account_iter)?;
+        let token_account = next_account_info(&mut account_iter)?;
+        let rent_sysvar = next_account_info(&mut account_iter)?;
+
+        if !admin.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
+
+        if token_program.key != &spl_token::id() {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+
+        if !token_account.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
+
+        let mint_id = Pubkey::create_program_address(&[MINT_SEED], &program_id)?;
+        let mint_authority_id =
+            Pubkey::create_program_address(&[MINT_AUTHORITY_SEED], &program_id)?;
+
+        if mint.key != &mint_id {
+            return Err(ProgramError::InvalidArgument);
+        }
+        if mint_authority.key != &mint_authority_id {
+            return Err(ProgramError::InvalidArgument);
+        }
+
+        eprintln!("1");
+        let init_mint_instruction = spl_token::instruction::initialize_mint(
+            token_program.key,
+            &mint.key,
+            &mint_authority.key,
+            None,
+            10,
+        )?;
+
+        invoke(&init_mint_instruction, &[mint.clone(), rent_sysvar.clone()])?;
+        eprintln!("2");
+
+        let init_token_instruction = spl_token::instruction::initialize_account(
+            token_program.key,
+            &token_account.key,
+            &mint.key,
+            &admin.key,
+        )?;
+
+        invoke(
+            &init_token_instruction,
+            &[
+                token_account.clone(),
+                mint.clone(),
+                admin.clone(),
+                rent_sysvar.clone(),
+            ],
+        )?;
+        eprintln!("3");
+
+        let mint_token_instruction = spl_token::instruction::mint_to(
+            token_program.key,
+            &mint.key,
+            &token_account.key,
+            &admin.key,
+            &[mint_authority.key],
+            1,
+        )?;
+
+        invoke_signed(
+            &mint_token_instruction,
+            &[mint.clone(), token_account.clone(), mint_authority.clone()],
+            &[&[MINT_AUTHORITY_SEED]],
+        )?;
+        eprintln!("4");
+        todo!();
     } else {
-        process_instruction(program_id, account_iter, instruction).map_err(ProgramError::from)
+        let token_account = next_account_info(&mut account_iter)?;
+
+        if token_account.owner != &spl_token::id() {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+
+        if !token_account.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
+
+        if cfg!(debug_assertions) {
+            dbg!(process_instruction(program_id, account_iter, instruction))
+                .map_err(ProgramError::from)
+        } else {
+            process_instruction(program_id, account_iter, instruction).map_err(ProgramError::from)
+        }
     }
 }
 
@@ -138,6 +234,23 @@ pub enum DBInstruction {
         db: SegmentId,
     },
     MintNewAccessToken,
+    /// Bootstrap Solcery DB-program
+    ///
+    /// Accounts expected:
+    ///
+    /// 0. `[signer]` The account of the person, who will initiate DB.
+    /// 1. `[writable]` Mint account
+    /// 2. `[]` Mint authority account
+    /// 3. `[]` Token Program
+    /// 4. `[signer,writable]` Access Token account
+    /// 5. `[]` Rent SysVar
+    //let admin = next_account_info(&mut account_iter)?;
+    //let mint = next_account_info(&mut account_iter)?;
+    //let mint_authority = next_account_info(&mut account_iter)?;
+    //let token_program = next_account_info(&mut account_iter)?;
+    //let token_account = next_account_info(&mut account_iter)?;
+    //let rent_sysvar = next_account_info(&mut account_iter)?;
+    Bootstrap,
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Eq, PartialEq)]

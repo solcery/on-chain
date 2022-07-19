@@ -3901,7 +3901,10 @@ version = "0.0.0"
 dependencies = [
  "account-fs",
  "borsh",
+ "pretty_assertions 0.6.1",
  "solana-program",
+ "solana-program-test",
+ "solana-sdk",
  "solcery-db",
  "spl-token",
 ]
