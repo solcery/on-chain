@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 account-fs = { path = "../fs" }
-borsh = "0.9.1"
+borsh = "0.9.2"
 bytemuck = "1.7.2"
 num_enum = "0.5.7"
 serde = { version = "1.0", features = ["derive"] }

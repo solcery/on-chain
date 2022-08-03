@@ -1,8 +1,13 @@
+#![allow(unused_imports)]
+
 use borsh::{BorshDeserialize, BorshSerialize};
 use pretty_assertions::assert_eq;
 use solana_program::{
-    instruction::Instruction as SolanaInstruction, program_pack::Pack, pubkey::Pubkey,
-    system_instruction::SystemInstruction, system_program::ID as SystemID,
+    instruction::Instruction as SolanaInstruction,
+    program_pack::Pack,
+    pubkey::Pubkey,
+    system_instruction::{create_account, create_account_with_seed, SystemInstruction},
+    system_program::ID as SystemID,
 };
 use solana_program_test::{processor, tokio, ProgramTest};
 use solana_sdk::{
@@ -23,82 +28,71 @@ use std::iter;
 use std::num::NonZeroU32;
 
 use solcery_db_program::{
-    process_instruction_bytes, DBInstruction, MINT_AUTHORITY_SEED, MINT_SEED,
+    process_instruction_bytes, BootstrapParams, DBInstruction, GLOBAL_STATE_SEED, MINT_SEED,
 };
 
 #[tokio::test]
-#[ignore]
 async fn bootstrap_db() {
-    let program_key = Keypair::from_base58_string(
-        "49GGekdd9qZf1Fn6ckZKaVDKA8iZHSj7o3TfQuvCMG4td56BaKs7dKXcF4fvN4uZ9LQ32z4qKpTftgv5ArXq6ZMX",
-    );
+    let program_key = Keypair::new();
+
     let program_id = dbg!(program_key.pubkey());
+    eprintln!("Generating keypair");
 
-    let mint_id = Pubkey::create_program_address(&[MINT_SEED, &[255]], &program_id).unwrap();
-    let mint_authority_id =
-        Pubkey::create_program_address(&[MINT_AUTHORITY_SEED, &[255]], &program_id).unwrap();
+    let (mint_id, mint_seed) = Pubkey::find_program_address(&[MINT_SEED], &program_id);
+    let (global_state_id, state_seed) =
+        Pubkey::find_program_address(&[GLOBAL_STATE_SEED], &program_id);
 
-    let token_id = Keypair::new();
-    dbg!(token_id.pubkey());
+    assert!(!mint_id.is_on_curve());
+    assert!(!global_state_id.is_on_curve());
 
-    let mut program = ProgramTest::new(
+    eprintln!("Generated");
+
+    let token_key = Keypair::new();
+    let token_id = dbg!(token_key.pubkey());
+
+    let program = ProgramTest::new(
         "solcery_db_program",
         program_id,
         processor!(process_instruction_bytes),
     );
-    //program.add_account(player_info_pda, Account::from(player_info));
 
     let (mut banks_client, admin, recent_blockhash) = program.start().await;
 
-    let mut token_transaction = Transaction::new_with_payer(
-        &[
-            SolanaInstruction::new_with_bincode(
-                SystemID,
-                &SystemInstruction::CreateAccountWithSeed {
-                    base: program_id,
-                    seed: { String::from_utf8(MINT_SEED.to_vec()).unwrap() },
-                    lamports: 5_000_000_000,
-                    space: Mint::get_packed_len() as u64,
-                    owner: spl_token::ID,
-                },
-                vec![
-                    AccountMeta::new(admin.pubkey(), true),
-                    AccountMeta::new(mint_id, false),
-                    AccountMeta::new_readonly(program_id, true),
-                ],
-            ),
-            SolanaInstruction::new_with_bincode(
-                SystemID,
-                &SystemInstruction::CreateAccountWithSeed {
-                    base: program_id,
-                    seed: { String::from_utf8(MINT_AUTHORITY_SEED.to_vec()).unwrap() },
-                    lamports: 5_000_000_000,
-                    space: Mint::get_packed_len() as u64,
-                    owner: program_id,
-                },
-                vec![
-                    AccountMeta::new(admin.pubkey(), true),
-                    AccountMeta::new(mint_authority_id, false),
-                    AccountMeta::new(program_id, true),
-                ],
-            ),
-            SolanaInstruction::new_with_borsh(
-                program_id,
-                &DBInstruction::Bootstrap,
-                vec![
-                    AccountMeta::new_readonly(admin.pubkey(), true),
-                    AccountMeta::new(mint_id, false),
-                    AccountMeta::new_readonly(mint_authority_id, false),
-                    AccountMeta::new_readonly(spl_token::id(), false),
-                    AccountMeta::new(token_id.pubkey(), true),
-                    AccountMeta::new(RentSysvar, false),
-                ],
-            ),
+    let params = BootstrapParams {
+        mint_seed,
+        state_seed,
+        lamports_to_global_state: 5_000_000_000,
+        lamports_to_mint: 5_000_000_000,
+    };
+
+    let bootstrap_db_program = SolanaInstruction::new_with_borsh(
+        program_id,
+        &DBInstruction::Bootstrap(params),
+        vec![
+            AccountMeta::new(admin.pubkey(), true),
+            AccountMeta::new(mint_id, false),
+            AccountMeta::new(global_state_id, false),
+            AccountMeta::new_readonly(TokenID, false),
+            AccountMeta::new(token_id, true),
+            AccountMeta::new(RentSysvar, false),
+            AccountMeta::new_readonly(SystemID, false),
         ],
+    );
+
+    let create_token_account = create_account(
+        &admin.pubkey(),
+        &token_id,
+        5_000_000_000,
+        TokenAccount::get_packed_len() as u64,
+        &TokenID,
+    );
+
+    let mut token_transaction = Transaction::new_with_payer(
+        &[create_token_account, bootstrap_db_program],
         Some(&admin.try_pubkey().unwrap()),
     );
 
-    token_transaction.sign(&[&admin, &token_id, &program_key], recent_blockhash);
+    token_transaction.sign(&[&admin, &token_key], recent_blockhash);
     banks_client
         .process_transaction(token_transaction)
         .await

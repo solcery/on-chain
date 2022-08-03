@@ -7,19 +7,18 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint,
     entrypoint::ProgramResult,
-    program::{invoke, invoke_signed},
     program_error::ProgramError,
     pubkey::Pubkey,
 };
-use spl_token::id;
 use std::cell::RefCell;
 use std::rc::Rc;
 
 use account_fs::{SegmentId, FS};
 use solcery_db::{ColumnId, ColumnParams, Data, DataType, Error as DBError, DB};
 
-pub const MINT_SEED: &[u8; 4] = b"mint";
-pub const MINT_AUTHORITY_SEED: &[u8; 14] = b"mint_authority";
+mod bootstrap;
+
+pub use bootstrap::{bootstrap, GLOBAL_STATE_SEED, MINT_SEED};
 
 const INODE_TABLE_SIZE: usize = 100;
 
@@ -34,84 +33,11 @@ pub fn process_instruction_bytes(
 
     let mut account_iter = &mut accounts.iter();
 
-    if instruction == DBInstruction::Bootstrap {
-        let admin = next_account_info(&mut account_iter)?;
-        let mint = next_account_info(&mut account_iter)?;
-        let mint_authority = next_account_info(&mut account_iter)?;
-        let token_program = next_account_info(&mut account_iter)?;
-        let token_account = next_account_info(&mut account_iter)?;
-        let rent_sysvar = next_account_info(&mut account_iter)?;
-
-        if !admin.is_signer {
-            return Err(ProgramError::MissingRequiredSignature);
-        }
-
-        if token_program.key != &spl_token::id() {
-            return Err(ProgramError::IncorrectProgramId);
-        }
-
-        if !token_account.is_signer {
-            return Err(ProgramError::MissingRequiredSignature);
-        }
-
-        let mint_id = Pubkey::create_program_address(&[MINT_SEED], &program_id)?;
-        let mint_authority_id =
-            Pubkey::create_program_address(&[MINT_AUTHORITY_SEED], &program_id)?;
-
-        if mint.key != &mint_id {
-            return Err(ProgramError::InvalidArgument);
-        }
-        if mint_authority.key != &mint_authority_id {
-            return Err(ProgramError::InvalidArgument);
-        }
-
-        eprintln!("1");
-        let init_mint_instruction = spl_token::instruction::initialize_mint(
-            token_program.key,
-            &mint.key,
-            &mint_authority.key,
-            None,
-            10,
-        )?;
-
-        invoke(&init_mint_instruction, &[mint.clone(), rent_sysvar.clone()])?;
-        eprintln!("2");
-
-        let init_token_instruction = spl_token::instruction::initialize_account(
-            token_program.key,
-            &token_account.key,
-            &mint.key,
-            &admin.key,
-        )?;
-
-        invoke(
-            &init_token_instruction,
-            &[
-                token_account.clone(),
-                mint.clone(),
-                admin.clone(),
-                rent_sysvar.clone(),
-            ],
-        )?;
-        eprintln!("3");
-
-        let mint_token_instruction = spl_token::instruction::mint_to(
-            token_program.key,
-            &mint.key,
-            &token_account.key,
-            &admin.key,
-            &[mint_authority.key],
-            1,
-        )?;
-
-        invoke_signed(
-            &mint_token_instruction,
-            &[mint.clone(), token_account.clone(), mint_authority.clone()],
-            &[&[MINT_AUTHORITY_SEED]],
-        )?;
-        eprintln!("4");
-        todo!();
+    if let DBInstruction::Bootstrap(params) = instruction {
+        bootstrap(program_id, account_iter, params)
     } else {
+        let global_state = next_account_info(&mut account_iter)?;
+        // TODO: global state handing
         let token_account = next_account_info(&mut account_iter)?;
 
         if token_account.owner != &spl_token::id() {
@@ -121,6 +47,7 @@ pub fn process_instruction_bytes(
         if !token_account.is_signer {
             return Err(ProgramError::MissingRequiredSignature);
         }
+        todo!("Check owner");
 
         if cfg!(debug_assertions) {
             dbg!(process_instruction(program_id, account_iter, instruction))
@@ -238,66 +165,69 @@ pub enum DBInstruction {
     ///
     /// Accounts expected:
     ///
-    /// 0. `[signer]` The account of the person, who will initiate DB.
+    /// 0. `[signer, writable]` The account of the person, who will initiate DB.
     /// 1. `[writable]` Mint account
-    /// 2. `[]` Mint authority account
+    /// 2. `[writable]` Global DB-program state account
     /// 3. `[]` Token Program
     /// 4. `[signer,writable]` Access Token account
     /// 5. `[]` Rent SysVar
-    //let admin = next_account_info(&mut account_iter)?;
-    //let mint = next_account_info(&mut account_iter)?;
-    //let mint_authority = next_account_info(&mut account_iter)?;
-    //let token_program = next_account_info(&mut account_iter)?;
-    //let token_account = next_account_info(&mut account_iter)?;
-    //let rent_sysvar = next_account_info(&mut account_iter)?;
-    Bootstrap,
+    /// 6. `[]` System Program
+    Bootstrap(BootstrapParams),
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Eq, PartialEq)]
 pub struct SetValueParams {
-    db: SegmentId,
-    column: ColumnId,
-    key: Data,
-    value: Data,
+    pub db: SegmentId,
+    pub column: ColumnId,
+    pub key: Data,
+    pub value: Data,
     /// Are all the FS accounts initialized
-    is_initialized: bool,
+    pub is_initialized: bool,
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Eq, PartialEq)]
 pub struct SetValueSecondaryParams {
-    db: SegmentId,
-    key_column: ColumnId,
-    secondary_key: Data,
-    value_column: ColumnId,
-    value: Data,
+    pub db: SegmentId,
+    pub key_column: ColumnId,
+    pub secondary_key: Data,
+    pub value_column: ColumnId,
+    pub value: Data,
     /// Are all the FS accounts initialized
-    is_initialized: bool,
+    pub is_initialized: bool,
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Eq, PartialEq)]
 pub struct SetRowParams {
-    db: SegmentId,
-    key: Data,
-    row: Vec<(ColumnId, Data)>,
+    pub db: SegmentId,
+    pub key: Data,
+    pub row: Vec<(ColumnId, Data)>,
     /// Are all the FS accounts initialized
-    is_initialized: bool,
+    pub is_initialized: bool,
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Eq, PartialEq)]
 pub struct DeleteRowParams {
-    db: SegmentId,
-    key: Data,
+    pub db: SegmentId,
+    pub key: Data,
     /// Are all the FS accounts initialized
-    is_initialized: bool,
+    pub is_initialized: bool,
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Eq, PartialEq)]
 pub struct DeleteRowSecondaryParams {
-    db: SegmentId,
-    secondary_key: Data,
-    key_column: ColumnId,
+    pub db: SegmentId,
+    pub secondary_key: Data,
+    pub key_column: ColumnId,
     /// Are all the FS accounts initialized
-    is_initialized: bool,
+    pub is_initialized: bool,
+}
+
+#[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Eq, PartialEq)]
+pub struct BootstrapParams {
+    pub state_seed: u8,
+    pub mint_seed: u8,
+    pub lamports_to_global_state: u64,
+    pub lamports_to_mint: u64,
 }
 
 fn prepare_db<'long: 'short, 'short, AccountIter>(
