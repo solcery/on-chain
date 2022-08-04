@@ -18,7 +18,7 @@ use solcery_db::{ColumnId, ColumnParams, Data, DataType, Error as DBError, DB};
 
 mod bootstrap;
 
-pub use bootstrap::{bootstrap, GLOBAL_STATE_SEED, MINT_SEED};
+pub use bootstrap::{bootstrap, DBGlobalState, GLOBAL_STATE_SEED, MINT_SEED};
 
 const INODE_TABLE_SIZE: usize = 100;
 
@@ -168,10 +168,10 @@ pub enum DBInstruction {
     /// 0. `[signer, writable]` The account of the person, who will initiate DB.
     /// 1. `[writable]` Mint account
     /// 2. `[writable]` Global DB-program state account
-    /// 3. `[]` Token Program
-    /// 4. `[signer,writable]` Access Token account
-    /// 5. `[]` Rent SysVar
-    /// 6. `[]` System Program
+    /// 3. `[signer,writable]` Access Token account
+    /// 4. `[]` System Program
+    /// 5. `[]` Token Program
+    /// 6. `[]` Rent SysVar
     Bootstrap(BootstrapParams),
 }
 
@@ -224,8 +224,8 @@ pub struct DeleteRowSecondaryParams {
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Eq, PartialEq)]
 pub struct BootstrapParams {
-    pub state_seed: u8,
-    pub mint_seed: u8,
+    pub state_bump: u8,
+    pub mint_bump: u8,
     pub lamports_to_global_state: u64,
     pub lamports_to_mint: u64,
 }

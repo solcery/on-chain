@@ -8,12 +8,13 @@ use solana_program::{
     pubkey::Pubkey,
     system_instruction,
 };
+
 use spl_token::{instruction as token_instruction, state::Mint, ID as TokenID};
 
 mod global_state;
 
 use super::BootstrapParams;
-use global_state::DBGlobalState;
+pub use global_state::DBGlobalState;
 
 pub const MINT_SEED: &[u8] = b"DB-program_mint";
 pub const GLOBAL_STATE_SEED: &[u8] = b"DB-program_global_state";
@@ -29,10 +30,12 @@ where
     let admin = next_account_info(account_iter)?;
     let mint = next_account_info(account_iter)?;
     let global_state = next_account_info(account_iter)?;
-    let token_program = next_account_info(account_iter)?;
     let token_account = next_account_info(account_iter)?;
+    // It will not be directly used, but this account should be included, because it is called via
+    // CPI
+    let _system_program = next_account_info(account_iter)?;
+    let token_program = next_account_info(account_iter)?;
     let rent_sysvar = next_account_info(account_iter)?;
-    let system_program = next_account_info(account_iter)?;
 
     if !admin.is_signer {
         return Err(ProgramError::MissingRequiredSignature);
@@ -48,9 +51,9 @@ where
 
     //assert!(system_program::check_id(system_program.key));
 
-    let mint_id = Pubkey::create_program_address(&[MINT_SEED, &[params.mint_seed]], &program_id)?;
+    let mint_id = Pubkey::create_program_address(&[MINT_SEED, &[params.mint_bump]], program_id)?;
     let global_state_id =
-        Pubkey::create_program_address(&[GLOBAL_STATE_SEED, &[params.state_seed]], &program_id)?;
+        Pubkey::create_program_address(&[GLOBAL_STATE_SEED, &[params.state_bump]], program_id)?;
 
     if mint.key != &mint_id {
         return Err(ProgramError::InvalidArgument);
@@ -71,7 +74,7 @@ where
     invoke_signed(
         &create_state_instruction,
         &[admin.clone(), global_state.clone()],
-        &[&[GLOBAL_STATE_SEED, &[params.state_seed]]],
+        &[&[GLOBAL_STATE_SEED, &[params.state_bump]]],
     )?;
 
     msg!("Creating mint account");
@@ -86,17 +89,12 @@ where
     invoke_signed(
         &create_mint_instruction,
         &[admin.clone(), mint.clone()],
-        &[&[MINT_SEED, &[params.mint_seed]]],
+        &[&[MINT_SEED, &[params.mint_bump]]],
     )?;
 
     msg!("Initializing mint");
-    let init_mint_instruction = token_instruction::initialize_mint(
-        token_program.key,
-        mint.key,
-        global_state.key,
-        None,
-        10,
-    )?;
+    let init_mint_instruction =
+        token_instruction::initialize_mint(token_program.key, mint.key, global_state.key, None, 0)?;
 
     invoke(&init_mint_instruction, &[mint.clone(), rent_sysvar.clone()])?;
 
@@ -121,17 +119,19 @@ where
     msg!("Minting token");
     let mint_token_instruction = token_instruction::mint_to(
         token_program.key,
-        &mint.key,
-        &token_account.key,
-        &admin.key,
-        &[global_state.key],
+        mint.key,
+        token_account.key,
+        global_state.key,
+        &[],
         1,
     )?;
 
     invoke_signed(
         &mint_token_instruction,
         &[mint.clone(), token_account.clone(), global_state.clone()],
-        &[&[GLOBAL_STATE_SEED, &[params.state_seed]]],
+        &[&[GLOBAL_STATE_SEED, &[params.state_bump]]],
     )?;
-    todo!();
+
+    let global_state_data = DBGlobalState::new(params.state_bump, params.mint_bump);
+    DBGlobalState::pack(global_state_data, &mut global_state.data.borrow_mut())
 }

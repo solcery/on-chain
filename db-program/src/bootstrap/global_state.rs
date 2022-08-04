@@ -1,5 +1,5 @@
 use borsh::{BorshDeserialize, BorshSerialize};
-use bytemuck::{cast, cast_mut, cast_ref, cast_slice, cast_slice_mut, Pod, Zeroable};
+use bytemuck::{cast, cast_mut, cast_slice, cast_slice_mut, Pod, Zeroable};
 use solana_program::{
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
@@ -11,8 +11,26 @@ const STATE_MAGIC: &[u8; 13] = b"DBGlobalState";
 #[repr(C)]
 pub struct DBGlobalState {
     magic: [u8; 13],
-    authority_bump: u8,
+    global_state_bump: u8,
     mint_bump: u8,
+}
+
+impl DBGlobalState {
+    pub fn global_state_bump(&self) -> u8 {
+        self.global_state_bump
+    }
+
+    pub fn mint_bump(&self) -> u8 {
+        self.mint_bump
+    }
+
+    pub fn new(global_state_bump: u8, mint_bump: u8) -> Self {
+        Self {
+            magic: *STATE_MAGIC,
+            global_state_bump,
+            mint_bump,
+        }
+    }
 }
 
 impl Sealed for DBGlobalState {}
