@@ -6,7 +6,7 @@ use solana_program::{
     program_error::ProgramError,
     program_pack::Pack,
     pubkey::Pubkey,
-    system_instruction,
+    system_instruction, system_program,
 };
 
 use spl_token::{instruction as token_instruction, state::Mint, ID as TokenID};
@@ -31,9 +31,7 @@ where
     let mint = next_account_info(account_iter)?;
     let global_state = next_account_info(account_iter)?;
     let token_account = next_account_info(account_iter)?;
-    // It will not be directly used, but this account should be included, because it is called via
-    // CPI
-    let _system_program = next_account_info(account_iter)?;
+    let system_program = next_account_info(account_iter)?;
     let token_program = next_account_info(account_iter)?;
     let rent_sysvar = next_account_info(account_iter)?;
 
@@ -45,15 +43,18 @@ where
         return Err(ProgramError::IncorrectProgramId);
     }
 
+    if !system_program::check_id(system_program.key) {
+        return Err(ProgramError::IncorrectProgramId);
+    }
+
     if !token_account.is_signer {
         return Err(ProgramError::MissingRequiredSignature);
     }
 
-    //assert!(system_program::check_id(system_program.key));
-
-    let mint_id = Pubkey::create_program_address(&[MINT_SEED, &[params.mint_bump]], program_id)?;
-    let global_state_id =
-        Pubkey::create_program_address(&[GLOBAL_STATE_SEED, &[params.state_bump]], program_id)?;
+    // here we calculate bumps, so it is impossible to call Bootstrap twice with different PDAs
+    let (mint_id, _mint_bump) = Pubkey::find_program_address(&[MINT_SEED], program_id);
+    let (global_state_id, _state_bump) =
+        Pubkey::find_program_address(&[GLOBAL_STATE_SEED], program_id);
 
     if mint.key != &mint_id {
         return Err(ProgramError::InvalidArgument);
