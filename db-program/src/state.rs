@@ -5,6 +5,8 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
 };
 
+pub const MINT_SEED: &[u8] = b"DB-program_mint";
+pub const GLOBAL_STATE_SEED: &[u8] = b"DB-program_global_state";
 const STATE_MAGIC: &[u8; 13] = b"DBGlobalState";
 
 #[derive(Debug, Eq, PartialEq, Zeroable, BorshDeserialize, BorshSerialize, Copy, Clone, Pod)]

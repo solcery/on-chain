@@ -1,7 +1,10 @@
 use pretty_assertions::assert_eq;
 use solana_program::{
-    instruction::Instruction as SolanaInstruction, program_pack::Pack, pubkey::Pubkey,
-    system_instruction::create_account, system_program::ID as SystemID,
+    instruction::Instruction as SolanaInstruction,
+    program_pack::Pack,
+    pubkey::{Pubkey, PubkeyError},
+    system_instruction::create_account,
+    system_program::ID as SystemID,
 };
 use solana_program_test::{processor, tokio, ProgramTest};
 use solana_sdk::{
@@ -14,8 +17,9 @@ use spl_token::{
 };
 
 use solcery_db_program::{
-    process_instruction_bytes, BootstrapParams, DBGlobalState, DBInstruction, GLOBAL_STATE_SEED,
-    MINT_SEED,
+    entrypoint::process_instruction_bytes,
+    instruction::{BootstrapParams, DBInstruction},
+    state::{DBGlobalState, GLOBAL_STATE_SEED, MINT_SEED},
 };
 
 #[tokio::test]
