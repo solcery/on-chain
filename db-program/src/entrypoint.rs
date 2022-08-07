@@ -2,7 +2,7 @@ use solana_program::{
     account_info::AccountInfo, entrypoint, entrypoint::ProgramResult, pubkey::Pubkey,
 };
 
-use super::processor::process;
+use super::processor;
 
 entrypoint!(process_instruction_bytes);
 pub fn process_instruction_bytes(
@@ -10,5 +10,5 @@ pub fn process_instruction_bytes(
     accounts: &[AccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
-    process(program_id, accounts, instruction_data)
+    processor::process_instruction_bytes(program_id, accounts, instruction_data)
 }

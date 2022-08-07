@@ -9,7 +9,9 @@ use solana_program::{
     pubkey::Pubkey,
     system_instruction, system_program,
 };
-use spl_token::{instruction as token_instruction, state::Mint, ID as TokenID};
+use spl_token::{
+    instruction as token_instruction, state::Account as TokenAccount, state::Mint, ID as TokenID,
+};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -22,7 +24,7 @@ pub use super::state::{DBGlobalState, GLOBAL_STATE_SEED, MINT_SEED};
 
 const INODE_TABLE_SIZE: usize = 100;
 
-pub fn process(
+pub fn process_instruction_bytes(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     instruction_data: &[u8],
@@ -35,18 +37,7 @@ pub fn process(
     if let DBInstruction::Bootstrap(params) = instruction {
         bootstrap(program_id, account_iter, params)
     } else {
-        let global_state = next_account_info(&mut account_iter)?;
-        // TODO: global state handing
-        let token_account = next_account_info(&mut account_iter)?;
-
-        if token_account.owner != &spl_token::id() {
-            return Err(ProgramError::IncorrectProgramId);
-        }
-
-        if !token_account.is_signer {
-            return Err(ProgramError::MissingRequiredSignature);
-        }
-        todo!("Check owner");
+        check_token(program_id, account_iter)?;
 
         if cfg!(debug_assertions) {
             dbg!(process_instruction(program_id, account_iter, instruction))
@@ -74,98 +65,12 @@ where
         DeleteRowSecondary(params) => {
             process_delete_row_secondary(program_id, account_iter, params)
         }
-        _ => unimplemented!(),
+        CreateDB { .. } | RemoveDB { .. } | MintNewAccessToken => todo!(),
+        Bootstrap(_) => unreachable!("Bootstrap instruction should be handled separately"),
     }
 }
 
-fn process_set_value<'long: 'short, 'short, AccountIter>(
-    program_id: &Pubkey,
-    account_iter: &mut AccountIter,
-    params: SetValueParams,
-) -> Result<(), DBError>
-where
-    AccountIter: Iterator<Item = &'short AccountInfo<'long>>,
-{
-    let mut db = prepare_db(program_id, account_iter, params.db, params.is_initialized)?;
-    db.set_value(params.key, params.column, params.value)
-        .map(|_| ())
-}
-
-fn process_set_value_secondary<'long: 'short, 'short, AccountIter>(
-    program_id: &Pubkey,
-    accounts_iter: &mut AccountIter,
-    params: SetValueSecondaryParams,
-) -> Result<(), DBError>
-where
-    AccountIter: Iterator<Item = &'short AccountInfo<'long>>,
-{
-    let mut db = prepare_db(program_id, accounts_iter, params.db, params.is_initialized)?;
-    db.set_value_secondary(
-        params.key_column,
-        params.secondary_key,
-        params.value_column,
-        params.value,
-    )
-    .map(|_| ())
-}
-
-fn process_set_row<'long: 'short, 'short, AccountIter>(
-    program_id: &Pubkey,
-    accounts_iter: &mut AccountIter,
-    params: SetRowParams,
-) -> Result<(), DBError>
-where
-    AccountIter: Iterator<Item = &'short AccountInfo<'long>>,
-{
-    let mut db = prepare_db(program_id, accounts_iter, params.db, params.is_initialized)?;
-    db.set_row(params.key, params.row).map(|_| ())
-}
-
-fn process_delete_row<'long: 'short, 'short, AccountIter>(
-    program_id: &Pubkey,
-    accounts_iter: &mut AccountIter,
-    params: DeleteRowParams,
-) -> Result<(), DBError>
-where
-    AccountIter: Iterator<Item = &'short AccountInfo<'long>>,
-{
-    let mut db = prepare_db(program_id, accounts_iter, params.db, params.is_initialized)?;
-    db.delete_row(params.key)
-}
-fn process_delete_row_secondary<'long: 'short, 'short, AccountIter>(
-    program_id: &Pubkey,
-    accounts_iter: &mut AccountIter,
-    params: DeleteRowSecondaryParams,
-) -> Result<(), DBError>
-where
-    AccountIter: Iterator<Item = &'short AccountInfo<'long>>,
-{
-    let mut db = prepare_db(program_id, accounts_iter, params.db, params.is_initialized)?;
-    db.delete_row_secondary(params.key_column, params.secondary_key)
-        .map(|_| ())
-}
-
-fn prepare_db<'long: 'short, 'short, AccountIter>(
-    program_id: &Pubkey,
-    account_iter: &mut AccountIter,
-    segment: SegmentId,
-    is_initialized: bool,
-) -> Result<DB<'short>, DBError>
-where
-    AccountIter: Iterator<Item = &'short AccountInfo<'long>>,
-{
-    let fs = if is_initialized {
-        FS::from_account_iter(program_id, account_iter)?
-    } else {
-        FS::from_uninit_account_iter(program_id, account_iter, INODE_TABLE_SIZE)?
-    };
-
-    let fs_cell = Rc::new(RefCell::new(fs));
-
-    DB::from_segment(fs_cell, segment)
-}
-
-pub fn bootstrap<'long: 'short, 'short, AccountIter>(
+fn bootstrap<'long: 'short, 'short, AccountIter>(
     program_id: &Pubkey,
     account_iter: &mut AccountIter,
     params: BootstrapParams,
@@ -281,4 +186,135 @@ where
 
     let global_state_data = DBGlobalState::new(params.state_bump, params.mint_bump);
     DBGlobalState::pack(global_state_data, &mut global_state.data.borrow_mut())
+}
+
+fn process_set_value<'long: 'short, 'short, AccountIter>(
+    program_id: &Pubkey,
+    account_iter: &mut AccountIter,
+    params: SetValueParams,
+) -> Result<(), DBError>
+where
+    AccountIter: Iterator<Item = &'short AccountInfo<'long>>,
+{
+    let mut db = prepare_db(program_id, account_iter, params.db, params.is_initialized)?;
+    db.set_value(params.key, params.column, params.value)
+        .map(|_| ())
+}
+
+fn process_set_value_secondary<'long: 'short, 'short, AccountIter>(
+    program_id: &Pubkey,
+    accounts_iter: &mut AccountIter,
+    params: SetValueSecondaryParams,
+) -> Result<(), DBError>
+where
+    AccountIter: Iterator<Item = &'short AccountInfo<'long>>,
+{
+    let mut db = prepare_db(program_id, accounts_iter, params.db, params.is_initialized)?;
+    db.set_value_secondary(
+        params.key_column,
+        params.secondary_key,
+        params.value_column,
+        params.value,
+    )
+    .map(|_| ())
+}
+
+fn process_set_row<'long: 'short, 'short, AccountIter>(
+    program_id: &Pubkey,
+    accounts_iter: &mut AccountIter,
+    params: SetRowParams,
+) -> Result<(), DBError>
+where
+    AccountIter: Iterator<Item = &'short AccountInfo<'long>>,
+{
+    let mut db = prepare_db(program_id, accounts_iter, params.db, params.is_initialized)?;
+    db.set_row(params.key, params.row).map(|_| ())
+}
+
+fn process_delete_row<'long: 'short, 'short, AccountIter>(
+    program_id: &Pubkey,
+    accounts_iter: &mut AccountIter,
+    params: DeleteRowParams,
+) -> Result<(), DBError>
+where
+    AccountIter: Iterator<Item = &'short AccountInfo<'long>>,
+{
+    let mut db = prepare_db(program_id, accounts_iter, params.db, params.is_initialized)?;
+    db.delete_row(params.key)
+}
+fn process_delete_row_secondary<'long: 'short, 'short, AccountIter>(
+    program_id: &Pubkey,
+    accounts_iter: &mut AccountIter,
+    params: DeleteRowSecondaryParams,
+) -> Result<(), DBError>
+where
+    AccountIter: Iterator<Item = &'short AccountInfo<'long>>,
+{
+    let mut db = prepare_db(program_id, accounts_iter, params.db, params.is_initialized)?;
+    db.delete_row_secondary(params.key_column, params.secondary_key)
+        .map(|_| ())
+}
+
+fn prepare_db<'long: 'short, 'short, AccountIter>(
+    program_id: &Pubkey,
+    account_iter: &mut AccountIter,
+    segment: SegmentId,
+    is_initialized: bool,
+) -> Result<DB<'short>, DBError>
+where
+    AccountIter: Iterator<Item = &'short AccountInfo<'long>>,
+{
+    let fs = if is_initialized {
+        FS::from_account_iter(program_id, account_iter)?
+    } else {
+        FS::from_uninit_account_iter(program_id, account_iter, INODE_TABLE_SIZE)?
+    };
+
+    let fs_cell = Rc::new(RefCell::new(fs));
+
+    DB::from_segment(fs_cell, segment)
+}
+
+fn check_token<'long: 'short, 'short, AccountIter>(
+    program_id: &Pubkey,
+    account_iter: &mut AccountIter,
+) -> Result<(), ProgramError>
+where
+    AccountIter: Iterator<Item = &'short AccountInfo<'long>>,
+{
+    // GlobalState check
+    let global_state_account = next_account_info(account_iter)?;
+
+    let global_state = DBGlobalState::unpack(&global_state_account.data.borrow())?;
+
+    let global_state_address = Pubkey::create_program_address(
+        &[&GLOBAL_STATE_SEED, &[global_state.global_state_bump()]],
+        program_id,
+    )?;
+
+    if global_state_account.key != &global_state_address {
+        return Err(ProgramError::InvalidArgument);
+    }
+
+    //Token check
+    let token_account = next_account_info(account_iter)?;
+
+    let token = TokenAccount::unpack(&token_account.data.borrow())?;
+
+    if token_account.owner != &spl_token::id() {
+        return Err(ProgramError::IncorrectProgramId);
+    }
+
+    if !token_account.is_signer {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+
+    let mint_account =
+        Pubkey::create_program_address(&[&MINT_SEED, &[global_state.mint_bump()]], program_id)?;
+
+    if token.mint != mint_account {
+        return Err(ProgramError::IllegalOwner);
+    }
+
+    Ok(())
 }
