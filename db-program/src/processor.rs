@@ -34,16 +34,23 @@ pub fn process_instruction_bytes(
 
     let mut account_iter = &mut accounts.iter();
 
-    if let DBInstruction::Bootstrap(params) = instruction {
-        bootstrap(program_id, account_iter, params)
-    } else {
-        check_token(program_id, account_iter)?;
+    match instruction {
+        DBInstruction::Bootstrap(params) => bootstrap(program_id, account_iter, params),
+        DBInstruction::MintNewAccessToken => mint_new_token(program_id, account_iter),
+        other_instruction => {
+            check_token(program_id, account_iter)?;
 
-        if cfg!(debug_assertions) {
-            dbg!(process_instruction(program_id, account_iter, instruction))
+            if cfg!(debug_assertions) {
+                dbg!(process_instruction(
+                    program_id,
+                    account_iter,
+                    other_instruction
+                ))
                 .map_err(ProgramError::from)
-        } else {
-            process_instruction(program_id, account_iter, instruction).map_err(ProgramError::from)
+            } else {
+                process_instruction(program_id, account_iter, other_instruction)
+                    .map_err(ProgramError::from)
+            }
         }
     }
 }
@@ -65,8 +72,11 @@ where
         DeleteRowSecondary(params) => {
             process_delete_row_secondary(program_id, account_iter, params)
         }
-        CreateDB { .. } | RemoveDB { .. } | MintNewAccessToken => todo!(),
+        CreateDB { .. } | RemoveDB { .. } => todo!(),
         Bootstrap(_) => unreachable!("Bootstrap instruction should be handled separately"),
+        MintNewAccessToken => {
+            unreachable!("MintNewAccessToken instruction should be handled separately")
+        }
     }
 }
 
@@ -185,7 +195,89 @@ where
     )?;
 
     let global_state_data = DBGlobalState::new(params.state_bump, params.mint_bump);
-    DBGlobalState::pack(global_state_data, &mut global_state.data.borrow_mut())
+    DBGlobalState::pack(global_state_data, &mut global_state.data.borrow_mut())?;
+
+    Ok(())
+}
+
+fn mint_new_token<'long: 'short, 'short, AccountIter>(
+    program_id: &Pubkey,
+    account_iter: &mut AccountIter,
+) -> ProgramResult
+where
+    AccountIter: Iterator<Item = &'short AccountInfo<'long>>,
+{
+    let admin = next_account_info(account_iter)?;
+    let mint = next_account_info(account_iter)?;
+    let global_state = next_account_info(account_iter)?;
+    let token_account = next_account_info(account_iter)?;
+    let token_program = next_account_info(account_iter)?;
+    let rent_sysvar = next_account_info(account_iter)?;
+
+    if token_program.key != &spl_token::id() {
+        return Err(ProgramError::IncorrectProgramId);
+    }
+
+    if token_program.key != &spl_token::id() {
+        return Err(ProgramError::IncorrectProgramId);
+    }
+
+    if !token_account.is_signer {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+
+    let global_state_data = DBGlobalState::unpack(&global_state.data.borrow())?;
+
+    // here we calculate bumps, so it is impossible to call Bootstrap twice with different PDAs
+    let mint_id =
+        Pubkey::create_program_address(&[MINT_SEED, &[global_state_data.mint_bump()]], program_id)?;
+    let global_state_id = Pubkey::create_program_address(
+        &[GLOBAL_STATE_SEED, &[global_state_data.global_state_bump()]],
+        program_id,
+    )?;
+
+    if mint.key != &mint_id {
+        return Err(ProgramError::InvalidArgument);
+    }
+    if global_state.key != &global_state_id {
+        return Err(ProgramError::InvalidArgument);
+    }
+
+    msg!("Initializing token");
+    let init_token_instruction = token_instruction::initialize_account(
+        token_program.key,
+        token_account.key,
+        mint.key,
+        admin.key,
+    )?;
+
+    invoke(
+        &init_token_instruction,
+        &[
+            token_account.clone(),
+            mint.clone(),
+            admin.clone(),
+            rent_sysvar.clone(),
+        ],
+    )?;
+
+    msg!("Minting token");
+    let mint_token_instruction = token_instruction::mint_to(
+        token_program.key,
+        mint.key,
+        token_account.key,
+        global_state.key,
+        &[],
+        1,
+    )?;
+
+    invoke_signed(
+        &mint_token_instruction,
+        &[mint.clone(), token_account.clone(), global_state.clone()],
+        &[&[GLOBAL_STATE_SEED, &[global_state_data.global_state_bump()]]],
+    )?;
+
+    Ok(())
 }
 
 fn process_set_value<'long: 'short, 'short, AccountIter>(
