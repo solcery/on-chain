@@ -10,13 +10,8 @@ pub enum DBInstruction {
     SetRow(SetRowParams),
     DeleteRow(DeleteRowParams),
     DeleteRowSecondary(DeleteRowSecondaryParams),
-    CreateDB {
-        primary_key_type: DataType,
-        columns: Vec<ColumnParams>,
-    },
-    RemoveDB {
-        db: SegmentId,
-    },
+    CreateDB(CreateDBParams),
+    DropDB(SegmentId),
     MintNewAccessToken,
     /// Bootstrap Solcery DB-program
     ///
@@ -75,6 +70,17 @@ pub struct DeleteRowSecondaryParams {
     pub db: SegmentId,
     pub secondary_key: Data,
     pub key_column: ColumnId,
+    /// Are all the FS accounts initialized
+    pub is_initialized: bool,
+}
+
+#[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Eq, PartialEq)]
+pub struct CreateDBParams {
+    pub primary_key_type: DataType,
+    pub columns: Vec<ColumnParams>,
+    pub table_name: String,
+    pub max_columns: u32,
+    pub max_rows: u32,
     /// Are all the FS accounts initialized
     pub is_initialized: bool,
 }

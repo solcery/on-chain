@@ -4,6 +4,7 @@
 
 use bytemuck::{cast_mut, cast_slice_mut};
 
+use solana_program::msg;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::mem;
@@ -98,6 +99,12 @@ impl<'a> DB<'a> {
         let columns: &mut [ColumnHeader] = cast_slice_mut(columns);
 
         let column_headers = SliceVec::from_slice_len(columns, 0);
+
+        msg!(
+            "Initialized DB in segment: {} {}",
+            segment.pubkey,
+            segment.id
+        );
 
         Ok(Self {
             fs,

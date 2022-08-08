@@ -32,7 +32,7 @@ pub fn process_instruction_bytes(
     let mut buf = instruction_data;
     let instruction = DBInstruction::deserialize(&mut buf)?;
 
-    let mut account_iter = &mut accounts.iter();
+    let account_iter = &mut accounts.iter();
 
     match instruction {
         DBInstruction::Bootstrap(params) => bootstrap(program_id, account_iter, params),
@@ -72,7 +72,8 @@ where
         DeleteRowSecondary(params) => {
             process_delete_row_secondary(program_id, account_iter, params)
         }
-        CreateDB { .. } | RemoveDB { .. } => todo!(),
+        CreateDB(params) => process_create_db(program_id, account_iter, params),
+        DropDB(segment) => process_drop_db(program_id, account_iter, segment),
         Bootstrap(_) => unreachable!("Bootstrap instruction should be handled separately"),
         MintNewAccessToken => {
             unreachable!("MintNewAccessToken instruction should be handled separately")
@@ -334,6 +335,7 @@ where
     let mut db = prepare_db(program_id, accounts_iter, params.db, params.is_initialized)?;
     db.delete_row(params.key)
 }
+
 fn process_delete_row_secondary<'long: 'short, 'short, AccountIter>(
     program_id: &Pubkey,
     accounts_iter: &mut AccountIter,
@@ -345,6 +347,43 @@ where
     let mut db = prepare_db(program_id, accounts_iter, params.db, params.is_initialized)?;
     db.delete_row_secondary(params.key_column, params.secondary_key)
         .map(|_| ())
+}
+
+fn process_create_db<'long: 'short, 'short, AccountIter>(
+    program_id: &Pubkey,
+    accounts_iter: &mut AccountIter,
+    params: CreateDBParams,
+) -> Result<(), DBError>
+where
+    AccountIter: Iterator<Item = &'short AccountInfo<'long>>,
+{
+    let fs = if params.is_initialized {
+        FS::from_account_iter(program_id, accounts_iter)?
+    } else {
+        FS::from_uninit_account_iter(program_id, accounts_iter, INODE_TABLE_SIZE)?
+    };
+
+    let fs_cell = Rc::new(RefCell::new(fs));
+
+    DB::init_in_segment(
+        fs_cell,
+        &params.table_name,
+        params.max_columns as usize,
+        params.max_rows as usize,
+        params.primary_key_type,
+    )
+    .map(|_| ())
+}
+fn process_drop_db<'long: 'short, 'short, AccountIter>(
+    program_id: &Pubkey,
+    accounts_iter: &mut AccountIter,
+    segment: SegmentId,
+) -> Result<(), DBError>
+where
+    AccountIter: Iterator<Item = &'short AccountInfo<'long>>,
+{
+    let db = prepare_db(program_id, accounts_iter, segment, true)?;
+    db.drop_db()
 }
 
 fn prepare_db<'long: 'short, 'short, AccountIter>(
