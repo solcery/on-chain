@@ -133,74 +133,22 @@ async fn bootstrap_db() {
 
 #[tokio::test]
 async fn try_rebootstrap() {
-    let program_key = Keypair::new();
-    let user = Keypair::new();
+    let ProgramEnvironment {
+        global_state: global_state_id,
+        mint: mint_id,
+        program: program_key,
+        test: program,
+        token: token_key,
+        user,
+        mint_bump,
+        state_bump,
+    } = prepare_environment();
 
-    let program_id = dbg!(program_key.pubkey());
-
-    let (mint_id, mint_bump) = Pubkey::find_program_address(&[MINT_SEED], &program_id);
-    let (global_state_id, state_bump) =
-        Pubkey::find_program_address(&[GLOBAL_STATE_SEED], &program_id);
-
-    let token_key = Keypair::new();
+    let program_id = program_key.pubkey();
     let token_id = token_key.pubkey();
 
     let new_token_key = Keypair::new();
     let new_token_id = new_token_key.pubkey();
-
-    let global_state_data = DBGlobalState::new(state_bump, mint_bump);
-
-    let mut global_state =
-        AccountSharedData::new(1_000, DBGlobalState::get_packed_len(), &program_id);
-
-    let mut data = vec![0; DBGlobalState::get_packed_len()];
-
-    DBGlobalState::pack(global_state_data, &mut data).unwrap();
-
-    global_state.set_data(data);
-
-    let mint = Mint {
-        mint_authority: COption::Some(global_state_id),
-        supply: 1,
-        decimals: 0,
-        is_initialized: true,
-        freeze_authority: COption::None,
-    };
-
-    let mut data = vec![0; Mint::get_packed_len()];
-    Mint::pack(mint, &mut data).unwrap();
-
-    let mut mint = AccountSharedData::new(1_000, Mint::get_packed_len(), &TokenID);
-
-    mint.set_data(data);
-
-    let token = TokenAccount {
-        mint: mint_id,
-        owner: user.pubkey(),
-        amount: 1,
-        delegate: COption::None,
-        state: AccountState::Initialized,
-        is_native: COption::None,
-        delegated_amount: 0,
-        close_authority: COption::None,
-    };
-
-    let mut data = vec![0; TokenAccount::get_packed_len()];
-    TokenAccount::pack(token, &mut data).unwrap();
-
-    let mut token = AccountSharedData::new(1_000, TokenAccount::get_packed_len(), &TokenID);
-
-    token.set_data(data);
-
-    let mut program = ProgramTest::new(
-        "solcery_db_program",
-        program_id,
-        processor!(process_instruction_bytes),
-    );
-
-    program.add_account(mint_id, Account::from(mint));
-    program.add_account(token_id, Account::from(token));
-    program.add_account(global_state_id, Account::from(global_state));
 
     let (mut banks_client, admin, recent_blockhash) = program.start().await;
 
@@ -253,74 +201,21 @@ async fn try_rebootstrap() {
 
 #[tokio::test]
 async fn mint_new_access_token() {
-    let program_key = Keypair::new();
-    let user = Keypair::new();
+    let ProgramEnvironment {
+        global_state: global_state_id,
+        mint: mint_id,
+        program: program_key,
+        test: program,
+        token: token_key,
+        user,
+        ..
+    } = prepare_environment();
 
-    let program_id = dbg!(program_key.pubkey());
-
-    let (mint_id, mint_bump) = Pubkey::find_program_address(&[MINT_SEED], &program_id);
-    let (global_state_id, state_bump) =
-        Pubkey::find_program_address(&[GLOBAL_STATE_SEED], &program_id);
-
-    let token_key = Keypair::new();
+    let program_id = program_key.pubkey();
     let token_id = token_key.pubkey();
 
     let new_token_key = Keypair::new();
     let new_token_id = new_token_key.pubkey();
-
-    let global_state_data = DBGlobalState::new(state_bump, mint_bump);
-
-    let mut global_state =
-        AccountSharedData::new(1_000, DBGlobalState::get_packed_len(), &program_id);
-
-    let mut data = vec![0; DBGlobalState::get_packed_len()];
-
-    DBGlobalState::pack(global_state_data, &mut data).unwrap();
-
-    global_state.set_data(data);
-
-    let mint = Mint {
-        mint_authority: COption::Some(global_state_id),
-        supply: 1,
-        decimals: 0,
-        is_initialized: true,
-        freeze_authority: COption::None,
-    };
-
-    let mut data = vec![0; Mint::get_packed_len()];
-    Mint::pack(mint, &mut data).unwrap();
-
-    let mut mint = AccountSharedData::new(1_000, Mint::get_packed_len(), &TokenID);
-
-    mint.set_data(data);
-
-    let token = TokenAccount {
-        mint: mint_id,
-        owner: user.pubkey(),
-        amount: 1,
-        delegate: COption::None,
-        state: AccountState::Initialized,
-        is_native: COption::None,
-        delegated_amount: 0,
-        close_authority: COption::None,
-    };
-
-    let mut data = vec![0; TokenAccount::get_packed_len()];
-    TokenAccount::pack(token, &mut data).unwrap();
-
-    let mut token = AccountSharedData::new(1_000, TokenAccount::get_packed_len(), &TokenID);
-
-    token.set_data(data);
-
-    let mut program = ProgramTest::new(
-        "solcery_db_program",
-        program_id,
-        processor!(process_instruction_bytes),
-    );
-
-    program.add_account(mint_id, Account::from(mint));
-    program.add_account(token_id, Account::from(token));
-    program.add_account(global_state_id, Account::from(global_state));
 
     let (mut banks_client, admin, recent_blockhash) = program.start().await;
 
@@ -396,6 +291,77 @@ async fn mint_new_access_token() {
 
 #[tokio::test]
 async fn try_mint_new_unsigned_token() {
+    let ProgramEnvironment {
+        global_state: global_state_id,
+        mint: mint_id,
+        program: program_key,
+        test: program,
+        token: token_key,
+        user,
+        mint_bump,
+        state_bump,
+    } = prepare_environment();
+
+    let program_id = program_key.pubkey();
+    let token_id = token_key.pubkey();
+
+    let new_token_key = Keypair::new();
+    let new_token_id = new_token_key.pubkey();
+
+    let (mut banks_client, admin, recent_blockhash) = program.start().await;
+
+    let mint_new_token = SolanaInstruction::new_with_borsh(
+        program_id,
+        &DBInstruction::MintNewAccessToken,
+        vec![
+            AccountMeta::new(admin.pubkey(), true),
+            AccountMeta::new(mint_id, false),
+            AccountMeta::new(global_state_id, false),
+            AccountMeta::new(token_id, false),
+            AccountMeta::new(new_token_id, true),
+            AccountMeta::new_readonly(TokenID, false),
+            AccountMeta::new(RentSysvar, false),
+        ],
+    );
+
+    let create_token_account = create_account(
+        &admin.pubkey(),
+        &new_token_id,
+        5_000_000_000,
+        TokenAccount::get_packed_len() as u64,
+        &TokenID,
+    );
+
+    let mut token_transaction = Transaction::new_with_payer(
+        &[create_token_account, mint_new_token],
+        Some(&admin.try_pubkey().unwrap()),
+    );
+
+    token_transaction.sign(&[&admin, &new_token_key], recent_blockhash);
+
+    let result = banks_client
+        .process_transaction(token_transaction)
+        .await
+        .unwrap_err();
+
+    assert_eq!(
+        result.unwrap(),
+        TransactionError::InstructionError(1, InstructionError::MissingRequiredSignature)
+    );
+}
+
+struct ProgramEnvironment {
+    global_state: Pubkey,
+    mint: Pubkey,
+    program: Keypair,
+    test: ProgramTest,
+    token: Keypair,
+    user: Keypair,
+    mint_bump: u8,
+    state_bump: u8,
+}
+
+fn prepare_environment() -> ProgramEnvironment {
     let program_key = Keypair::new();
     let user = Keypair::new();
 
@@ -407,9 +373,6 @@ async fn try_mint_new_unsigned_token() {
 
     let token_key = Keypair::new();
     let token_id = token_key.pubkey();
-
-    let new_token_key = Keypair::new();
-    let new_token_id = new_token_key.pubkey();
 
     let global_state_data = DBGlobalState::new(state_bump, mint_bump);
 
@@ -465,45 +428,14 @@ async fn try_mint_new_unsigned_token() {
     program.add_account(token_id, Account::from(token));
     program.add_account(global_state_id, Account::from(global_state));
 
-    let (mut banks_client, admin, recent_blockhash) = program.start().await;
-
-    let mint_new_token = SolanaInstruction::new_with_borsh(
-        program_id,
-        &DBInstruction::MintNewAccessToken,
-        vec![
-            AccountMeta::new(admin.pubkey(), true),
-            AccountMeta::new(mint_id, false),
-            AccountMeta::new(global_state_id, false),
-            AccountMeta::new(token_id, false),
-            AccountMeta::new(new_token_id, true),
-            AccountMeta::new_readonly(TokenID, false),
-            AccountMeta::new(RentSysvar, false),
-        ],
-    );
-
-    let create_token_account = create_account(
-        &admin.pubkey(),
-        &new_token_id,
-        5_000_000_000,
-        TokenAccount::get_packed_len() as u64,
-        &TokenID,
-    );
-
-    let mut token_transaction = Transaction::new_with_payer(
-        &[create_token_account, mint_new_token],
-        Some(&admin.try_pubkey().unwrap()),
-    );
-
-    token_transaction.sign(&[&admin, &new_token_key], recent_blockhash);
-
-    let result = banks_client
-        .process_transaction(token_transaction)
-        .await
-        .unwrap_err();
-
-    assert_eq!(
-        result.unwrap(),
-        TransactionError::InstructionError(1, InstructionError::MissingRequiredSignature)
-    );
-}
+    ProgramEnvironment {
+        global_state: global_state_id,
+        mint: mint_id,
+        program: program_key,
+        test: program,
+        token: token_key,
+        user,
+        mint_bump,
+        state_bump,
+    }
 }
