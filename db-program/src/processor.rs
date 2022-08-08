@@ -212,12 +212,9 @@ where
     let mint = next_account_info(account_iter)?;
     let global_state = next_account_info(account_iter)?;
     let token_account = next_account_info(account_iter)?;
+    let new_token_account = next_account_info(account_iter)?;
     let token_program = next_account_info(account_iter)?;
     let rent_sysvar = next_account_info(account_iter)?;
-
-    if token_program.key != &spl_token::id() {
-        return Err(ProgramError::IncorrectProgramId);
-    }
 
     if token_program.key != &spl_token::id() {
         return Err(ProgramError::IncorrectProgramId);
@@ -247,7 +244,7 @@ where
     msg!("Initializing token");
     let init_token_instruction = token_instruction::initialize_account(
         token_program.key,
-        token_account.key,
+        new_token_account.key,
         mint.key,
         admin.key,
     )?;
@@ -255,7 +252,7 @@ where
     invoke(
         &init_token_instruction,
         &[
-            token_account.clone(),
+            new_token_account.clone(),
             mint.clone(),
             admin.clone(),
             rent_sysvar.clone(),
@@ -266,7 +263,7 @@ where
     let mint_token_instruction = token_instruction::mint_to(
         token_program.key,
         mint.key,
-        token_account.key,
+        new_token_account.key,
         global_state.key,
         &[],
         1,
@@ -274,7 +271,11 @@ where
 
     invoke_signed(
         &mint_token_instruction,
-        &[mint.clone(), token_account.clone(), global_state.clone()],
+        &[
+            mint.clone(),
+            new_token_account.clone(),
+            global_state.clone(),
+        ],
         &[&[GLOBAL_STATE_SEED, &[global_state_data.global_state_bump()]]],
     )?;
 
