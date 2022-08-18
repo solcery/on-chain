@@ -25,7 +25,7 @@ pub struct AccountAllocator<'long> {
     len: usize,
     inode_data: SliceVec<'long, Inode>,
     allocation_table: &'long mut AllocationTable,
-    borrowed_serments: BTreeSet<u32>,
+    borrowed_segments: BTreeSet<u32>,
     _ghost: PhantomData<&'long mut [u8]>,
 }
 
@@ -63,7 +63,7 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
 
         let allocator = Self {
             allocation_table,
-            borrowed_serments: BTreeSet::new(),
+            borrowed_segments: BTreeSet::new(),
             inode_data,
             len,
             ptr,
@@ -104,7 +104,7 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
 
         let allocator = Self {
             allocation_table,
-            borrowed_serments: BTreeSet::new(),
+            borrowed_segments: BTreeSet::new(),
             inode_data,
             len,
             ptr,
@@ -145,7 +145,7 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
 
         let allocator = Self {
             allocation_table,
-            borrowed_serments: BTreeSet::new(),
+            borrowed_segments: BTreeSet::new(),
             inode_data,
             len,
             ptr,
@@ -164,7 +164,7 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
             .inode_data
             .iter()
             .enumerate()
-            .find(|(_, inode)| inode.len() >= size && !inode.occupied())
+            .find(|(_, inode)| inode.len() >= size && !inode.is_occupied())
             .map(|(index, _)| index);
 
         if let Some(index) = maybe_index {
@@ -202,7 +202,7 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
     }
 
     pub fn deallocate_segment(&mut self, id: u32) -> Result<(), Error> {
-        if self.borrowed_serments.contains(&id) {
+        if self.borrowed_segments.contains(&id) {
             return Err(Error::Borrowed);
         }
 
@@ -221,13 +221,16 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
 
     pub fn segment(&mut self, id: u32) -> Result<&'short mut [u8], Error> {
         debug_assert!(self.is_ordered());
-        if self.borrowed_serments.contains(&id) {
+        if self.borrowed_segments.contains(&id) {
             return Err(Error::AlreadyBorrowed);
         }
 
-        let maybe_inode = self.inode_data.iter().find(|inode| inode.id() == Some(id));
+        let maybe_inode = self
+            .inode_data
+            .iter()
+            .find(|inode| inode.id() == Some(id) && inode.is_occupied());
         if let Some(inode) = maybe_inode {
-            self.borrowed_serments.insert(id);
+            self.borrowed_segments.insert(id);
 
             unsafe {
                 // Safety
@@ -286,7 +289,7 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
     /// # Safety
     /// The caller must assert, that the borrows pointing to this segment are dropped
     pub unsafe fn release_borrowed_segment(&mut self, id: u32) {
-        self.borrowed_serments.remove(&id);
+        self.borrowed_segments.remove(&id);
     }
 
     fn is_ordered(&self) -> bool {

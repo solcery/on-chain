@@ -420,7 +420,7 @@ where
     let global_state = DBGlobalState::unpack(&global_state_account.data.borrow())?;
 
     let global_state_address = Pubkey::create_program_address(
-        &[&GLOBAL_STATE_SEED, &[global_state.global_state_bump()]],
+        &[GLOBAL_STATE_SEED, &[global_state.global_state_bump()]],
         program_id,
     )?;
 
@@ -442,7 +442,7 @@ where
     }
 
     let mint_account =
-        Pubkey::create_program_address(&[&MINT_SEED, &[global_state.mint_bump()]], program_id)?;
+        Pubkey::create_program_address(&[MINT_SEED, &[global_state.mint_bump()]], program_id)?;
 
     if token.mint != mint_account {
         return Err(ProgramError::IllegalOwner);

@@ -1,7 +1,7 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use account_fs::SegmentId;
-use solcery_db::{ColumnId, ColumnParams, Data, DataType};
+pub use account_fs::SegmentId;
+pub use solcery_db::{ColumnId, ColumnParams, Data, DataType};
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Eq, PartialEq)]
 pub enum DBInstruction {
@@ -10,6 +10,13 @@ pub enum DBInstruction {
     SetRow(SetRowParams),
     DeleteRow(DeleteRowParams),
     DeleteRowSecondary(DeleteRowSecondaryParams),
+    /// Create a new data base
+    ///
+    /// Accounts expected:
+    ///
+    /// 0. `[]` Global DB-program state account
+    /// 1. `[signer]` Access Token account
+    /// 2-... `[]` FS accounts
     CreateDB(CreateDBParams),
     DropDB(SegmentId),
     MintNewAccessToken,

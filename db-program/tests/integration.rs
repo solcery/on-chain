@@ -24,10 +24,11 @@ use spl_token::{
 
 use solcery_db_program::{
     entrypoint::process_instruction_bytes,
-    instruction::{BootstrapParams, DBInstruction},
+    instruction::*,
     state::{DBGlobalState, GLOBAL_STATE_SEED, MINT_SEED},
 };
 
+const AMOUNT: u64 = 5_000_000_000;
 #[tokio::test]
 async fn bootstrap_db() {
     let program_key = Keypair::new();
@@ -52,8 +53,8 @@ async fn bootstrap_db() {
     let params = BootstrapParams {
         mint_bump,
         state_bump,
-        lamports_to_global_state: 5_000_000_000,
-        lamports_to_mint: 5_000_000_000,
+        lamports_to_global_state: AMOUNT,
+        lamports_to_mint: AMOUNT,
     };
 
     let bootstrap_db_program = SolanaInstruction::new_with_borsh(
@@ -73,7 +74,7 @@ async fn bootstrap_db() {
     let create_token_account = create_account(
         &admin.pubkey(),
         &token_id,
-        5_000_000_000,
+        AMOUNT,
         TokenAccount::get_packed_len() as u64,
         &TokenID,
     );
@@ -139,13 +140,12 @@ async fn try_rebootstrap() {
         program: program_key,
         test: program,
         token: token_key,
-        user,
         mint_bump,
         state_bump,
+        ..
     } = prepare_environment();
 
     let program_id = program_key.pubkey();
-    let token_id = token_key.pubkey();
 
     let new_token_key = Keypair::new();
     let new_token_id = new_token_key.pubkey();
@@ -155,8 +155,8 @@ async fn try_rebootstrap() {
     let params = BootstrapParams {
         mint_bump,
         state_bump,
-        lamports_to_global_state: 5_000_000_000,
-        lamports_to_mint: 5_000_000_000,
+        lamports_to_global_state: AMOUNT,
+        lamports_to_mint: AMOUNT,
     };
 
     let bootstrap_db_program = SolanaInstruction::new_with_borsh(
@@ -176,7 +176,7 @@ async fn try_rebootstrap() {
     let create_token_account = create_account(
         &admin.pubkey(),
         &new_token_id,
-        5_000_000_000,
+        AMOUNT,
         TokenAccount::get_packed_len() as u64,
         &TokenID,
     );
@@ -207,7 +207,6 @@ async fn mint_new_access_token() {
         program: program_key,
         test: program,
         token: token_key,
-        user,
         ..
     } = prepare_environment();
 
@@ -236,7 +235,7 @@ async fn mint_new_access_token() {
     let create_token_account = create_account(
         &admin.pubkey(),
         &new_token_id,
-        5_000_000_000,
+        AMOUNT,
         TokenAccount::get_packed_len() as u64,
         &TokenID,
     );
@@ -297,9 +296,7 @@ async fn try_mint_new_unsigned_token() {
         program: program_key,
         test: program,
         token: token_key,
-        user,
-        mint_bump,
-        state_bump,
+        ..
     } = prepare_environment();
 
     let program_id = program_key.pubkey();
@@ -365,7 +362,7 @@ fn prepare_environment() -> ProgramEnvironment {
     let program_key = Keypair::new();
     let user = Keypair::new();
 
-    let program_id = dbg!(program_key.pubkey());
+    let program_id = program_key.pubkey();
 
     let (mint_id, mint_bump) = Pubkey::find_program_address(&[MINT_SEED], &program_id);
     let (global_state_id, state_bump) =
@@ -377,7 +374,7 @@ fn prepare_environment() -> ProgramEnvironment {
     let global_state_data = DBGlobalState::new(state_bump, mint_bump);
 
     let mut global_state =
-        AccountSharedData::new(1_000, DBGlobalState::get_packed_len(), &program_id);
+        AccountSharedData::new(AMOUNT, DBGlobalState::get_packed_len(), &program_id);
 
     let mut data = vec![0; DBGlobalState::get_packed_len()];
 
@@ -396,7 +393,7 @@ fn prepare_environment() -> ProgramEnvironment {
     let mut data = vec![0; Mint::get_packed_len()];
     Mint::pack(mint, &mut data).unwrap();
 
-    let mut mint = AccountSharedData::new(1_000, Mint::get_packed_len(), &TokenID);
+    let mut mint = AccountSharedData::new(AMOUNT, Mint::get_packed_len(), &TokenID);
 
     mint.set_data(data);
 
@@ -414,7 +411,7 @@ fn prepare_environment() -> ProgramEnvironment {
     let mut data = vec![0; TokenAccount::get_packed_len()];
     TokenAccount::pack(token, &mut data).unwrap();
 
-    let mut token = AccountSharedData::new(1_000, TokenAccount::get_packed_len(), &TokenID);
+    let mut token = AccountSharedData::new(AMOUNT, TokenAccount::get_packed_len(), &TokenID);
 
     token.set_data(data);
 
