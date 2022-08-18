@@ -26,7 +26,7 @@ use account_allocator::AccountAllocator;
 pub use account_allocator::Error as FSError;
 pub use segment_id::SegmentId;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct FS<'a> {
     allocators: BTreeMap<Pubkey, AccountAllocator<'a>>,
 }

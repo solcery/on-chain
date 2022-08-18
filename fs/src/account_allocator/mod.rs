@@ -1,10 +1,10 @@
 use bytemuck::{cast_mut, cast_slice_mut};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::marker::PhantomData;
 use std::mem;
 use std::ptr::NonNull;
-use std::slice::from_raw_parts_mut;
+use std::slice::{from_raw_parts, from_raw_parts_mut};
 use tinyvec::SliceVec;
 
 mod allocation_table;
@@ -325,6 +325,139 @@ impl<'a> fmt::Debug for AccountAllocator<'a> {
             .field("data_size", &self.len)
             .field("inodes", &self.inode_data)
             .finish()
+    }
+}
+
+impl<'a> Eq for AccountAllocator<'a> {}
+
+impl<'a> PartialEq for AccountAllocator<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        if !(self.borrowed_segments.is_empty() && other.borrowed_segments.is_empty()) {
+            panic!("Can't compare AccountAllocators with borrowed segments");
+        }
+
+        let lhs_segments: BTreeMap<u32, &'a [u8]> = self
+            .inode_data
+            .iter()
+            .map(|inode| {
+                if let Some(id) = inode.id() {
+                    unsafe {
+                        // Safety
+                        //
+                        // Safety contract of `from_raw_parts_mut`
+                        // * `data` must be valid for both reads and writes for `len * mem::size_of::<T>()` many bytes,
+                        //   and it must be properly aligned. This means in particular:
+                        //   -- Check: the emitted slice has the lifetime 'short which is not longer than 'long.
+                        //
+                        //     * The entire memory range of this slice must be contained within a single allocated object!
+                        //       Slices can never span across multiple allocated objects.
+                        //       -- Check: we are offsetting inside one big slice.
+                        //
+                        //     * `data` must be non-null and aligned even for zero-length slices. One
+                        //       reason for this is that enum layout optimizations may rely on references
+                        //       (including slices of any length) being aligned and non-null to distinguish
+                        //       them from other data. You can obtain a pointer that is usable as `data`
+                        //       for zero-length slices using [`NonNull::dangling()`].
+                        //       -- Check: data_ptr is not null and so does slice_ptr.
+                        //
+                        // * `data` must point to `len` consecutive properly initialized values of type `T`.
+                        //    -- Check: the original slice of bytes was initialized,
+                        //       offset bounds was checked to be inside the original slice.
+                        //
+                        // * The memory referenced by the returned slice must not be accessed through any other pointer
+                        //   (not derived from the return value) for the duration of lifetime `'short`.
+                        //   Both read and write accesses are forbidden.
+                        //   -- Check: self.borrowed_segments guarantees, that this segment will not be emitted again.
+                        //      Segments was checked to be non-overlapping.
+                        //
+                        // * The total size `len * mem::size_of::<T>()` of the slice must be no larger than `isize::MAX`.
+                        //   -- Check: here we are limited by the maximum account size, which is far less than `isize::MAX`.
+                        let offset_start = inode.start_idx();
+                        let offset_end = inode.end_idx();
+
+                        debug_assert!(offset_end <= self.len);
+                        debug_assert!(offset_start < offset_end);
+
+                        let data_ptr = self.ptr.as_ptr();
+                        let len = offset_end - offset_start;
+                        let slice_ptr = data_ptr.add(offset_start);
+
+                        Some((id, from_raw_parts(slice_ptr, len)))
+                    }
+                } else {
+                    None
+                }
+            })
+            .flatten()
+            .collect();
+
+        let rhs_segments: BTreeMap<u32, &'a [u8]> = other
+            .inode_data
+            .iter()
+            .map(|inode| {
+                if let Some(id) = inode.id() {
+                    unsafe {
+                        // Safety
+                        //
+                        // Safety contract of `from_raw_parts_mut`
+                        // * `data` must be valid for both reads and writes for `len * mem::size_of::<T>()` many bytes,
+                        //   and it must be properly aligned. This means in particular:
+                        //   -- Check: the emitted slice has the lifetime 'short which is not longer than 'long.
+                        //
+                        //     * The entire memory range of this slice must be contained within a single allocated object!
+                        //       Slices can never span across multiple allocated objects.
+                        //       -- Check: we are offsetting inside one big slice.
+                        //
+                        //     * `data` must be non-null and aligned even for zero-length slices. One
+                        //       reason for this is that enum layout optimizations may rely on references
+                        //       (including slices of any length) being aligned and non-null to distinguish
+                        //       them from other data. You can obtain a pointer that is usable as `data`
+                        //       for zero-length slices using [`NonNull::dangling()`].
+                        //       -- Check: data_ptr is not null and so does slice_ptr.
+                        //
+                        // * `data` must point to `len` consecutive properly initialized values of type `T`.
+                        //    -- Check: the original slice of bytes was initialized,
+                        //       offset bounds was checked to be inside the original slice.
+                        //
+                        // * The memory referenced by the returned slice must not be accessed through any other pointer
+                        //   (not derived from the return value) for the duration of lifetime `'short`.
+                        //   Both read and write accesses are forbidden.
+                        //   -- Check: other.borrowed_segments guarantees, that this segment will not be emitted again.
+                        //      Segments was checked to be non-overlapping.
+                        //
+                        // * The total size `len * mem::size_of::<T>()` of the slice must be no larger than `isize::MAX`.
+                        //   -- Check: here we are limited by the maximum account size, which is far less than `isize::MAX`.
+                        let offset_start = inode.start_idx();
+                        let offset_end = inode.end_idx();
+
+                        debug_assert!(offset_end <= other.len);
+                        debug_assert!(offset_start < offset_end);
+
+                        let data_ptr = other.ptr.as_ptr();
+                        let len = offset_end - offset_start;
+                        let slice_ptr = data_ptr.add(offset_start);
+
+                        Some((id, from_raw_parts(slice_ptr, len)))
+                    }
+                } else {
+                    None
+                }
+            })
+            .flatten()
+            .collect();
+
+        for (lhs, rhs) in lhs_segments.iter().zip(rhs_segments.iter()) {
+            let (lhs_id, lhs_slice) = lhs;
+            let (rhs_id, rhs_slice) = rhs;
+
+            if lhs_id != rhs_id {
+                return false;
+            }
+            if lhs_slice != rhs_slice {
+                return false;
+            }
+        }
+        true
     }
 }
 
