@@ -10,6 +10,7 @@ use solana_program::{
 use solana_program_test::{processor, tokio, ProgramTest};
 use solana_sdk::{
     account::{Account, AccountSharedData},
+    account_info::AccountInfo,
     instruction::AccountMeta,
     program_option::COption,
     signature::Signer,
@@ -27,6 +28,8 @@ use solcery_db_program::{
     instruction::*,
     state::{DBGlobalState, GLOBAL_STATE_SEED, MINT_SEED},
 };
+
+use account_fs::FS;
 
 const AMOUNT: u64 = 5_000_000_000;
 #[tokio::test]
@@ -345,6 +348,75 @@ async fn try_mint_new_unsigned_token() {
         result.unwrap(),
         TransactionError::InstructionError(1, InstructionError::MissingRequiredSignature)
     );
+}
+
+#[tokio::test]
+async fn create_db() {
+    let ProgramEnvironment {
+        global_state: global_state_id,
+        mint: mint_id,
+        program: program_key,
+        test: program,
+        token: token_key,
+        ..
+    } = prepare_environment();
+
+    let program_id = program_key.pubkey();
+    let token_id = token_key.pubkey();
+
+    let fs_account_key = Keypair::new();
+
+    let (mut banks_client, admin, recent_blockhash) = program.start().await;
+
+    let create_fs_account = create_account(
+        &admin.pubkey(),
+        &fs_account_key.pubkey(),
+        AMOUNT * 2,
+        1_000_000,
+        &program_id,
+    );
+
+    let db_instruction = DBInstruction::CreateDB(CreateDBParams {
+        primary_key_type: DataType::Int,
+        columns: vec![],
+        table_name: String::from("Test DB"),
+        max_columns: 10,
+        max_rows: 10,
+        is_initialized: false,
+    });
+
+    let instruction = SolanaInstruction::new_with_borsh(
+        program_id,
+        &db_instruction,
+        vec![
+            AccountMeta::new_readonly(global_state_id, false),
+            AccountMeta::new_readonly(token_id, true),
+            AccountMeta::new(fs_account_key.pubkey(), false),
+        ],
+    );
+
+    let mut token_transaction =
+        Transaction::new_with_payer(&[create_fs_account, instruction], Some(&admin.pubkey()));
+
+    token_transaction.sign(&[&admin, &token_key, &fs_account_key], recent_blockhash);
+
+    banks_client
+        .process_transaction(token_transaction)
+        .await
+        .unwrap();
+
+    // Retrieving accounts
+    let fs_account = banks_client
+        .get_account(fs_account_key.pubkey())
+        .await
+        .unwrap()
+        .unwrap();
+
+    let mut account_internals = (fs_account_key.pubkey(), fs_account);
+    let fs_account = vec![AccountInfo::from(&mut account_internals)];
+
+    // Deserializing data
+    let fs = FS::from_account_iter(&program_id, &mut fs_account.iter()).unwrap();
 }
 
 struct ProgramEnvironment {
