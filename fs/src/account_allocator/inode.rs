@@ -2,7 +2,7 @@ use bytemuck::{Pod, Zeroable};
 use std::fmt;
 
 #[repr(C)]
-#[derive(Default, Pod, Clone, Copy, Zeroable, PartialEq)]
+#[derive(Default, Pod, Clone, Copy, Zeroable, PartialEq, Eq)]
 pub struct Inode {
     is_occupied: u8, // == 0 then inode is is_occupied
     start_idx: [u8; 4],

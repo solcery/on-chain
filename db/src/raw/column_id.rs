@@ -11,7 +11,7 @@ impl ColumnId {
         Self(val)
     }
 
-    pub(crate) fn to_be_bytes(&self) -> [u8; 4] {
+    pub(crate) fn to_be_bytes(self) -> [u8; 4] {
         self.0.to_be_bytes()
     }
 }

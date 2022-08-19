@@ -409,7 +409,7 @@ impl<'a> DB<'a> {
     pub fn drop_db(self) -> Result<(), Error> {
         let DB {
             fs,
-            index,
+            index: _,
             column_headers,
             accessed_columns,
             segment,
@@ -436,13 +436,10 @@ impl<'a> DB<'a> {
             }
         }
 
-        drop(index);
-        drop(column_headers);
-
         unsafe {
             // # Safety
             // The header segment of the DB was splitted into two parts: `index` and `column_header`
-            // Both were dropped, so there are no dangling pointers
+            // Both will be dropped, so there are no dangling pointers
             fs.release_borrowed_segment(&segment);
             fs.deallocate_segment(&segment)?;
         }

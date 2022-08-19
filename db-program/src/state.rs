@@ -18,14 +18,17 @@ pub struct DBGlobalState {
 }
 
 impl DBGlobalState {
+    #[must_use]
     pub fn global_state_bump(&self) -> u8 {
         self.global_state_bump
     }
 
+    #[must_use]
     pub fn mint_bump(&self) -> u8 {
         self.mint_bump
     }
 
+    #[must_use]
     pub fn new(global_state_bump: u8, mint_bump: u8) -> Self {
         Self {
             magic: *STATE_MAGIC,

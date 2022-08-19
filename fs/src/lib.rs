@@ -72,7 +72,7 @@ impl<'long: 'short, 'short> FS<'short> {
                 let pubkey = *account.key;
                 let data = account.data.borrow_mut();
                 let data = RefMut::<'_, &'long mut [u8]>::leak(data);
-                if AccountAllocator::is_initialized(*data) {
+                if AccountAllocator::is_initialized(data) {
                     unsafe { AccountAllocator::from_account(data).map(|alloc| (pubkey, alloc)) }
                 } else {
                     unsafe {
