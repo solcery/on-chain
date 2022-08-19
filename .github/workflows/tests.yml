@@ -46,17 +46,12 @@ jobs:
       - name: Install Solana SDK
         run: |
           sh -c "$(curl -sSfL https://release.solana.com/stable/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
+          cargo-build-bpf --version
         
       - name: Build BPF
-        env:
-          PATH: /home/runner/.local/share/solana/install/active_release/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/home/runner/.local/bin:/opt/pipx_bin:/usr/share/rust/.cargo/bin:/home/runner/.config/composer/vendor/bin:/usr/local/.ghcup/bin:/home/runner/.dotnet/tools:/snap/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
-        uses: actions-rs/cargo@v1
-        with:
-          command: build-bpf
+        run: cargo build-bpf
         
       - name: Test BPF
-        env:
-          PATH: /home/runner/.local/share/solana/install/active_release/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/home/runner/.local/bin:/opt/pipx_bin:/usr/share/rust/.cargo/bin:/home/runner/.config/composer/vendor/bin:/usr/local/.ghcup/bin:/home/runner/.dotnet/tools:/snap/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
-        uses: actions-rs/cargo@v1
-        with:
-          command: test-bpf
+        run: cargo test-bpf
