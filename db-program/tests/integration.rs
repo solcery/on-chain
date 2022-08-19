@@ -22,14 +22,16 @@ use spl_token::{
     state::{Account as TokenAccount, AccountState, Mint},
     ID as TokenID,
 };
+use std::cell::RefCell;
+use std::rc::Rc;
 
+use account_fs::FS;
+use solcery_db::DB;
 use solcery_db_program::{
     entrypoint::process_instruction_bytes,
     instruction::*,
     state::{DBGlobalState, GLOBAL_STATE_SEED, MINT_SEED},
 };
-
-use account_fs::FS;
 
 const AMOUNT: u64 = 5_000_000_000;
 #[tokio::test]
@@ -416,7 +418,18 @@ async fn create_db() {
     let fs_account = vec![AccountInfo::from(&mut account_internals)];
 
     // Deserializing data
-    let fs = FS::from_account_iter(&program_id, &mut fs_account.iter()).unwrap();
+    let fs = Rc::new(RefCell::new(
+        FS::from_account_iter(&program_id, &mut fs_account.iter()).unwrap(),
+    ));
+
+    DB::from_segment(
+        fs,
+        SegmentId {
+            id: 0,
+            pubkey: fs_account_key.pubkey(),
+        },
+    )
+    .unwrap();
 }
 
 struct ProgramEnvironment {
