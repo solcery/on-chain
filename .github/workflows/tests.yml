@@ -51,7 +51,7 @@ jobs:
           cargo-build-bpf --version
         
       - name: Build BPF
-        run: cargo build-bpf
+        run: cargo test-bpf --no-run
         
       - name: Test BPF
         run: cargo test-bpf
