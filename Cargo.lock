@@ -18,6 +18,7 @@ version = "0.0.0"
 dependencies = [
  "borsh",
  "bytemuck",
+ "fs_test",
  "pretty_assertions 0.6.1",
  "solana-program",
  "tinyvec",
@@ -1141,6 +1142,14 @@ checksum = "5fc25a87fa4fd2094bffb06925852034d90a17f0d1e05197d4956d3555752191"
 dependencies = [
  "matches",
  "percent-encoding",
+]
+
+[[package]]
+name = "fs_test"
+version = "0.0.0"
+dependencies = [
+ "account-fs",
+ "solana-program",
 ]
 
 [[package]]

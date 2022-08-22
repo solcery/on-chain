@@ -2,53 +2,7 @@ use account_fs::FS;
 use pretty_assertions::assert_eq;
 use solana_program::{account_info::AccountInfo, pubkey::Pubkey};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-struct AccountParams {
-    owner: Pubkey,
-    data: Data,
-    is_signer: bool,
-    is_writable: bool,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-struct InternalAccountInfo {
-    key: Pubkey,
-    lamports: u64,
-    data: Vec<u8>,
-    owner: Pubkey,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-enum Data {
-    Filled(Vec<u8>),
-    Empty(usize),
-}
-
-fn prepare_account_info(params: AccountParams) -> AccountInfo<'static> {
-    let data = match params.data {
-        Data::Filled(vec) => vec,
-        Data::Empty(cap) => vec![0; cap],
-    };
-
-    let internal_info: &'static mut InternalAccountInfo =
-        Box::leak(Box::new(InternalAccountInfo {
-            key: Pubkey::new_unique(),
-            lamports: 1,
-            data,
-            owner: params.owner,
-        }));
-
-    AccountInfo::new(
-        &internal_info.key,
-        params.is_signer,
-        params.is_writable,
-        &mut internal_info.lamports,
-        &mut internal_info.data,
-        &internal_info.owner,
-        false,
-        1,
-    )
-}
+use fs_test::*;
 
 #[test]
 fn full_initialization() {

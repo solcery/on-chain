@@ -63,7 +63,7 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for State {
         }
 
         let data: &[u8] = &game_state.data.borrow();
-        let mut buf = &*data;
+        let mut buf = data;
 
         //Check previous versions
         let version = <u32>::deserialize(&mut buf);

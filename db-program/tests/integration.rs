@@ -1,10 +1,7 @@
 use pretty_assertions::assert_eq;
 use solana_program::{
-    instruction::Instruction as SolanaInstruction,
-    instruction::InstructionError,
-    program_pack::Pack,
-    pubkey::{Pubkey, PubkeyError},
-    system_instruction::create_account,
+    instruction::Instruction as SolanaInstruction, instruction::InstructionError,
+    program_pack::Pack, pubkey::Pubkey, system_instruction::create_account,
     system_program::ID as SystemID,
 };
 use solana_program_test::{processor, tokio, ProgramTest};
