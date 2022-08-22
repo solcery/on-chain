@@ -8,7 +8,7 @@ use super::column::ColumnHeader;
 use solcery_data_types::db::schema::DataType;
 
 const INDEX_MAGIC: [u8; 16] = *b"Solcery_DB_Index";
-const CURRENT_VERSION: [u8; 2] = u16::to_be_bytes(0);
+const CURRENT_VERSION: u16 = 0;
 
 #[repr(C)]
 #[derive(Pod, Clone, Copy, Zeroable)]
@@ -82,7 +82,7 @@ impl Index {
         max_rows: usize,
     ) {
         self.magic = INDEX_MAGIC;
-        self.db_version = CURRENT_VERSION;
+        self.db_version = u16::to_be_bytes(CURRENT_VERSION);
         table_name
             .serialize(&mut self.table_name.as_mut_slice())
             .unwrap(); // TODO: Document unwrap
@@ -105,5 +105,44 @@ impl fmt::Debug for Index {
             .field("column_count", &self.column_count())
             .field("column_max", &self.column_max())
             .finish()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bytemuck::cast;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn new() {
+        let index = [0_u8; std::mem::size_of::<Index>()];
+        let mut index: Index = cast(index);
+
+        let table_name = "Test table";
+        let primary_key_type = DataType::Pubkey;
+        let column_max = 121;
+        let max_rows = 15;
+        unsafe {
+            index.fill(table_name, primary_key_type, column_max, max_rows);
+        }
+        assert!(index.check_magic());
+        assert_eq!(index.column_count(), 0);
+        assert_eq!(index.column_max(), column_max);
+        assert_eq!(index.primary_key_type(), primary_key_type);
+        assert_eq!(index.table_name(), table_name.to_string());
+        assert_eq!(index.max_rows(), max_rows);
+        assert_eq!(index.version(), CURRENT_VERSION);
+        assert_eq!(index.column_id_autoincrement, u32::to_be_bytes(0));
+
+        assert_eq!(index.generate_id(), 0);
+        assert_eq!(index.generate_id(), 1);
+        assert_eq!(index.column_id_autoincrement, u32::to_be_bytes(2));
+
+        unsafe {
+            index.set_column_count(235);
+        }
+
+        assert_eq!(index.column_count(), 235);
     }
 }
