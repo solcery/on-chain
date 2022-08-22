@@ -18,7 +18,7 @@ use std::str::FromStr;
     expected = "called `Result::unwrap()` on an `Err` value: TransactionError(InstructionError(0, Custom(3)))"
 )]
 async fn test_add_schema_incorrect_primary_key_count_more_than_one() {
-    let program_id = Pubkey::from_str(&"schemas111111111111111111111111111111111111").unwrap();
+    let program_id = Pubkey::from_str("schemas111111111111111111111111111111111111").unwrap();
 
     let (app_pubkey, _bump_seed) = Pubkey::find_program_address(&[b"You pass butter"], &program_id);
     let mut schemas_manager_app = ProgramTest::new(
@@ -69,7 +69,7 @@ async fn test_add_schema_incorrect_primary_key_count_more_than_one() {
     expected = "called `Result::unwrap()` on an `Err` value: TransactionError(InstructionError(0, Custom(3)))"
 )]
 async fn test_add_schema_incorrect_primary_key_count_less_than_one() {
-    let program_id = Pubkey::from_str(&"schemas111111111111111111111111111111111111").unwrap();
+    let program_id = Pubkey::from_str("schemas111111111111111111111111111111111111").unwrap();
 
     let (app_pubkey, _bump_seed) = Pubkey::find_program_address(&[b"You pass butter"], &program_id);
     let mut schemas_manager_app = ProgramTest::new(

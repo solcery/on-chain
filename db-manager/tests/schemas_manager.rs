@@ -16,7 +16,7 @@ use std::str::FromStr;
 
 #[tokio::test]
 async fn test_add_schema() {
-    let program_id = Pubkey::from_str(&"schemas111111111111111111111111111111111111").unwrap();
+    let program_id = Pubkey::from_str("schemas111111111111111111111111111111111111").unwrap();
     let schema_result = Pubkey::new_unique();
 
     let (app_pubkey, _bump_seed) = Pubkey::find_program_address(&[b"You pass butter"], &program_id);
@@ -103,7 +103,7 @@ async fn test_add_schema() {
 
 #[tokio::test]
 async fn test_remove_schema() {
-    let program_id = Pubkey::from_str(&"schemas111111111111111111111111111111111111").unwrap();
+    let program_id = Pubkey::from_str("schemas111111111111111111111111111111111111").unwrap();
     let schema_result = Pubkey::new_unique();
 
     let (app_pubkey, _bump_seed) = Pubkey::find_program_address(&[b"You pass butter"], &program_id);
@@ -212,7 +212,7 @@ async fn test_remove_schema() {
 
 #[tokio::test]
 async fn test_update_schema() {
-    let program_id = Pubkey::from_str(&"schemas111111111111111111111111111111111111").unwrap();
+    let program_id = Pubkey::from_str("schemas111111111111111111111111111111111111").unwrap();
     let schema_result = Pubkey::new_unique();
 
     let (app_pubkey, _bump_seed) = Pubkey::find_program_address(&[b"You pass butter"], &program_id);

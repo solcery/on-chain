@@ -141,7 +141,7 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for Game {
         }
 
         let project_data: &[u8] = &project.data.borrow();
-        let mut project_buf = &*project_data;
+        let mut project_buf = project_data;
 
         let (project_ver, project_struct) = <(u32, Project)>::deserialize(&mut project_buf)
             .map_err(|_| Error::WrongProjectAccount)?;
@@ -155,7 +155,7 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, InitializationArgs> for Game {
         }
 
         let data: &[u8] = &game_info.data.borrow();
-        let mut buf = &*data;
+        let mut buf = data;
 
         //Check previous versions
         let version = <u32>::deserialize(&mut buf);

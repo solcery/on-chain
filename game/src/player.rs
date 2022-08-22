@@ -32,7 +32,7 @@ impl<'r, 's, 't0, 't1> Bundle<'r, 's, 't0, 't1, ()> for Player {
         }
 
         let data: &[u8] = &player_info.data.borrow();
-        let mut buf = &*data;
+        let mut buf = data;
 
         // Check previous versions
         // We need this check to prove, that the player does not try to wipe the existing account
