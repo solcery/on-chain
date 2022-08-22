@@ -285,7 +285,7 @@ fn parse_attrs(attrs: &TokenStream) -> (Ident, Ident, Ident, TokenTree) {
 
     match token_iterator.next() {
         Some(TokenTree::Ident(ident)) => {
-            if format!("{}", ident) != "derives".to_string() {
+            if format!("{}", ident) != *"derives" {
                 panic!("Unexpected keyword: {}", ident)
             }
         }

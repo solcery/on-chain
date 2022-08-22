@@ -1,4 +1,4 @@
-use borsh::BorshDeserialize;
+use borsh::{BorshDeserialize, BorshSerialize};
 use bytemuck::{Pod, Zeroable};
 use solana_program::pubkey::Pubkey;
 use std::fmt;
@@ -53,10 +53,10 @@ impl ColumnHeader {
         value_type: DataType,
         column_type: ColumnType,
     ) -> Self {
-        assert!(name.len() <= NAME_LEN);
+        assert!(name.len() <= NAME_LEN - 4); // 4 bytes will be used as string length inside
+                                             // BorshSerialize
         let mut name_bytes: [u8; NAME_LEN] = [0; NAME_LEN];
-        let (used_bytes, _) = name_bytes.split_at_mut(name.len());
-        used_bytes.copy_from_slice(name.as_bytes());
+        name.serialize(&mut name_bytes.as_mut_slice()).unwrap();
         let value_type = u8::from(value_type);
         let column_type = u8::from(column_type);
         let account_pubkey = segment_id.pubkey.to_bytes();
@@ -96,5 +96,48 @@ impl Default for ColumnHeader {
             segment_id: [0; 4],
             column_type: 0,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    #[should_panic]
+    fn too_long_name() {
+        let name = "An Entirely Too Long Name For Such A Small Column Which Would Obviously Be An Overkill";
+        let id = ColumnId::new(0);
+        let segment_id = SegmentId {
+            pubkey: Pubkey::new_unique(),
+            id: 0,
+        };
+        let value_type = DataType::Int;
+        let column_type = ColumnType::RBTree;
+
+        unsafe {
+            ColumnHeader::new(name, id, segment_id, value_type, column_type);
+        }
+    }
+
+    #[test]
+    fn new() {
+        let name = "Just Some Name";
+        let id = ColumnId::new(12345);
+        let segment_id = SegmentId {
+            pubkey: Pubkey::new_unique(),
+            id: 5,
+        };
+        let value_type = DataType::ShortString;
+        let column_type = ColumnType::RBTree;
+
+        let column = unsafe { ColumnHeader::new(name, id, segment_id, value_type, column_type) };
+
+        assert_eq!(column.id(), id);
+        assert_eq!(column.segment_id(), segment_id);
+        assert_eq!(column.value_type(), value_type);
+        assert_eq!(column.name(), name.to_string());
+        assert_eq!(column.column_type(), column_type);
     }
 }

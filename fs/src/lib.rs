@@ -26,19 +26,25 @@ use account_allocator::AccountAllocator;
 pub use account_allocator::Error as FSError;
 pub use segment_id::SegmentId;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct FS<'a> {
     allocators: BTreeMap<Pubkey, AccountAllocator<'a>>,
 }
 
-impl<'long: 'short, 'short> FS<'long> {
+impl<'long: 'short, 'short> FS<'short> {
     /// Constructs [FS], assuming that all accounts are initialized as filesystem accounts
-    pub fn from_account_iter<AccountIter>(accounts_iter: &mut AccountIter) -> Result<Self, FSError>
+    pub fn from_account_iter<AccountIter>(
+        program_id: &Pubkey,
+        accounts_iter: &mut AccountIter,
+    ) -> Result<Self, FSError>
     where
-        AccountIter: Iterator<Item = &'long AccountInfo<'long>>,
+        AccountIter: Iterator<Item = &'short AccountInfo<'long>>,
     {
-        let result: Result<BTreeMap<Pubkey, AccountAllocator<'long>>, _> = accounts_iter
+        let result: Result<BTreeMap<Pubkey, AccountAllocator<'short>>, _> = accounts_iter
             .map(|account| {
+                if account.owner != program_id {
+                    return Err(FSError::WrongOwner);
+                }
                 let pubkey = *account.key;
                 let data = account.data.borrow_mut();
                 let data = RefMut::<'_, &'long mut [u8]>::leak(data);
@@ -51,18 +57,22 @@ impl<'long: 'short, 'short> FS<'long> {
 
     /// Constructs [FS], assuming that some (or all) accounts may be uninitialized as filesystem accounts
     pub fn from_uninit_account_iter<AccountIter>(
+        program_id: &Pubkey,
         accounts_iter: &mut AccountIter,
         inode_table_size: usize,
     ) -> Result<Self, FSError>
     where
-        AccountIter: Iterator<Item = &'long AccountInfo<'long>>,
+        AccountIter: Iterator<Item = &'short AccountInfo<'long>>,
     {
-        let result: Result<BTreeMap<Pubkey, AccountAllocator<'long>>, _> = accounts_iter
+        let result: Result<BTreeMap<Pubkey, AccountAllocator<'short>>, _> = accounts_iter
             .map(|account| {
+                if account.owner != program_id {
+                    return Err(FSError::WrongOwner);
+                }
                 let pubkey = *account.key;
                 let data = account.data.borrow_mut();
                 let data = RefMut::<'_, &'long mut [u8]>::leak(data);
-                if AccountAllocator::is_initialized(*data) {
+                if AccountAllocator::is_initialized(data) {
                     unsafe { AccountAllocator::from_account(data).map(|alloc| (pubkey, alloc)) }
                 } else {
                     unsafe {

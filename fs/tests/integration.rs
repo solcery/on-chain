@@ -68,7 +68,7 @@ fn full_initialization() {
 
     let accounts: &'static mut [AccountInfo] = accounts.leak();
 
-    let mut fs = FS::from_uninit_account_iter(&mut accounts.iter(), 10).unwrap();
+    let mut fs = FS::from_uninit_account_iter(&program_id, &mut accounts.iter(), 10).unwrap();
 
     let segment_id = fs.allocate_segment(150).unwrap();
 

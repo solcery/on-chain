@@ -4,6 +4,7 @@
 
 use bytemuck::{cast_mut, cast_slice_mut};
 
+use solana_program::msg;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::mem;
@@ -12,17 +13,20 @@ use tinyvec::SliceVec;
 
 use account_fs::{SegmentId, FS};
 use slice_rbtree::tree_size;
-use solcery_data_types::db::{
+use solcery_data_types::db::schema::{from_column_slice, init_column_slice};
+
+pub use solcery_data_types::db::{
     column::Column,
     error::Error,
-    schema::{from_column_slice, init_column_slice, ColumnType, Data, DataType},
+    schema::{ColumnParams, ColumnType, Data, DataType},
 };
 
 mod raw;
 
 use raw::column::ColumnHeader;
-use raw::column_id::ColumnId;
 use raw::index::Index;
+
+pub use raw::column_id::ColumnId;
 
 type FSCell<'a> = Rc<RefCell<FS<'a>>>;
 
@@ -95,6 +99,12 @@ impl<'a> DB<'a> {
         let columns: &mut [ColumnHeader] = cast_slice_mut(columns);
 
         let column_headers = SliceVec::from_slice_len(columns, 0);
+
+        msg!(
+            "Initialized DB in segment: {} {}",
+            segment.pubkey,
+            segment.id
+        );
 
         Ok(Self {
             fs,
@@ -262,11 +272,53 @@ impl<'a> DB<'a> {
         }
     }
 
-    pub fn set_row(
+    pub fn delete_value(&mut self, primary_key: Data, column_id: ColumnId) -> Result<bool, Error> {
+        let mut accessed_columns = self.accessed_columns.borrow_mut();
+
+        if let Some(column) = accessed_columns.get_mut(&column_id) {
+            Ok(column.delete_by_key(primary_key))
+        } else {
+            let column_header = self
+                .column_headers
+                .iter()
+                .find(|&col| col.id() == column_id)
+                .ok_or(Error::NoSuchColumn)?;
+
+            let column_slice = self.fs.borrow_mut().segment(&column_header.segment_id())?;
+
+            let mut column = from_column_slice(
+                self.index.primary_key_type(),
+                column_header.value_type(),
+                column_header.column_type(),
+                column_slice,
+            )?;
+
+            let was_value_present = column.delete_by_key(primary_key);
+
+            accessed_columns.insert(column_header.id(), column);
+
+            Ok(was_value_present)
+        }
+    }
+
+    pub fn delete_value_secondary(
         &mut self,
-        primary_key: Data,
-        row: BTreeMap<ColumnId, Data>,
+        key_column_id: ColumnId,
+        secondary_key: Data,
+        column_id: ColumnId,
     ) -> Result<bool, Error> {
+        let primary_key = self.get_primary_key(key_column_id, secondary_key)?;
+
+        match primary_key {
+            Some(key) => self.delete_value(key, column_id),
+            None => Err(Error::SecondaryKeyWithNonExistentPrimaryKey),
+        }
+    }
+
+    pub fn set_row<Row>(&mut self, primary_key: Data, row: Row) -> Result<bool, Error>
+    where
+        Row: IntoIterator<Item = (ColumnId, Data)>,
+    {
         row.into_iter()
             .map(|(column, value)| {
                 self.set_value(primary_key.clone(), column, value)
@@ -322,10 +374,42 @@ impl<'a> DB<'a> {
         }
     }
 
+    pub fn delete_row(&mut self, primary_key: Data) -> Result<(), Error> {
+        let fs = self.fs.borrow();
+        let mut columns = Vec::with_capacity(self.column_headers.len());
+        for &header in self.column_headers.iter() {
+            if !fs.is_accessible(&header.segment_id()) {
+                return Err(Error::NotAllColumnsArePresent);
+            }
+            columns.push(header.id());
+        }
+
+        drop(fs);
+
+        for id in columns {
+            self.delete_value(primary_key.clone(), id)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn delete_row_secondary(
+        &mut self,
+        key_column_id: ColumnId,
+        secondary_key: Data,
+    ) -> Result<(), Error> {
+        let primary_key = self.get_primary_key(key_column_id, secondary_key)?;
+
+        match primary_key {
+            Some(key) => self.delete_row(key),
+            None => Err(Error::SecondaryKeyWithNonExistentPrimaryKey),
+        }
+    }
+
     pub fn drop_db(self) -> Result<(), Error> {
         let DB {
             fs,
-            index,
+            index: _,
             column_headers,
             accessed_columns,
             segment,
@@ -352,13 +436,10 @@ impl<'a> DB<'a> {
             }
         }
 
-        drop(index);
-        drop(column_headers);
-
         unsafe {
             // # Safety
             // The header segment of the DB was splitted into two parts: `index` and `column_header`
-            // Both were dropped, so there are no dangling pointers
+            // Both will be dropped, so there are no dangling pointers
             fs.release_borrowed_segment(&segment);
             fs.deallocate_segment(&segment)?;
         }
