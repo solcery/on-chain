@@ -6,6 +6,7 @@ members = [
 	"db-manager",
 	"db-program",
 	"fs",
+	"fs/fs_test",
 	"game",
 	"slice-rbtree",
 	"vm",
