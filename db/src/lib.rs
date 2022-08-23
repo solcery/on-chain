@@ -76,7 +76,7 @@ impl<'a> DB<'a> {
         max_columns: usize,
         max_rows: usize,
         primary_key_type: DataType,
-    ) -> Result<Self, Error> {
+    ) -> Result<(Self, SegmentId), Error> {
         let index_size = Index::size(max_columns);
         let mut borrowed_fs = fs.borrow_mut();
         let segment = borrowed_fs.allocate_segment(index_size)?;
@@ -106,13 +106,16 @@ impl<'a> DB<'a> {
             segment.id
         );
 
-        Ok(Self {
-            fs,
-            index,
-            column_headers,
-            accessed_columns: RefCell::new(BTreeMap::new()),
+        Ok((
+            Self {
+                fs,
+                index,
+                column_headers,
+                accessed_columns: RefCell::new(BTreeMap::new()),
+                segment,
+            },
             segment,
-        })
+        ))
     }
 
     pub fn add_column(
@@ -173,6 +176,7 @@ impl<'a> DB<'a> {
 
         self.fs.borrow_mut().deallocate_segment(&segment_id)?;
         self.column_headers.remove(index);
+        self.accessed_columns.borrow_mut().remove(&column_id);
 
         unsafe {
             self.index.set_column_count(self.column_headers.len());
@@ -407,25 +411,17 @@ impl<'a> DB<'a> {
     }
 
     pub fn drop_db(self) -> Result<(), Error> {
-        let DB {
-            fs,
-            index: _,
-            column_headers,
-            accessed_columns,
-            segment,
-        } = self;
+        let mut fs = self.fs.borrow_mut();
 
-        let mut fs = fs.borrow_mut();
+        self.accessed_columns.borrow_mut().clear();
 
-        for &header in column_headers.iter() {
+        for &header in self.column_headers.iter() {
             if !fs.is_accessible(&header.segment_id()) {
                 return Err(Error::NotAllColumnsArePresent);
             }
         }
 
-        drop(accessed_columns);
-
-        for &header in column_headers.iter() {
+        for &header in self.column_headers.iter() {
             let segment_id = header.segment_id();
             unsafe {
                 // # Safety
@@ -440,8 +436,8 @@ impl<'a> DB<'a> {
             // # Safety
             // The header segment of the DB was splitted into two parts: `index` and `column_header`
             // Both will be dropped, so there are no dangling pointers
-            fs.release_borrowed_segment(&segment);
-            fs.deallocate_segment(&segment)?;
+            fs.release_borrowed_segment(&self.segment);
+            fs.deallocate_segment(&self.segment)?;
         }
 
         Ok(())
@@ -480,3 +476,42 @@ impl<'a> DB<'a> {
         }
     }
 }
+
+impl<'a> Drop for DB<'a> {
+    fn drop(&mut self) {
+        let DB {
+            fs,
+            index,
+            column_headers,
+            accessed_columns,
+            segment,
+        } = self;
+
+        let mut fs = fs.borrow_mut();
+
+        for &column_id in accessed_columns.borrow().keys() {
+            let column_header = column_headers
+                .iter()
+                .find(|&col| col.id() == column_id)
+                .unwrap();
+
+            let column_segment = column_header.segment_id();
+            unsafe {
+                // # Safety
+                // drop will remove all references to borrowed segments, so there will be no
+                // dangling pointers
+                fs.release_borrowed_segment(&column_segment);
+            }
+        }
+
+        unsafe {
+            // # Safety
+            // The header segment of the DB was splitted into two parts: `index` and `column_header`
+            // Both will be dropped, so there are no dangling pointers
+            fs.release_borrowed_segment(&segment);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests;

@@ -26,6 +26,7 @@ pub enum Data {
     Empty(usize),
 }
 
+/// Due to the way, how this function works, it causes memory leaks
 pub fn prepare_account_info(params: AccountParams) -> AccountInfo<'static> {
     let data = match params.data {
         Data::Filled(vec) => vec,
@@ -50,4 +51,22 @@ pub fn prepare_account_info(params: AccountParams) -> AccountInfo<'static> {
         false,
         1,
     )
+}
+
+pub fn prepare_fs(program_id: &Pubkey) -> FS<'static> {
+    let params = AccountParams {
+        owner: *program_id,
+        data: Data::Empty(10_000),
+        is_signer: false,
+        is_writable: true,
+    };
+
+    let mut accounts = Vec::new();
+    for _ in 0..3 {
+        accounts.push(prepare_account_info(params.clone()));
+    }
+
+    let accounts: &'static mut [AccountInfo] = accounts.leak();
+
+    FS::from_uninit_account_iter(&program_id, &mut accounts.iter(), 10).unwrap()
 }

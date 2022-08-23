@@ -19,3 +19,4 @@ tinyvec = "1.0.0"
 
 [dev-dependencies]
 pretty_assertions = "0.6.1"
+fs_test = { path = "../fs/fs_test" }
