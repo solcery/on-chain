@@ -508,7 +508,7 @@ impl<'long, 'short> Drop for DB<'long, 'short> {
             // # Safety
             // The header segment of the DB was splitted into two parts: `index` and `column_header`
             // Both will be dropped, so there are no dangling pointers
-            fs.release_borrowed_segment(&segment);
+            fs.release_borrowed_segment(segment);
         }
     }
 }

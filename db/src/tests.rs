@@ -13,7 +13,7 @@ fn init_db() {
     let max_columns = 12;
     let max_rows = 53;
     let primary_key_type = DataType::ShortString;
-    let (mut db, segment) = DB::init_in_segment(
+    let (db, segment) = DB::init_in_segment(
         fs.clone(),
         table_name,
         max_columns,

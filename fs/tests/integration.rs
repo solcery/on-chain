@@ -1,6 +1,5 @@
-use account_fs::FS;
 use pretty_assertions::assert_eq;
-use solana_program::{account_info::AccountInfo, pubkey::Pubkey};
+use solana_program::pubkey::Pubkey;
 
 use fs_test::*;
 

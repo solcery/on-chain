@@ -15,7 +15,7 @@
 #![feature(cell_leak)]
 
 use solana_program::{account_info::AccountInfo, pubkey::Pubkey};
-use std::cell::RefCell;
+
 use std::cell::RefMut;
 use std::collections::BTreeMap;
 use std::rc::Rc;
@@ -164,7 +164,7 @@ impl<'long: 'short, 'short> FS<'long, 'short> {
 impl<'long: 'short, 'short> Drop for FS<'long, 'short> {
     fn drop(&mut self) {
         for (_, account_info) in self.allocators.values_mut() {
-            let mut cell = account_info.data.clone();
+            let cell = account_info.data.clone();
             unsafe {
                 let ptr = Rc::into_raw(cell);
                 Rc::decrement_strong_count(ptr);
