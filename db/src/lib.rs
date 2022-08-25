@@ -28,26 +28,26 @@ use raw::index::Index;
 
 pub use raw::column_id::ColumnId;
 
-type FSCell<'a> = Rc<RefCell<FS<'a>>>;
+type FSCell<'long, 'short> = Rc<RefCell<FS<'long, 'short>>>;
 
 #[derive(Debug)]
-pub struct DB<'a> {
-    fs: FSCell<'a>,
-    index: &'a mut Index,
-    column_headers: SliceVec<'a, ColumnHeader>,
-    accessed_columns: RefCell<BTreeMap<ColumnId, Box<dyn Column + 'a>>>,
+pub struct DB<'long: 'short, 'short> {
+    fs: FSCell<'long, 'short>,
+    index: &'short mut Index,
+    column_headers: SliceVec<'short, ColumnHeader>,
+    accessed_columns: RefCell<BTreeMap<ColumnId, Box<dyn Column + 'short>>>,
     segment: SegmentId,
 }
 
-impl<'a> DB<'a> {
-    pub fn from_segment(fs: FSCell<'a>, segment: SegmentId) -> Result<Self, Error> {
+impl<'long: 'short, 'short> DB<'long, 'short> {
+    pub fn from_segment(fs: FSCell<'long, 'short>, segment: SegmentId) -> Result<Self, Error> {
         let db_segment = fs.borrow_mut().segment(&segment)?;
 
         if db_segment.len() < mem::size_of::<Index>() {
             return Err(Error::WrongSegment);
         }
 
-        let (index, columns): (&'a mut [u8], &'a mut [u8]) =
+        let (index, columns): (&'short mut [u8], &'short mut [u8]) =
             db_segment.split_at_mut(mem::size_of::<Index>());
 
         let index: &mut [[u8; mem::size_of::<Index>()]] = cast_slice_mut(index);
@@ -71,7 +71,7 @@ impl<'a> DB<'a> {
     }
 
     pub fn init_in_segment(
-        fs: FSCell<'a>,
+        fs: FSCell<'long, 'short>,
         table_name: &str,
         max_columns: usize,
         max_rows: usize,
@@ -86,7 +86,7 @@ impl<'a> DB<'a> {
 
         drop(borrowed_fs);
 
-        let (index, columns): (&'a mut [u8], &'a mut [u8]) =
+        let (index, columns): (&'short mut [u8], &'short mut [u8]) =
             index_slice.split_at_mut(mem::size_of::<Index>());
 
         let index: &mut [[u8; mem::size_of::<Index>()]] = cast_slice_mut(index);
@@ -477,7 +477,7 @@ impl<'a> DB<'a> {
     }
 }
 
-impl<'a> Drop for DB<'a> {
+impl<'long, 'short> Drop for DB<'long, 'short> {
     fn drop(&mut self) {
         let DB {
             fs,

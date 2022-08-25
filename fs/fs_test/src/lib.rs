@@ -53,7 +53,7 @@ pub fn prepare_account_info(params: AccountParams) -> AccountInfo<'static> {
     )
 }
 
-pub fn prepare_fs(program_id: &Pubkey) -> FS<'static> {
+pub fn prepare_fs(program_id: &Pubkey) -> FS<'static, 'static> {
     let params = AccountParams {
         owner: *program_id,
         data: Data::Empty(10_000),

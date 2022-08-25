@@ -15,8 +15,10 @@
 #![feature(cell_leak)]
 
 use solana_program::{account_info::AccountInfo, pubkey::Pubkey};
+use std::cell::RefCell;
 use std::cell::RefMut;
 use std::collections::BTreeMap;
+use std::rc::Rc;
 
 mod account_allocator;
 mod segment_id;
@@ -26,12 +28,12 @@ use account_allocator::AccountAllocator;
 pub use account_allocator::Error as FSError;
 pub use segment_id::SegmentId;
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct FS<'a> {
-    allocators: BTreeMap<Pubkey, AccountAllocator<'a>>,
+#[derive(Debug)]
+pub struct FS<'long: 'short, 'short> {
+    allocators: BTreeMap<Pubkey, (AccountAllocator<'short>, &'short AccountInfo<'long>)>,
 }
 
-impl<'long: 'short, 'short> FS<'short> {
+impl<'long: 'short, 'short> FS<'long, 'short> {
     /// Constructs [FS], assuming that all accounts are initialized as filesystem accounts
     pub fn from_account_iter<AccountIter>(
         program_id: &Pubkey,
@@ -40,15 +42,20 @@ impl<'long: 'short, 'short> FS<'short> {
     where
         AccountIter: Iterator<Item = &'short AccountInfo<'long>>,
     {
-        let result: Result<BTreeMap<Pubkey, AccountAllocator<'short>>, _> = accounts_iter
+        let result: Result<
+            BTreeMap<Pubkey, (AccountAllocator<'short>, &'short AccountInfo<'long>)>,
+            _,
+        > = accounts_iter
             .map(|account| {
                 if account.owner != program_id {
                     return Err(FSError::WrongOwner);
                 }
                 let pubkey = *account.key;
-                let data = account.data.borrow_mut();
-                let data = RefMut::<'_, &'long mut [u8]>::leak(data);
-                unsafe { AccountAllocator::from_account(data).map(|alloc| (pubkey, alloc)) }
+                let cell = account.data.borrow_mut();
+                let data = RefMut::<'_, &'long mut [u8]>::leak(cell);
+                unsafe {
+                    AccountAllocator::from_account(data).map(|alloc| (pubkey, (alloc, account)))
+                }
             })
             .collect();
 
@@ -64,7 +71,10 @@ impl<'long: 'short, 'short> FS<'short> {
     where
         AccountIter: Iterator<Item = &'short AccountInfo<'long>>,
     {
-        let result: Result<BTreeMap<Pubkey, AccountAllocator<'short>>, _> = accounts_iter
+        let result: Result<
+            BTreeMap<Pubkey, (AccountAllocator<'short>, &'short AccountInfo<'long>)>,
+            _,
+        > = accounts_iter
             .map(|account| {
                 if account.owner != program_id {
                     return Err(FSError::WrongOwner);
@@ -73,11 +83,13 @@ impl<'long: 'short, 'short> FS<'short> {
                 let data = account.data.borrow_mut();
                 let data = RefMut::<'_, &'long mut [u8]>::leak(data);
                 if AccountAllocator::is_initialized(data) {
-                    unsafe { AccountAllocator::from_account(data).map(|alloc| (pubkey, alloc)) }
+                    unsafe {
+                        AccountAllocator::from_account(data).map(|alloc| (pubkey, (alloc, account)))
+                    }
                 } else {
                     unsafe {
                         AccountAllocator::init_account(data, inode_table_size)
-                            .map(|alloc| (pubkey, alloc))
+                            .map(|alloc| (pubkey, (alloc, account)))
                     }
                 }
             })
@@ -91,7 +103,7 @@ impl<'long: 'short, 'short> FS<'short> {
         use FSError::{NoInodesLeft, NoSuitableSegmentFound};
 
         let mut global_result = Err(NoSuitableSegmentFound);
-        for (key, alloc) in self.allocators.iter_mut() {
+        for (key, (alloc, _)) in self.allocators.iter_mut() {
             let allocation_result = alloc.allocate_segment(size);
             match (allocation_result, global_result) {
                 (Ok(id), _) => {
@@ -112,7 +124,7 @@ impl<'long: 'short, 'short> FS<'short> {
     /// Only unborrowed segments can be deallocated
     pub fn deallocate_segment(&mut self, id: &SegmentId) -> Result<(), FSError> {
         match self.allocators.get_mut(&id.pubkey) {
-            Some(alloc) => alloc.deallocate_segment(id.id),
+            Some((alloc, _)) => alloc.deallocate_segment(id.id),
             None => Err(FSError::NoSuchPubkey),
         }
     }
@@ -122,7 +134,7 @@ impl<'long: 'short, 'short> FS<'short> {
     /// # Safety
     /// The caller must assert, that all borrows pointing to this segment are dropped
     pub unsafe fn release_borrowed_segment(&mut self, id: &SegmentId) {
-        if let Some(alloc) = self.allocators.get_mut(&id.pubkey) {
+        if let Some((alloc, _)) = self.allocators.get_mut(&id.pubkey) {
             unsafe {
                 alloc.release_borrowed_segment(id.id);
             }
@@ -130,7 +142,7 @@ impl<'long: 'short, 'short> FS<'short> {
     }
 
     pub fn defragment_fs(&mut self) {
-        for (_, alloc) in self.allocators.iter_mut() {
+        for (_, (alloc, _)) in self.allocators.iter_mut() {
             alloc.merge_segments();
         }
     }
@@ -138,7 +150,7 @@ impl<'long: 'short, 'short> FS<'short> {
     /// Borrows a segment with given [SegmentId]
     pub fn segment(&mut self, id: &SegmentId) -> Result<&'short mut [u8], FSError> {
         match self.allocators.get_mut(&id.pubkey) {
-            Some(alloc) => alloc.segment(id.id),
+            Some((alloc, _)) => alloc.segment(id.id),
             None => Err(FSError::NoSuchPubkey),
         }
     }
@@ -146,5 +158,24 @@ impl<'long: 'short, 'short> FS<'short> {
     /// Checks if a segment with given [SegmentId] is present in the FS
     pub fn is_accessible(&self, id: &SegmentId) -> bool {
         self.allocators.contains_key(&id.pubkey)
+    }
+}
+
+impl<'long: 'short, 'short> Drop for FS<'long, 'short> {
+    fn drop(&mut self) {
+        for (_, account_info) in self.allocators.values_mut() {
+            let mut cell = account_info.data.clone();
+            unsafe {
+                let ptr = Rc::into_raw(cell);
+                Rc::decrement_strong_count(ptr);
+
+                let mut ref_counter = Rc::from_raw(ptr);
+                Rc::get_mut(&mut ref_counter)
+                    .expect("Already borrowed")
+                    .undo_leak();
+
+                Rc::increment_strong_count(ptr);
+            }
+        }
     }
 }
