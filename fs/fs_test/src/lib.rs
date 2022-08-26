@@ -7,7 +7,7 @@ use solana_program::{account_info::AccountInfo, pubkey::Pubkey};
 pub struct AccountParams {
     pub address: Option<Pubkey>,
     pub owner: Pubkey,
-    pub data: Data,
+    pub data: AccountData,
 }
 
 /// This struct is used to store data, which is borrowed in ordinal AccountInfo<'_>
@@ -20,7 +20,7 @@ pub struct InternalAccountInfo {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum Data {
+pub enum AccountData {
     Filled(Vec<u8>),
     Empty(usize),
 }
@@ -28,8 +28,8 @@ pub enum Data {
 /// Due to the way, how this function works, it causes memory leaks
 pub fn prepare_account_info(params: AccountParams) -> AccountInfo<'static> {
     let data = match params.data {
-        Data::Filled(vec) => vec,
-        Data::Empty(cap) => vec![0; cap],
+        AccountData::Filled(vec) => vec,
+        AccountData::Empty(cap) => vec![0; cap],
     };
 
     let internal_info: &'static mut InternalAccountInfo =
@@ -56,17 +56,10 @@ pub fn prepare_fs(program_id: &Pubkey) -> FS<'static, 'static> {
     let params = AccountParams {
         address: None,
         owner: *program_id,
-        data: Data::Empty(10_000),
+        data: AccountData::Empty(10_000),
     };
 
-    let mut accounts = Vec::new();
-    for _ in 0..3 {
-        accounts.push(prepare_account_info(params.clone()));
-    }
-
-    let accounts: &'static mut [AccountInfo] = accounts.leak();
-
-    FS::from_uninit_account_iter(&program_id, &mut accounts.iter(), 10).unwrap()
+    prepare_raw_fs(program_id, std::iter::repeat(params).take(4))
 }
 
 pub fn prepare_raw_fs<AccountIter>(
