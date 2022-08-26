@@ -392,7 +392,7 @@ fn prepare_db<'long: 'short, 'short, AccountIter>(
     account_iter: &mut AccountIter,
     segment: SegmentId,
     is_initialized: bool,
-) -> Result<DB<'short>, DBError>
+) -> Result<DB<'long, 'short>, DBError>
 where
     AccountIter: Iterator<Item = &'short AccountInfo<'long>>,
 {
