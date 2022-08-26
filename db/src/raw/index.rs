@@ -70,7 +70,7 @@ impl Index {
     }
 
     pub unsafe fn set_column_count(&mut self, count: usize) {
-        assert!(count <= u8::MAX as usize);
+        assert!(u8::try_from(count).is_ok());
         self.column_count = count as u8;
     }
 
@@ -88,10 +88,10 @@ impl Index {
             .unwrap(); // TODO: Document unwrap
         self.primary_key_type = u8::from(primary_key_type);
         self.column_count = 0;
-        assert!(column_max <= u8::MAX as usize);
+        assert!(u8::try_from(column_max).is_ok());
         self.column_max = column_max as u8;
         self.column_id_autoincrement = u32::to_be_bytes(0);
-        assert!(max_rows <= u32::MAX as usize);
+        assert!(u32::try_from(max_rows).is_ok());
         self.max_rows = u32::to_be_bytes(max_rows as u32);
     }
 }

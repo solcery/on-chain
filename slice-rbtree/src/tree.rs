@@ -114,22 +114,27 @@ where
         self.0.delete(0, key)
     }
 
+    #[must_use]
     pub fn first_entry(&self) -> Option<(K, V)> {
         self.0.first_entry(0)
     }
 
+    #[must_use]
     pub fn last_entry(&self) -> Option<(K, V)> {
         self.0.last_entry(0)
     }
 
+    #[must_use]
     pub fn pairs<'b>(&'b self) -> PairsIterator<'b, 'a, K, V, KSIZE, VSIZE> {
         self.0.pairs(0)
     }
 
+    #[must_use]
     pub fn keys<'b>(&'b self) -> KeysIterator<'b, 'a, K, V, KSIZE, VSIZE> {
         self.0.keys(0)
     }
 
+    #[must_use]
     pub fn values<'b>(&'b self) -> ValuesIterator<'b, 'a, K, V, KSIZE, VSIZE> {
         self.0.values(0)
     }

@@ -1,6 +1,6 @@
 //! A small colection of utilities used for testing code with account-fs
 
-use account_fs::{SegmentId, FS};
+use account_fs::FS;
 use solana_program::{account_info::AccountInfo, pubkey::Pubkey};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -10,7 +10,7 @@ pub struct AccountParams {
     pub data: AccountData,
 }
 
-/// This struct is used to store data, which is borrowed in ordinal AccountInfo<'_>
+/// This struct is used to store data, which is borrowed in ordinal [AccountInfo]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InternalAccountInfo {
     key: Pubkey,
@@ -26,6 +26,7 @@ pub enum AccountData {
 }
 
 /// Due to the way, how this function works, it causes memory leaks
+#[must_use]
 pub fn prepare_account_info(params: AccountParams) -> AccountInfo<'static> {
     let data = match params.data {
         AccountData::Filled(vec) => vec,
@@ -52,6 +53,7 @@ pub fn prepare_account_info(params: AccountParams) -> AccountInfo<'static> {
     )
 }
 
+#[must_use]
 pub fn prepare_fs(program_id: &Pubkey) -> FS<'static, 'static> {
     let params = AccountParams {
         address: None,
@@ -76,5 +78,5 @@ where
 
     let accounts: &'static mut [AccountInfo] = generated_accounts.leak();
 
-    FS::from_uninit_account_iter(&program_id, &mut accounts.iter(), 10).unwrap()
+    FS::from_uninit_account_iter(program_id, &mut accounts.iter(), 10).unwrap()
 }

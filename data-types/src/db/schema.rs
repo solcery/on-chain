@@ -11,6 +11,7 @@ use solcery_impl_generator::generate_column_impls;
 
 pub type Tables = Vec<AllowedTypes>;
 
+#[must_use]
 pub fn contains_one_primary_key(tables: &Tables) -> bool {
     tables.iter().fold(0, |acc, t| match *t {
         AllowedTypes::Int(KeyType::Primary)
@@ -100,6 +101,7 @@ pub struct NewSchema {
 }
 
 impl Schema {
+    #[must_use]
     pub fn index_size(&self) -> usize {
         unimplemented!();
     }

@@ -345,6 +345,7 @@ where
             .is_some()
     }
 
+    #[must_use]
     pub fn pairs<'b>(&'b self, tree_id: usize) -> PairsIterator<'b, 'a, K, V, KSIZE, VSIZE> {
         PairsIterator {
             next_node: self.root(tree_id).map(|root_id| self.min(root_id as usize)),
@@ -352,6 +353,7 @@ where
         }
     }
 
+    #[must_use]
     pub fn keys<'b>(&'b self, tree_id: usize) -> KeysIterator<'b, 'a, K, V, KSIZE, VSIZE> {
         KeysIterator {
             next_node: self.root(tree_id).map(|root_id| self.min(root_id as usize)),
@@ -359,6 +361,7 @@ where
         }
     }
 
+    #[must_use]
     pub fn values<'b>(&'b self, tree_id: usize) -> ValuesIterator<'b, 'a, K, V, KSIZE, VSIZE> {
         ValuesIterator {
             next_node: self.root(tree_id).map(|root_id| self.min(root_id as usize)),
@@ -366,6 +369,7 @@ where
         }
     }
 
+    #[must_use]
     pub fn first_entry(&self, tree_id: usize) -> Option<(K, V)> {
         self.root(tree_id).map(|root_id| {
             let node = &self.nodes[self.min(root_id as usize)];
@@ -375,6 +379,7 @@ where
         })
     }
 
+    #[must_use]
     pub fn last_entry(&self, tree_id: usize) -> Option<(K, V)> {
         self.root(tree_id).map(|root_id| {
             let node = &self.nodes[self.max(root_id as usize)];

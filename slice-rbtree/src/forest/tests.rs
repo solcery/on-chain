@@ -8,6 +8,7 @@ where
     V: Eq + BorshDeserialize + BorshSerialize,
     [(); mem::size_of::<Header>()]: Sized,
 {
+    #[must_use]
     pub fn is_balanced(&self, tree_id: usize) -> bool {
         let mut black = 0;
         let mut node = self.root(tree_id);
@@ -49,6 +50,7 @@ where
         }
     }
 
+    #[must_use]
     pub fn struct_eq(&self, tree_id: usize, other: &Self, other_tree_id: usize) -> bool {
         self.node_eq(self.root(tree_id), other.root(other_tree_id))
     }

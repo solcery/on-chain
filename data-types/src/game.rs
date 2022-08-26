@@ -16,6 +16,7 @@ pub struct Game {
 }
 
 impl Game {
+    #[must_use]
     pub unsafe fn init(project: Pubkey, state: Pubkey, num_players: u32, max_items: u32) -> Self {
         Self {
             project,
@@ -28,6 +29,7 @@ impl Game {
         }
     }
 
+    #[must_use]
     pub unsafe fn from_raw_parts(
         project: Pubkey,
         status: Status,
@@ -42,6 +44,7 @@ impl Game {
         }
     }
 
+    #[must_use]
     pub fn item_count(&self) -> usize {
         self.players
             .iter()
@@ -162,7 +165,7 @@ impl Game {
             // items than u32::MAX
             let mut item_id = NonZeroU32::new_unchecked(self.item_count() as u32 + 1);
 
-            for token in items.into_iter() {
+            for token in items {
                 if self.token_in_game(token) {
                     return Err(Error::TokenAlreadyInGame);
                 }
@@ -181,13 +184,15 @@ impl Game {
         }
     }
 
+    #[must_use]
     pub fn state_key(&self) -> Pubkey {
         self.state
     }
 
+    #[must_use]
     pub fn token_in_game(&self, token: &Pubkey) -> bool {
         for player_info in &self.players {
-            for item in player_info.items.iter() {
+            for item in &player_info.items {
                 if &item.token == token {
                     return true;
                 }
@@ -205,6 +210,7 @@ pub struct Player {
 }
 
 impl Player {
+    #[must_use]
     pub unsafe fn from_raw_parts(id: NonZeroU32, key: Pubkey, items: Vec<Item>) -> Self {
         Self { id, key, items }
     }
@@ -217,6 +223,7 @@ pub struct Item {
 }
 
 impl Item {
+    #[must_use]
     pub unsafe fn from_raw_parts(id: NonZeroU32, token: Pubkey) -> Self {
         Self { id, token }
     }
