@@ -98,6 +98,6 @@ fn values() {
     assert_eq!(obtained_val, Some(value2));
     db.delete_value(primary_key.clone(), col_id).unwrap();
 
-    let no_value = db.value(primary_key.clone(), col_id).unwrap();
+    let no_value = db.value(primary_key, col_id).unwrap();
     assert_eq!(no_value, None);
 }

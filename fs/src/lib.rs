@@ -179,3 +179,32 @@ impl<'long: 'short, 'short> Drop for FS<'long, 'short> {
         }
     }
 }
+
+pub unsafe fn prepare_account_for_fs<'long: 'short, 'short>(
+    account: &'short AccountInfo<'long>,
+    inode_table_size: usize,
+) -> Result<(), FSError> {
+    let cell = account.data.borrow_mut();
+    let data = RefMut::<'_, &'long mut [u8]>::leak(cell);
+    let mut alloc = if AccountAllocator::is_initialized(data) {
+        unsafe { AccountAllocator::from_account(data) }
+    } else {
+        unsafe { AccountAllocator::init_account(data, inode_table_size) }
+    }?;
+
+    todo!();
+    // Cleaning up
+    let cell = account.data.clone();
+    unsafe {
+        let ptr = Rc::into_raw(cell);
+        Rc::decrement_strong_count(ptr);
+
+        let mut ref_counter = Rc::from_raw(ptr);
+        Rc::get_mut(&mut ref_counter)
+            .expect("Already borrowed")
+            .undo_leak();
+
+        Rc::increment_strong_count(ptr);
+    }
+    Ok(())
+}

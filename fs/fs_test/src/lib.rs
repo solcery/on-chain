@@ -2,6 +2,7 @@
 
 use account_fs::{SegmentId, FS};
 use solana_program::{account_info::AccountInfo, pubkey::Pubkey};
+use std::collections::BTreeMap;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AccountParams {
@@ -76,5 +77,31 @@ where
 
     let accounts: &'static mut [AccountInfo] = generated_accounts.leak();
 
-    FS::from_uninit_account_iter(&program_id, &mut accounts.iter(), 10).unwrap()
+    FS::from_uninit_account_iter(program_id, &mut accounts.iter(), 10).unwrap()
+}
+
+const ACCOUNT_SIZE: usize = 100_000;
+pub fn prepare_fs_from_segments<SegmentIter>(
+    program_id: &Pubkey,
+    accounts: SegmentIter,
+) -> FS<'static, 'static>
+where
+    SegmentIter: IntoIterator<Item = (SegmentId, Vec<u8>)>,
+{
+    let mut generated_accounts = BTreeMap::new();
+    for (segment_id, data) in accounts {
+        if let Some(account) = generated_accounts.get(&segment_id.pubkey) {
+            todo!();
+        } else {
+            let account_params = AccountParams {
+                address: Some(segment_id.pubkey),
+                owner: *program_id,
+                data: AccountData::Empty(ACCOUNT_SIZE),
+            };
+            let mut account = prepare_account_info(account_params);
+            generated_accounts.insert(segment_id.pubkey, account);
+            todo!();
+        }
+    }
+    todo!();
 }

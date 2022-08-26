@@ -156,6 +156,16 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
     }
 
     pub fn allocate_segment(&mut self, size: usize) -> Result<u32, Error> {
+        unsafe { self.allocate_segment_with_id(size, None) }
+    }
+
+    // This function was splitted for testing purposes
+    #[inline(always)]
+    unsafe fn allocate_segment_with_id(
+        &mut self,
+        size: usize,
+        id: Option<u32>,
+    ) -> Result<u32, Error> {
         if self.inode_data.len() == self.inode_data.capacity() {
             return Err(Error::NoInodesLeft);
         }
@@ -172,7 +182,7 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
             let start = inode.start_idx();
             let end = inode.end_idx();
 
-            let id = self.allocation_table.generate_id();
+            let id = id.unwrap_or(self.allocation_table.generate_id());
 
             unsafe {
                 if inode.len() == size {
@@ -369,6 +379,19 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
                 }
             })
             .collect()
+    }
+
+    pub(super) fn set_segment(&mut self, id: u32, data: &[u8]) -> Result<(), Error> {
+        unsafe {
+            self.allocate_segment_with_id(data.len(), Some(id))?;
+        }
+
+        let segment = self.segment(id)?;
+        segment.copy_from_slice(data);
+        unsafe {
+            self.release_borrowed_segment(id);
+        }
+        Ok(())
     }
 
     #[cfg(test)]
