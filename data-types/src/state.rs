@@ -11,6 +11,7 @@ pub struct State {
 }
 
 impl State {
+    #[must_use]
     pub unsafe fn init(key: Pubkey) -> Self {
         Self {
             log: vec![],
@@ -19,6 +20,7 @@ impl State {
         }
     }
 
+    #[must_use]
     pub unsafe fn from_raw_parts(log: Vec<Event>, state_step: u32, game_info: Pubkey) -> Self {
         Self {
             log,
@@ -41,6 +43,7 @@ impl State {
         }
     }
 
+    #[must_use]
     pub fn game_key(&self) -> Pubkey {
         self.game_info
     }

@@ -14,12 +14,87 @@ pub(crate) use node::Node;
 
 use super::Error;
 
+#[must_use]
+#[inline]
+pub fn forest_size(k_size: usize, v_size: usize, max_nodes: usize, max_roots: usize) -> usize {
+    mem::size_of::<Header>()
+        + (mem::size_of::<Node<0, 0>>() + k_size + v_size) * max_nodes
+        + 4 * max_roots
+}
+
+pub fn init_forest(
+    k_size: usize,
+    v_size: usize,
+    slice: &mut [u8],
+    max_roots: usize,
+) -> Result<(), Error> {
+    if slice.len() <= mem::size_of::<Header>() {
+        return Err(Error::TooSmall);
+    }
+
+    let (header, tail) = slice.split_at_mut(mem::size_of::<Header>());
+
+    if tail.len() <= max_roots * 4 {
+        return Err(Error::TooSmall);
+    }
+
+    let (nodes, roots) = tail.split_at_mut(tail.len() - max_roots * 4);
+
+    if nodes.len() % (mem::size_of::<Node<0, 0>>() + k_size + v_size) != 0 {
+        return Err(Error::WrongNodePoolSize);
+    }
+
+    let header: &mut [[u8; mem::size_of::<Header>()]] = cast_slice_mut(header);
+    let header: &mut Header = cast_mut(&mut header[0]);
+    let roots: &mut [[u8; 4]] = cast_slice_mut(roots);
+
+    // Allocator initialization
+
+    // Here comes the most fragile part of that function.
+    // Our node allocator is just a singly-linked list of all free nodes.
+    // parent field of Node<_,_> struct is used as a link field, because that sounded adequate.
+    // Since size_of<Node<k,v>> depends on k and v, which is unknown at compile-time, we can not
+    // cast from &[u8] to &[Node<_,_>]. However, Node memory layout is stabilized, so here we will
+    // properly initialize nodes by offsetting to the needed fields.
+    let mut nodes = nodes.chunks_exact_mut(mem::size_of::<Node<0, 0>>() + k_size + v_size);
+
+    let nodes_len = nodes.len() as u32;
+
+    // parent field occupy 4 bytes starting from (k_size + v_size + 4 + 4) in big-endian.
+    let parent_offset = k_size + v_size + 4 + 4;
+    // Bit flags occupy parent_offset + 4, is_parent_present is bit 3.
+    let flags_offset = parent_offset + 4;
+    if let Some(first_node) = nodes.next() {
+        first_node[flags_offset] = 0b0000; // No flags set. All the values are set to None.
+    }
+
+    for (i, node) in nodes.enumerate() {
+        node[parent_offset..flags_offset].copy_from_slice(&u32::to_be_bytes(i as u32));
+        node[flags_offset] = 0b0100;
+    }
+
+    // Roots initialization
+    for root in roots.iter_mut() {
+        *root = u32::to_be_bytes(u32::MAX);
+    }
+
+    unsafe {
+        header.fill(
+            k_size as u16,
+            v_size as u16,
+            nodes_len,
+            max_roots as u32,
+            Some(nodes_len - 1),
+        );
+    }
+    Ok(())
+}
+
 #[derive(Debug)]
 pub struct RBForest<'a, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,
     V: BorshDeserialize + BorshSerialize,
-    [(); mem::size_of::<Header>()]: Sized,
 {
     header: &'a mut Header,
     nodes: &'a mut [Node<KSIZE, VSIZE>],
@@ -32,7 +107,6 @@ impl<'a, K, V, const KSIZE: usize, const VSIZE: usize> RBForest<'a, K, V, KSIZE,
 where
     K: Ord + BorshDeserialize + BorshSerialize,
     V: BorshDeserialize + BorshSerialize,
-    [(); mem::size_of::<Header>()]: Sized,
 {
     pub fn init_slice(slice: &'a mut [u8], max_roots: usize) -> Result<Self, Error> {
         if slice.len() <= mem::size_of::<Header>() {
@@ -86,13 +160,6 @@ where
         })
     }
 
-    #[must_use]
-    pub fn expected_size(num_entries: usize, max_roots: usize) -> usize {
-        mem::size_of::<Header>()
-            + (mem::size_of::<Node<0, 0>>() + KSIZE + VSIZE) * num_entries
-            + 4 * max_roots
-    }
-
     pub unsafe fn from_slice(slice: &'a mut [u8]) -> Result<Self, Error> {
         if slice.len() <= mem::size_of::<Header>() {
             return Err(Error::TooSmall);
@@ -102,6 +169,10 @@ where
 
         let header: &mut [[u8; mem::size_of::<Header>()]] = cast_slice_mut(header);
         let header: &mut Header = cast_mut(&mut header[0]);
+
+        if !header.check_magic() {
+            return Err(Error::WrongMagic);
+        }
 
         if tail.len() <= (header.max_roots() as usize) * 4 {
             return Err(Error::TooSmall);
@@ -274,6 +345,7 @@ where
             .is_some()
     }
 
+    #[must_use]
     pub fn pairs<'b>(&'b self, tree_id: usize) -> PairsIterator<'b, 'a, K, V, KSIZE, VSIZE> {
         PairsIterator {
             next_node: self.root(tree_id).map(|root_id| self.min(root_id as usize)),
@@ -281,6 +353,7 @@ where
         }
     }
 
+    #[must_use]
     pub fn keys<'b>(&'b self, tree_id: usize) -> KeysIterator<'b, 'a, K, V, KSIZE, VSIZE> {
         KeysIterator {
             next_node: self.root(tree_id).map(|root_id| self.min(root_id as usize)),
@@ -288,6 +361,7 @@ where
         }
     }
 
+    #[must_use]
     pub fn values<'b>(&'b self, tree_id: usize) -> ValuesIterator<'b, 'a, K, V, KSIZE, VSIZE> {
         ValuesIterator {
             next_node: self.root(tree_id).map(|root_id| self.min(root_id as usize)),
@@ -295,6 +369,7 @@ where
         }
     }
 
+    #[must_use]
     pub fn first_entry(&self, tree_id: usize) -> Option<(K, V)> {
         self.root(tree_id).map(|root_id| {
             let node = &self.nodes[self.min(root_id as usize)];
@@ -304,6 +379,7 @@ where
         })
     }
 
+    #[must_use]
     pub fn last_entry(&self, tree_id: usize) -> Option<(K, V)> {
         self.root(tree_id).map(|root_id| {
             let node = &self.nodes[self.max(root_id as usize)];
@@ -949,11 +1025,11 @@ where
     }
 }
 
+#[derive(Debug)]
 pub struct PairsIterator<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,
     V: BorshDeserialize + BorshSerialize,
-    [(); mem::size_of::<Header>()]: Sized,
 {
     next_node: Option<usize>,
     tree: &'a RBForest<'b, K, V, KSIZE, VSIZE>,
@@ -964,7 +1040,6 @@ impl<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize> Iterator
 where
     K: Ord + BorshDeserialize + BorshSerialize,
     V: BorshDeserialize + BorshSerialize,
-    [(); mem::size_of::<Header>()]: Sized,
 {
     type Item = (K, V);
 
@@ -996,11 +1071,11 @@ where
     }
 }
 
+#[derive(Debug)]
 pub struct KeysIterator<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,
     V: BorshDeserialize + BorshSerialize,
-    [(); mem::size_of::<Header>()]: Sized,
 {
     next_node: Option<usize>,
     tree: &'a RBForest<'b, K, V, KSIZE, VSIZE>,
@@ -1011,7 +1086,6 @@ impl<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize> Iterator
 where
     K: Ord + BorshDeserialize + BorshSerialize,
     V: BorshDeserialize + BorshSerialize,
-    [(); mem::size_of::<Header>()]: Sized,
 {
     type Item = K;
 
@@ -1042,11 +1116,11 @@ where
     }
 }
 
+#[derive(Debug)]
 pub struct ValuesIterator<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,
     V: BorshDeserialize + BorshSerialize,
-    [(); mem::size_of::<Header>()]: Sized,
 {
     next_node: Option<usize>,
     tree: &'a RBForest<'b, K, V, KSIZE, VSIZE>,
@@ -1057,7 +1131,6 @@ impl<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize> Iterator
 where
     K: Ord + BorshDeserialize + BorshSerialize,
     V: BorshDeserialize + BorshSerialize,
-    [(); mem::size_of::<Header>()]: Sized,
 {
     type Item = V;
 

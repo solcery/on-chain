@@ -1,14 +1,14 @@
 [workspace]
 members = [
-	"crud",
 	"data-types",
-	"engine",
+	"data-types/generator",
+	"db",
+	"db-manager",
+	"db-program",
+	"fs",
+	"fs/fs_test",
 	"game",
-	"object",
-	"project",
 	"reltab",
 	"slice-rbtree",
-	"storage",
-	"template",
 	"vm",
 ]

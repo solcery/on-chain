@@ -8,6 +8,7 @@ where
     V: Eq + BorshDeserialize + BorshSerialize,
     [(); mem::size_of::<Header>()]: Sized,
 {
+    #[must_use]
     pub fn is_balanced(&self, tree_id: usize) -> bool {
         let mut black = 0;
         let mut node = self.root(tree_id);
@@ -49,6 +50,7 @@ where
         }
     }
 
+    #[must_use]
     pub fn struct_eq(&self, tree_id: usize, other: &Self, other_tree_id: usize) -> bool {
         self.node_eq(self.root(tree_id), other.root(other_tree_id))
     }
@@ -455,17 +457,18 @@ fn too_small() {
 
 #[test]
 fn fractional_node_count() {
-    let mut vec = vec![0; RBForest::<u8, u8, 1, 1>::expected_size(1, 1) + 1];
+    let mut vec = vec![0; forest_size(1, 1, 1, 1) + 1];
     let tree = RBForest::<u8, u8, 1, 1>::init_slice(vec.as_mut_slice(), 1).unwrap_err();
     assert_eq!(tree, Error::WrongNodePoolSize);
 }
 
-const FOREST_BYTES: [u8; 148] = [
-    0, 1, 0, 1, 0, 0, 0, 8, 0, 0, 0, 3, 255, 255, 255, 255, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    4, 12, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3,
-    4, 2, 5, 0, 0, 0, 2, 0, 0, 0, 4, 0, 0, 0, 4, 3, 5, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 5, 5,
-    1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 4, 2, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 4, 4, 3, 0,
-    0, 0, 6, 0, 0, 0, 5, 0, 0, 0, 6, 3, 0, 0, 0, 7, 0, 0, 0, 3, 0, 0, 0, 1,
+const FOREST_BYTES: [u8; 160] = [
+    83, 108, 105, 99, 101, 95, 82, 66, 84, 114, 101, 101, 0, 1, 0, 1, 0, 0, 0, 8, 0, 0, 0, 3, 255,
+    255, 255, 255, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 12, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 4, 2, 5, 0, 0, 0, 2, 0, 0, 0, 4, 0, 0, 0,
+    4, 3, 5, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 5, 5, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 4,
+    2, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 4, 4, 3, 0, 0, 0, 6, 0, 0, 0, 5, 0, 0, 0, 6, 3, 0, 0,
+    0, 7, 0, 0, 0, 3, 0, 0, 0, 1,
 ];
 
 #[test]
@@ -514,4 +517,44 @@ pub fn assert_rm<K, V, const KSIZE: usize, const VSIZE: usize>(
     tree.child_parent_link_test(tree_id);
     assert_eq!(tree.get_key_index(tree_id, val), None);
     assert!(tree.is_balanced(tree_id));
+}
+
+mod init_forest_tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    fn assert_init_test<const KSIZE: usize, const VSIZE: usize>(
+        num_entries: usize,
+        max_roots: usize,
+    ) {
+        let mut reference_vec = create_vec(KSIZE, VSIZE, num_entries, max_roots);
+        let mut testing_vec = create_vec(KSIZE, VSIZE, num_entries, max_roots);
+
+        RBForest::<i32, u32, KSIZE, VSIZE>::init_slice(reference_vec.as_mut_slice(), max_roots)
+            .unwrap();
+
+        init_forest(KSIZE, VSIZE, testing_vec.as_mut_slice(), max_roots).unwrap();
+
+        assert_eq!(testing_vec, reference_vec);
+    }
+
+    #[test]
+    fn one_one_tree() {
+        assert_init_test::<1, 1>(10, 1);
+    }
+
+    #[test]
+    fn one_ten_tree() {
+        assert_init_test::<1, 10>(10, 1);
+    }
+
+    #[test]
+    fn one_one_forest() {
+        assert_init_test::<1, 1>(10, 10);
+    }
+
+    #[test]
+    fn one_ten_forest() {
+        assert_init_test::<1, 10>(10, 10);
+    }
 }

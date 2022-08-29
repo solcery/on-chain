@@ -2,7 +2,19 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use std::borrow::Borrow;
 use std::cmp::Ord;
 
-use super::{Error, KeysIterator, PairsIterator, RBForest, ValuesIterator};
+use super::{
+    forest_size, init_forest, Error, KeysIterator, PairsIterator, RBForest, ValuesIterator,
+};
+
+#[must_use]
+#[inline]
+pub fn tree_size(k_size: usize, v_size: usize, max_nodes: usize) -> usize {
+    forest_size(k_size, v_size, max_nodes, 1)
+}
+
+pub fn init_tree(k_size: usize, v_size: usize, slice: &mut [u8]) -> Result<(), Error> {
+    init_forest(k_size, v_size, slice, 1)
+}
 
 #[derive(Debug)]
 pub struct RBTree<'a, K, V, const KSIZE: usize, const VSIZE: usize>(
@@ -19,11 +31,6 @@ where
 {
     pub fn init_slice(slice: &'a mut [u8]) -> Result<Self, Error> {
         RBForest::<'a, K, V, KSIZE, VSIZE>::init_slice(slice, 1).map(|tree| Self(tree))
-    }
-
-    #[must_use]
-    pub fn expected_size(num_entries: usize) -> usize {
-        RBForest::<'a, K, V, KSIZE, VSIZE>::expected_size(num_entries, 1)
     }
 
     pub unsafe fn from_slice(slice: &'a mut [u8]) -> Result<Self, Error> {
@@ -107,22 +114,27 @@ where
         self.0.delete(0, key)
     }
 
+    #[must_use]
     pub fn first_entry(&self) -> Option<(K, V)> {
         self.0.first_entry(0)
     }
 
+    #[must_use]
     pub fn last_entry(&self) -> Option<(K, V)> {
         self.0.last_entry(0)
     }
 
+    #[must_use]
     pub fn pairs<'b>(&'b self) -> PairsIterator<'b, 'a, K, V, KSIZE, VSIZE> {
         self.0.pairs(0)
     }
 
+    #[must_use]
     pub fn keys<'b>(&'b self) -> KeysIterator<'b, 'a, K, V, KSIZE, VSIZE> {
         self.0.keys(0)
     }
 
+    #[must_use]
     pub fn values<'b>(&'b self) -> ValuesIterator<'b, 'a, K, V, KSIZE, VSIZE> {
         self.0.values(0)
     }

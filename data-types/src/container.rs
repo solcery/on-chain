@@ -1,6 +1,6 @@
 //! # Container type
 //!
-//! This type is used for data, which can be either stored directly in the instruction_data or in
+//! This type is used for data, which can be either stored directly in the `instruction_data` or in
 //! the separate account.
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::account_info::next_account_info;

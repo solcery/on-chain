@@ -1,0 +1,19 @@
+[package]
+name = "db-manager"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+solana-program = "1.7.8"
+thiserror = "1.0.24"
+borsh = "0.9.1"
+num-traits = "0.2"
+num-derive = "0.3"
+spl-token = { version = "3.3.0", features = ["no-entrypoint"] }
+solcery-data-types = { path = "../data-types" }
+slice-rbtree = { path = "../slice-rbtree" }
+
+[dev-dependencies]
+pretty_assertions = "1.2.0"
+solana-program-test = "1.7.8"
+solana-sdk = "1.7.8"

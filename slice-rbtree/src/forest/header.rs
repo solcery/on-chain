@@ -1,9 +1,12 @@
 use bytemuck::{Pod, Zeroable};
 use std::fmt;
 
+const HEADER_MAGIC: [u8; 12] = *b"Slice_RBTree";
+
 #[repr(C)]
 #[derive(Pod, Clone, Copy, Zeroable)]
 pub struct Header {
+    magic: [u8; 12],
     k_size: [u8; 2],
     v_size: [u8; 2],
     max_nodes: [u8; 4],
@@ -63,9 +66,14 @@ impl Header {
         self.v_size = u16::to_be_bytes(v_size);
         self.max_nodes = u32::to_be_bytes(max_nodes);
         self.max_roots = u32::to_be_bytes(max_roots);
+        self.magic = HEADER_MAGIC;
         unsafe {
             self.set_head(head);
         }
+    }
+
+    pub fn check_magic(&self) -> bool {
+        self.magic == HEADER_MAGIC
     }
 
     #[cfg(test)]
@@ -93,6 +101,7 @@ impl Header {
             max_nodes,
             max_roots,
             head,
+            magic: HEADER_MAGIC,
         }
     }
 }

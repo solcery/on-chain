@@ -1,4 +1,7 @@
+#![deny(missing_debug_implementations)]
+//#![deny(missing_docs)]
 pub mod container;
+pub mod db;
 pub mod game;
 pub mod game_state;
 pub mod instruction_rom;
