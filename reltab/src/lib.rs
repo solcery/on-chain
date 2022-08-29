@@ -1,4 +1,6 @@
 //! Solcery RelTab: a collection of relational containers
-mod one_to_one;
+#![deny(unsafe_op_in_unsafe_fn)]
+#![deny(missing_debug_implementations)]
+//#![deny(missing_docs)]
 
-pub use one_to_one::OneToOne;
+pub mod one_to_one;

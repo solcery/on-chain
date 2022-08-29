@@ -3956,6 +3956,7 @@ name = "solcery-reltab"
 version = "0.0.0"
 dependencies = [
  "borsh",
+ "bytemuck",
  "pretty_assertions 0.6.1",
  "slice-rbtree",
 ]
