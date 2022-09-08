@@ -515,8 +515,19 @@ impl<'long, 'short> Drop for DB<'long, 'short> {
 
 impl<'long, 'short> fmt::Debug for DB<'long, 'short> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut accessed_columns = self.accessed_columns.borrow_mut();
-        let fs = self.fs.borrow();
+        let mut accessed_columns = match self.accessed_columns.try_borrow_mut() {
+            Ok(x) => x,
+            Err(e) => {
+                return f.write_fmt(format_args!("DB is in use: {e}"));
+            }
+        };
+
+        let fs = match self.fs.try_borrow() {
+            Ok(x) => x,
+            Err(e) => {
+                return f.write_fmt(format_args!("FS is in use: {e}"));
+            }
+        };
 
         for &header in self.column_headers.iter() {
             if !accessed_columns.contains_key(&header.id())
