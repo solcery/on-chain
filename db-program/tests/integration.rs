@@ -531,7 +531,11 @@ async fn add_column() {
     )
     .unwrap();
 
-    assert!(db.value(Data::Int(1), ColumnId::new(0)).unwrap().is_none());
+    let value = db.value(Data::Int(1), ColumnId::new(0)).unwrap();
+
+    dbg!(&db);
+
+    assert_eq!(value, None);
 }
 
 #[tokio::test]
@@ -622,7 +626,7 @@ async fn add_value() {
     );
 
     let mut token_transaction = Transaction::new_with_payer(
-        &[create_fs_account, create, add_column],
+        &[create_fs_account, create, add_column, add_value],
         Some(&admin.pubkey()),
     );
 
@@ -644,11 +648,9 @@ async fn add_value() {
     let fs_account = vec![AccountInfo::from(&mut account_internals)];
 
     // Deserializing data
-    let fs = Rc::new(RefCell::new(dbg!(FS::from_account_iter(
-        &program_id,
-        &mut fs_account.iter()
-    )
-    .unwrap())));
+    let fs = Rc::new(RefCell::new(
+        FS::from_account_iter(&program_id, &mut fs_account.iter()).unwrap(),
+    ));
 
     let db = DB::from_segment(
         fs,
@@ -659,10 +661,11 @@ async fn add_value() {
     )
     .unwrap();
 
-    assert_eq!(
-        db.value(Data::Int(1), ColumnId::new(0)).unwrap(),
-        Some(Data::Int(129))
-    );
+    let value = db.value(Data::Int(1), ColumnId::new(0)).unwrap();
+
+    dbg!(&db);
+
+    assert_eq!(value, Some(Data::Int(365)));
 }
 
 struct ProgramEnvironment {
