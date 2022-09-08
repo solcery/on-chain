@@ -6,7 +6,7 @@ use std::fmt;
 pub struct ColumnId(u32);
 
 impl ColumnId {
-    pub(crate) fn new(val: u32) -> Self {
+    pub fn new(val: u32) -> Self {
         Self(val)
     }
 

@@ -78,6 +78,8 @@ where
         MintNewAccessToken => {
             unreachable!("MintNewAccessToken instruction should be handled separately")
         }
+        AddColumn(params) => process_add_column(program_id, account_iter, params),
+        RemoveColumn(params) => process_remove_column(program_id, account_iter, params),
     }
 }
 
@@ -385,6 +387,31 @@ where
 {
     let db = prepare_db(program_id, accounts_iter, segment, true)?;
     db.drop_db()
+}
+
+fn process_add_column<'long: 'short, 'short, AccountIter>(
+    program_id: &Pubkey,
+    accounts_iter: &mut AccountIter,
+    params: AddColumnParams,
+) -> Result<(), DBError>
+where
+    AccountIter: Iterator<Item = &'short AccountInfo<'long>>,
+{
+    let mut db = prepare_db(program_id, accounts_iter, params.db, params.is_initialized)?;
+    db.add_column(&params.name, params.dtype, params.is_secondary_key)
+        .map(|_| ())
+}
+
+fn process_remove_column<'long: 'short, 'short, AccountIter>(
+    program_id: &Pubkey,
+    accounts_iter: &mut AccountIter,
+    params: RemoveColumnParams,
+) -> Result<(), DBError>
+where
+    AccountIter: Iterator<Item = &'short AccountInfo<'long>>,
+{
+    let mut db = prepare_db(program_id, accounts_iter, params.db, params.is_initialized)?;
+    db.remove_column(params.column_id).map(|_| ())
 }
 
 fn prepare_db<'long: 'short, 'short, AccountIter>(
