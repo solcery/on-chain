@@ -27,7 +27,7 @@ jobs:
           override: true
 
       - name: Generate code coverage
-        run: cargo tarpaulin --workspace --out Xml
+        run: cargo tarpaulin --workspace --out Xml --verbose
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
