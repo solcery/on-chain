@@ -3,6 +3,7 @@ use bytemuck::{cast_mut, cast_slice_mut};
 use std::borrow::Borrow;
 use std::cmp::Ord;
 use std::cmp::Ordering;
+use std::fmt::{Debug, Formatter};
 use std::marker::PhantomData;
 use std::mem;
 
@@ -90,7 +91,6 @@ pub fn init_forest(
     Ok(())
 }
 
-#[derive(Debug)]
 pub struct RBForest<'a, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,
@@ -1025,7 +1025,19 @@ where
     }
 }
 
-#[derive(Debug)]
+impl<'a, K, V, const KSIZE: usize, const VSIZE: usize> Debug for RBForest<'a, K, V, KSIZE, VSIZE>
+where
+    K: Ord + BorshDeserialize + BorshSerialize + Debug,
+    V: BorshDeserialize + BorshSerialize + Debug,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        let max_roots = self.max_roots();
+        f.debug_map()
+            .entries((0..max_roots).map(|i| (i, self.pairs(i))))
+            .finish()
+    }
+}
+
 pub struct PairsIterator<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,
@@ -1047,7 +1059,7 @@ where
         self.next_node.map(|mut id| {
             let nodes = &self.tree.nodes;
 
-            let key = K::deserialize(&mut dbg!(nodes[id].key.as_slice())).expect("Key corrupted");
+            let key = K::deserialize(&mut nodes[id].key.as_slice()).expect("Key corrupted");
             let value = V::deserialize(&mut nodes[id].value.as_slice()).expect("Value corrupted");
 
             // find next
@@ -1071,7 +1083,22 @@ where
     }
 }
 
-#[derive(Debug)]
+impl<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize> Debug
+    for PairsIterator<'a, 'b, K, V, KSIZE, VSIZE>
+where
+    K: Ord + BorshDeserialize + BorshSerialize + Debug,
+    V: BorshDeserialize + BorshSerialize + Debug,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        let PairsIterator { next_node, tree } = self;
+        let new_iter = PairsIterator {
+            next_node: *next_node,
+            tree,
+        };
+        f.debug_map().entries(new_iter).finish()
+    }
+}
+
 pub struct KeysIterator<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,
@@ -1116,7 +1143,22 @@ where
     }
 }
 
-#[derive(Debug)]
+impl<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize> Debug
+    for KeysIterator<'a, 'b, K, V, KSIZE, VSIZE>
+where
+    K: Ord + BorshDeserialize + BorshSerialize + Debug,
+    V: BorshDeserialize + BorshSerialize + Debug,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        let KeysIterator { next_node, tree } = self;
+        let new_iter = KeysIterator {
+            next_node: *next_node,
+            tree,
+        };
+        f.debug_set().entries(new_iter).finish()
+    }
+}
+
 pub struct ValuesIterator<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,
@@ -1158,6 +1200,22 @@ where
 
             value
         })
+    }
+}
+
+impl<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize> Debug
+    for ValuesIterator<'a, 'b, K, V, KSIZE, VSIZE>
+where
+    K: Ord + BorshDeserialize + BorshSerialize + Debug,
+    V: BorshDeserialize + BorshSerialize + Debug,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        let ValuesIterator { next_node, tree } = self;
+        let new_iter = ValuesIterator {
+            next_node: *next_node,
+            tree,
+        };
+        f.debug_set().entries(new_iter).finish()
     }
 }
 

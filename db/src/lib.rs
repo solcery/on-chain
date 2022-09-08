@@ -7,6 +7,7 @@ use bytemuck::{cast_mut, cast_slice_mut};
 use solana_program::msg;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::fmt;
 use std::mem;
 use std::rc::Rc;
 use tinyvec::SliceVec;
@@ -30,7 +31,6 @@ pub use raw::column_id::ColumnId;
 
 type FSCell<'long, 'short> = Rc<RefCell<FS<'long, 'short>>>;
 
-#[derive(Debug)]
 pub struct DB<'long: 'short, 'short> {
     fs: FSCell<'long, 'short>,
     index: &'short mut Index,
@@ -510,6 +510,52 @@ impl<'long, 'short> Drop for DB<'long, 'short> {
             // Both will be dropped, so there are no dangling pointers
             fs.release_borrowed_segment(segment);
         }
+    }
+}
+
+impl<'long, 'short> fmt::Debug for DB<'long, 'short> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut accessed_columns = match self.accessed_columns.try_borrow_mut() {
+            Ok(x) => x,
+            Err(e) => {
+                return f.write_fmt(format_args!("DB is in use: {e}"));
+            }
+        };
+
+        let fs = match self.fs.try_borrow() {
+            Ok(x) => x,
+            Err(e) => {
+                return f.write_fmt(format_args!("FS is in use: {e}"));
+            }
+        };
+
+        for &header in self.column_headers.iter() {
+            if !accessed_columns.contains_key(&header.id())
+                && fs.is_accessible(&header.segment_id())
+            {
+                let column_slice = self
+                    .fs
+                    .borrow_mut()
+                    .segment(&header.segment_id())
+                    .expect("Failed to borrow segment for Debug print");
+
+                let column = from_column_slice(
+                    self.index.primary_key_type(),
+                    header.value_type(),
+                    header.column_type(),
+                    column_slice,
+                )
+                .expect("Failed to create column from column_slice");
+
+                accessed_columns.insert(header.id(), column);
+            }
+        }
+
+        f.debug_struct("DB")
+            .field("index", &self.index)
+            .field("column_headers", &self.column_headers)
+            .field("columns", &accessed_columns)
+            .finish()
     }
 }
 

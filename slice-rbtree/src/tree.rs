@@ -1,6 +1,7 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::borrow::Borrow;
 use std::cmp::Ord;
+use std::fmt::{Debug, Formatter};
 
 use super::{
     forest_size, init_forest, Error, KeysIterator, PairsIterator, RBForest, ValuesIterator,
@@ -16,7 +17,6 @@ pub fn init_tree(k_size: usize, v_size: usize, slice: &mut [u8]) -> Result<(), E
     init_forest(k_size, v_size, slice, 1)
 }
 
-#[derive(Debug)]
 pub struct RBTree<'a, K, V, const KSIZE: usize, const VSIZE: usize>(
     RBForest<'a, K, V, KSIZE, VSIZE>,
 )
@@ -137,6 +137,16 @@ where
     #[must_use]
     pub fn values<'b>(&'b self) -> ValuesIterator<'b, 'a, K, V, KSIZE, VSIZE> {
         self.0.values(0)
+    }
+}
+
+impl<'a, K, V, const KSIZE: usize, const VSIZE: usize> Debug for RBTree<'a, K, V, KSIZE, VSIZE>
+where
+    K: Ord + BorshDeserialize + BorshSerialize + Debug,
+    V: BorshDeserialize + BorshSerialize + Debug,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        f.debug_map().entries(self.pairs()).finish()
     }
 }
 

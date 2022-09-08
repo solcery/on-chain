@@ -32,6 +32,8 @@ pub enum DBInstruction {
     /// 5. `[]` Token Program
     /// 6. `[]` Rent SysVar
     Bootstrap(BootstrapParams),
+    AddColumn(AddColumnParams),
+    RemoveColumn(RemoveColumnParams),
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Eq, PartialEq)]
@@ -98,4 +100,22 @@ pub struct BootstrapParams {
     pub mint_bump: u8,
     pub lamports_to_global_state: u64,
     pub lamports_to_mint: u64,
+}
+
+#[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Eq, PartialEq)]
+pub struct AddColumnParams {
+    pub db: SegmentId,
+    pub name: String,
+    pub dtype: DataType,
+    pub is_secondary_key: bool,
+    /// Are all the FS accounts initialized
+    pub is_initialized: bool,
+}
+
+#[derive(BorshDeserialize, BorshSerialize, Clone, Debug, Eq, PartialEq)]
+pub struct RemoveColumnParams {
+    pub db: SegmentId,
+    pub column_id: ColumnId,
+    /// Are all the FS accounts initialized
+    pub is_initialized: bool,
 }

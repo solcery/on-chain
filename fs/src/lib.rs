@@ -18,6 +18,7 @@ use solana_program::{account_info::AccountInfo, pubkey::Pubkey};
 
 use std::cell::RefMut;
 use std::collections::BTreeMap;
+use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
 
 mod account_allocator;
@@ -28,7 +29,6 @@ use account_allocator::AccountAllocator;
 pub use account_allocator::Error as FSError;
 pub use segment_id::SegmentId;
 
-#[derive(Debug)]
 pub struct FS<'long: 'short, 'short> {
     allocators: BTreeMap<Pubkey, (AccountAllocator<'short>, &'short AccountInfo<'long>)>,
 }
@@ -177,5 +177,17 @@ impl<'long: 'short, 'short> Drop for FS<'long, 'short> {
                 Rc::increment_strong_count(ptr);
             }
         }
+    }
+}
+
+impl<'long: 'short, 'short> Debug for FS<'long, 'short> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        fmt.debug_map()
+            .entries(
+                self.allocators
+                    .iter()
+                    .map(|(pubkey, (alloc, _))| (pubkey, alloc)),
+            )
+            .finish()
     }
 }
