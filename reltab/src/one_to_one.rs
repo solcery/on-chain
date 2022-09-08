@@ -1,13 +1,11 @@
 use borsh::{BorshDeserialize, BorshSerialize};
-
 use std::borrow::Borrow;
+use std::fmt;
 
 use slice_rbtree::{Error, KeysIterator, RBTree};
 
 pub const MAGIC: &[u8; 18] = b"OneToOne container";
 
-#[derive(Debug)]
-// TODO: implement a proper Debug
 pub struct OneToOne<'a, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize + Clone,
@@ -15,7 +13,6 @@ where
 {
     direct_relation: RBTree<'a, K, V, KSIZE, VSIZE>,
     converse_relation: RBTree<'a, V, K, VSIZE, KSIZE>,
-    magic: &'a [u8],
 }
 
 impl<'a, K, V, const KSIZE: usize, const VSIZE: usize> OneToOne<'a, K, V, KSIZE, VSIZE>
@@ -44,7 +41,6 @@ where
         Ok(Self {
             direct_relation,
             converse_relation,
-            magic,
         })
     }
 
@@ -72,7 +68,6 @@ where
             Ok(Self {
                 direct_relation,
                 converse_relation,
-                magic,
             })
         }
     }
@@ -236,5 +231,16 @@ where
     #[must_use]
     pub fn values<'b>(&'b self) -> KeysIterator<'b, 'a, V, K, VSIZE, KSIZE> {
         self.converse_relation.keys()
+    }
+}
+
+impl<'a, K, V, const KSIZE: usize, const VSIZE: usize> fmt::Debug
+    for OneToOne<'a, K, V, KSIZE, VSIZE>
+where
+    K: Ord + BorshDeserialize + BorshSerialize + fmt::Debug + Clone,
+    V: Ord + BorshDeserialize + BorshSerialize + fmt::Debug + Clone,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_map().entries(self.direct_relation.pairs()).finish()
     }
 }
