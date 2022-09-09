@@ -2,9 +2,15 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use std::borrow::Borrow;
 use std::fmt;
 
-use slice_rbtree::{Error, KeysIterator, RBTree};
+use slice_rbtree::{tree_size, Error, KeysIterator, RBTree};
 
 pub const MAGIC: &[u8; 18] = b"OneToOne container";
+
+#[must_use]
+#[inline]
+pub fn one_to_one_size(k_size: usize, v_size: usize, max_nodes: usize) -> usize {
+    2 * tree_size(k_size, v_size, max_nodes) + MAGIC.len()
+}
 
 pub struct OneToOne<'a, K, V, const KSIZE: usize, const VSIZE: usize>
 where
@@ -242,5 +248,49 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_map().entries(self.direct_relation.pairs()).finish()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn init() {
+        let mut slice = vec![0; one_to_one_size(4, 4, 100)];
+
+        OneToOne::<u32, u32, 4, 4>::init_slice(&mut slice).unwrap();
+
+        unsafe {
+            OneToOne::<u32, u32, 4, 4>::from_slice(&mut slice).unwrap();
+        }
+    }
+
+    #[test]
+    fn add_value() {
+        let mut slice = vec![0; one_to_one_size(4, 4, 100)];
+
+        let mut container = OneToOne::<u32, u32, 4, 4>::init_slice(&mut slice).unwrap();
+
+        container.insert(1, 6).unwrap();
+        container.insert(2, 7).unwrap();
+        container.insert(3, 8).unwrap();
+        container.insert(4, 9).unwrap();
+        container.insert(5, 10).unwrap();
+
+        assert_eq!(container.get_value(&1), Some(6));
+        assert_eq!(container.get_value(&2), Some(7));
+        assert_eq!(container.get_value(&3), Some(8));
+        assert_eq!(container.get_value(&4), Some(9));
+        assert_eq!(container.get_value(&5), Some(10));
+        assert_eq!(container.get_value(&6), None);
+
+        assert_eq!(container.get_key(&6), Some(1));
+        assert_eq!(container.get_key(&7), Some(2));
+        assert_eq!(container.get_key(&8), Some(3));
+        assert_eq!(container.get_key(&9), Some(4));
+        assert_eq!(container.get_key(&10), Some(5));
+        assert_eq!(container.get_key(&1), None);
     }
 }
