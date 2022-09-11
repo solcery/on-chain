@@ -147,27 +147,38 @@ where
         self.converse_relation.get(v)
     }
 
-    pub fn insert(&mut self, k: K, v: V) -> Result<Option<(K, V)>, Error> {
-        let old_val = self.direct_relation.insert(k.clone(), v.clone())?;
-        match self.converse_relation.insert(v, k.clone()) {
-            Ok(Some(old_key)) => Ok(Some((
-                old_key,
-                old_val.expect("data corruption: direct and converse containers are out of sync"),
-            ))),
-            Ok(None) => {
-                debug_assert!(old_val.is_none());
-                Ok(None)
+    pub fn insert(&mut self, k: K, v: V) -> Result<(Option<K>, Option<V>), Error> {
+        let maybe_old_val = self.direct_relation.get(&k);
+        let maybe_old_key = self.converse_relation.get(&v);
+        match (&maybe_old_key, &maybe_old_val) {
+            (None, None) => {
+                self.direct_relation.insert(k.clone(), v.clone())?;
+                self.converse_relation.insert(v.clone(), k.clone())?;
             }
-            Err(e) => {
-                // second insertion failed, so we have to revert the first one
-                if let Some(val) = old_val {
-                    self.direct_relation
-                        .insert(k, val)
-                        .expect("change revertion failed, the container is now corrupted");
-                }
-                Err(e)
+            (Some(old_key), None) => {
+                self.direct_relation.insert(k.clone(), v.clone())?;
+                self.converse_relation
+                    .insert(v, k)
+                    .expect("insertion in second relation failed, the container is now corrupted");
+                self.direct_relation.delete(&old_key);
+            }
+            (None, Some(old_val)) => {
+                self.direct_relation.insert(k.clone(), v.clone())?;
+                self.converse_relation
+                    .insert(v, k)
+                    .expect("insertion in second relation failed, the container is now corrupted");
+                self.converse_relation.delete(&old_val);
+            }
+            (Some(old_key), Some(old_val)) => {
+                self.direct_relation.delete(&old_key);
+                self.converse_relation.delete(&old_val);
+                self.direct_relation.insert(k.clone(), v.clone())?;
+                self.converse_relation
+                    .insert(v, k)
+                    .expect("insertion in second relation failed, the container is now corrupted");
             }
         }
+        Ok((maybe_old_key, maybe_old_val))
     }
 
     #[must_use]
@@ -185,6 +196,10 @@ where
             let result = self.converse_relation.remove(val);
             debug_assert!(result.is_some());
         }
+        debug_assert_eq!(
+            self.direct_relation.free_nodes_left(),
+            self.converse_relation.free_nodes_left()
+        );
         val
     }
 
@@ -198,6 +213,10 @@ where
             let result = self.direct_relation.remove(key);
             debug_assert!(result.is_some());
         }
+        debug_assert_eq!(
+            self.direct_relation.free_nodes_left(),
+            self.converse_relation.free_nodes_left()
+        );
         key
     }
 
@@ -208,6 +227,10 @@ where
     {
         self.direct_relation.remove(key).map(|val| {
             let key = self.converse_relation.remove(&val);
+            debug_assert_eq!(
+                self.direct_relation.free_nodes_left(),
+                self.converse_relation.free_nodes_left()
+            );
             (
                 key.expect("data corruption: direct and converse containers are out of sync"),
                 val,
@@ -222,6 +245,10 @@ where
     {
         self.converse_relation.remove(value).map(|key| {
             let val = self.direct_relation.remove(&key);
+            debug_assert_eq!(
+                self.direct_relation.free_nodes_left(),
+                self.converse_relation.free_nodes_left()
+            );
             (
                 key,
                 val.expect("data corruption: direct and converse containers are out of sync"),
@@ -273,11 +300,11 @@ mod tests {
 
         let mut container = OneToOne::<u32, u32, 4, 4>::init_slice(&mut slice).unwrap();
 
-        container.insert(1, 6).unwrap();
-        container.insert(2, 7).unwrap();
-        container.insert(3, 8).unwrap();
-        container.insert(4, 9).unwrap();
-        container.insert(5, 10).unwrap();
+        assert_eq!(container.insert(1, 6).unwrap(), (None, None));
+        assert_eq!(container.insert(2, 7).unwrap(), (None, None));
+        assert_eq!(container.insert(3, 8).unwrap(), (None, None));
+        assert_eq!(container.insert(4, 9).unwrap(), (None, None));
+        assert_eq!(container.insert(5, 10).unwrap(), (None, None));
 
         assert_eq!(container.get_value(&1), Some(6));
         assert_eq!(container.get_value(&2), Some(7));
@@ -292,5 +319,132 @@ mod tests {
         assert_eq!(container.get_key(&9), Some(4));
         assert_eq!(container.get_key(&10), Some(5));
         assert_eq!(container.get_key(&1), None);
+    }
+
+    #[test]
+    fn add_string_values() {
+        let mut slice = vec![0; one_to_one_size(10, 10, 10)];
+
+        let mut container = OneToOne::<String, String, 10, 10>::init_slice(&mut slice).unwrap();
+
+        assert_eq!(
+            container
+                .insert("one".to_string(), "two".to_string())
+                .unwrap(),
+            (None, None)
+        );
+        assert_eq!(
+            container
+                .insert("three".to_string(), "four".to_string())
+                .unwrap(),
+            (None, None)
+        );
+        assert_eq!(
+            container
+                .insert("five".to_string(), "six".to_string())
+                .unwrap(),
+            (None, None)
+        );
+        assert_eq!(
+            container
+                .insert("seven".to_string(), "eight".to_string())
+                .unwrap(),
+            (None, None)
+        );
+
+        // Failing new values
+        assert_eq!(
+            container.insert("too long key".to_string(), "smol".to_string()),
+            Err(Error::KeySerializationError)
+        );
+        assert_eq!(
+            container.insert("smol".to_string(), "too long value".to_string()),
+            Err(Error::ValueSerializationError)
+        );
+
+        // By key
+        assert_eq!(container.get_value("one"), Some("two".to_string()));
+        assert_eq!(container.get_value("three"), Some("four".to_string()));
+        assert_eq!(container.get_value("five"), Some("six".to_string()));
+        assert_eq!(container.get_value("seven"), Some("eight".to_string()));
+
+        assert_eq!(container.get_value("too long key"), None);
+        assert_eq!(container.get_value("smol"), None);
+
+        // By value
+        assert_eq!(container.get_key("two"), Some("one".to_string()));
+        assert_eq!(container.get_key("four"), Some("three".to_string()));
+        assert_eq!(container.get_key("six"), Some("five".to_string()));
+        assert_eq!(container.get_key("eight"), Some("seven".to_string()));
+
+        assert_eq!(container.get_key("smol"), None);
+        assert_eq!(container.get_key("too long value"), None);
+
+        // Failing replacements for old values
+        assert_eq!(
+            container.insert("too long key".to_string(), "two".to_string()),
+            Err(Error::KeySerializationError)
+        );
+        assert_eq!(
+            container.insert("three".to_string(), "too long value".to_string()),
+            Err(Error::ValueSerializationError)
+        );
+
+        // By key
+        assert_eq!(container.get_value("one"), Some("two".to_string()));
+        assert_eq!(container.get_value("three"), Some("four".to_string()));
+        assert_eq!(container.get_value("five"), Some("six".to_string()));
+        assert_eq!(container.get_value("seven"), Some("eight".to_string()));
+
+        assert_eq!(container.get_value("too long key"), None);
+        assert_eq!(container.get_value("smol"), None);
+
+        // By value
+        assert_eq!(container.get_key("two"), Some("one".to_string()));
+        assert_eq!(container.get_key("four"), Some("three".to_string()));
+        assert_eq!(container.get_key("six"), Some("five".to_string()));
+        assert_eq!(container.get_key("eight"), Some("seven".to_string()));
+
+        assert_eq!(container.get_key("smol"), None);
+        assert_eq!(container.get_key("too long value"), None);
+
+        dbg!(&container.direct_relation);
+        dbg!(&container.converse_relation);
+
+        // Ok replacements for old values
+        assert_eq!(
+            container
+                .insert("five".to_string(), "nine".to_string())
+                .unwrap(),
+            (None, Some("six".to_string()))
+        );
+        dbg!(&container.direct_relation);
+        dbg!(&container.converse_relation);
+        assert_eq!(
+            container
+                .insert("seven".to_string(), "ten".to_string())
+                .unwrap(),
+            (None, Some("eight".to_string()))
+        );
+        dbg!(&container.direct_relation);
+        dbg!(&container.converse_relation);
+
+        // By key
+        assert_eq!(container.get_value("one"), Some("two".to_string()));
+        assert_eq!(container.get_value("three"), Some("four".to_string()));
+        assert_eq!(container.get_value("five"), Some("nine".to_string()));
+        assert_eq!(container.get_value("seven"), Some("ten".to_string()));
+
+        assert_eq!(container.get_value("too long key"), None);
+        assert_eq!(container.get_value("smol"), None);
+
+        // By value
+        assert_eq!(container.get_key("two"), Some("one".to_string()));
+        assert_eq!(container.get_key("four"), Some("three".to_string()));
+        assert_eq!(container.get_key("nine"), Some("five".to_string()));
+        assert_eq!(container.get_key("ten"), Some("seven".to_string()));
+
+        assert_eq!(container.get_key("smol"), None);
+        assert_eq!(container.get_key("too long value"), None);
     }
 }
