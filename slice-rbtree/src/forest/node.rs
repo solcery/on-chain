@@ -15,7 +15,7 @@ pub struct Node<const KSIZE: usize, const VSIZE: usize> {
     /// 1. is_right_present
     /// 2. is_parent_present
     /// 3. is_red
-    flags: u8, // Will change it to BitArray, than it become Pod
+    flags: u8, // Will change it to BitArray, then it become Pod
                // Total size KSIZE + VSIZE + 17
 }
 
