@@ -1,6 +1,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(missing_debug_implementations)]
 //#![deny(missing_docs)]
+#![cfg_attr(not(test), no_std)]
 
 use borsh::{BorshDeserialize, BorshSerialize};
 mod forest;

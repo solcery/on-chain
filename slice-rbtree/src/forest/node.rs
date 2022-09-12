@@ -1,5 +1,5 @@
 use bytemuck::{Pod, Zeroable};
-use std::fmt;
+use core::fmt;
 
 #[repr(C)]
 #[derive(Clone, Copy, Zeroable)]

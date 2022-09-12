@@ -1,11 +1,11 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use bytemuck::{cast_mut, cast_slice_mut};
-use std::borrow::Borrow;
-use std::cmp::Ord;
-use std::cmp::Ordering;
-use std::fmt::{Debug, Formatter};
-use std::marker::PhantomData;
-use std::mem;
+use core::borrow::Borrow;
+use core::cmp::Ord;
+use core::cmp::Ordering;
+use core::fmt::{Debug, Formatter};
+use core::marker::PhantomData;
+use core::mem;
 
 mod header;
 mod node;
@@ -1030,7 +1030,7 @@ where
     K: Ord + BorshDeserialize + BorshSerialize + Debug,
     V: BorshDeserialize + BorshSerialize + Debug,
 {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), core::fmt::Error> {
         let max_roots = self.max_roots();
         f.debug_map()
             .entries((0..max_roots).map(|i| (i, self.pairs(i))))
@@ -1089,7 +1089,7 @@ where
     K: Ord + BorshDeserialize + BorshSerialize + Debug,
     V: BorshDeserialize + BorshSerialize + Debug,
 {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), core::fmt::Error> {
         let PairsIterator { next_node, tree } = self;
         let new_iter = PairsIterator {
             next_node: *next_node,
@@ -1120,7 +1120,7 @@ where
         self.next_node.map(|mut id| {
             let nodes = &self.tree.nodes;
 
-            let key = K::deserialize(&mut dbg!(nodes[id].key.as_slice())).expect("Key corrupted");
+            let key = K::deserialize(&mut nodes[id].key.as_slice()).expect("Key corrupted");
 
             // find next
             if let Some(right_id) = nodes[id].right() {
@@ -1149,7 +1149,7 @@ where
     K: Ord + BorshDeserialize + BorshSerialize + Debug,
     V: BorshDeserialize + BorshSerialize + Debug,
 {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), core::fmt::Error> {
         let KeysIterator { next_node, tree } = self;
         let new_iter = KeysIterator {
             next_node: *next_node,
@@ -1209,7 +1209,7 @@ where
     K: Ord + BorshDeserialize + BorshSerialize + Debug,
     V: BorshDeserialize + BorshSerialize + Debug,
 {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), core::fmt::Error> {
         let ValuesIterator { next_node, tree } = self;
         let new_iter = ValuesIterator {
             next_node: *next_node,

@@ -1,5 +1,5 @@
 use bytemuck::{Pod, Zeroable};
-use std::fmt;
+use core::fmt;
 
 const HEADER_MAGIC: [u8; 12] = *b"Slice_RBTree";
 

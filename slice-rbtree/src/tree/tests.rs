@@ -1,7 +1,7 @@
 use super::*;
 use crate::forest::{tests as forest_helpers, Node};
+use core::fmt::Debug;
 use pretty_assertions::assert_eq;
-use std::fmt::Debug;
 
 impl<'a, K, V, const KSIZE: usize, const VSIZE: usize> RBTree<'a, K, V, KSIZE, VSIZE>
 where

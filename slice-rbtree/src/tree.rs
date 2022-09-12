@@ -1,7 +1,7 @@
 use borsh::{BorshDeserialize, BorshSerialize};
-use std::borrow::Borrow;
-use std::cmp::Ord;
-use std::fmt::{Debug, Formatter};
+use core::borrow::Borrow;
+use core::cmp::Ord;
+use core::fmt::{Debug, Formatter};
 
 use super::{
     forest_size, init_forest, Error, KeysIterator, PairsIterator, RBForest, ValuesIterator,
@@ -145,7 +145,7 @@ where
     K: Ord + BorshDeserialize + BorshSerialize + Debug,
     V: BorshDeserialize + BorshSerialize + Debug,
 {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), core::fmt::Error> {
         f.debug_map().entries(self.pairs()).finish()
     }
 }

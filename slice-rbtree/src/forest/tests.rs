@@ -1,6 +1,6 @@
 use super::*;
+use core::fmt::Debug;
 use pretty_assertions::assert_eq;
-use std::fmt::Debug;
 
 impl<'a, K, V, const KSIZE: usize, const VSIZE: usize> RBForest<'a, K, V, KSIZE, VSIZE>
 where
