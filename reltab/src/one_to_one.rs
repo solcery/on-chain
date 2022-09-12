@@ -150,34 +150,24 @@ where
     pub fn insert(&mut self, k: K, v: V) -> Result<(Option<K>, Option<V>), Error> {
         let maybe_old_val = self.direct_relation.get(&k);
         let maybe_old_key = self.converse_relation.get(&v);
-        match (&maybe_old_key, &maybe_old_val) {
-            (None, None) => {
-                self.direct_relation.insert(k.clone(), v.clone())?;
-                self.converse_relation.insert(v.clone(), k.clone())?;
-            }
-            (Some(old_key), None) => {
-                self.direct_relation.insert(k.clone(), v.clone())?;
-                self.converse_relation
-                    .insert(v, k)
-                    .expect("insertion in second relation failed, the container is now corrupted");
-                self.direct_relation.delete(&old_key);
-            }
-            (None, Some(old_val)) => {
-                self.direct_relation.insert(k.clone(), v.clone())?;
-                self.converse_relation
-                    .insert(v, k)
-                    .expect("insertion in second relation failed, the container is now corrupted");
-                self.converse_relation.delete(&old_val);
-            }
-            (Some(old_key), Some(old_val)) => {
-                self.direct_relation.delete(&old_key);
-                self.converse_relation.delete(&old_val);
-                self.direct_relation.insert(k.clone(), v.clone())?;
-                self.converse_relation
-                    .insert(v, k)
-                    .expect("insertion in second relation failed, the container is now corrupted");
-            }
+
+        self.direct_relation.insert(k.clone(), v.clone())?;
+        self.converse_relation
+            .insert(v.clone(), k.clone())
+            .expect("insertion in second relation failed, the container is now corrupted");
+
+        if let Some(ref old_key) = maybe_old_key {
+            self.direct_relation.delete(&old_key);
         }
+        if let Some(ref old_val) = maybe_old_val {
+            self.converse_relation.delete(&old_val);
+        }
+
+        debug_assert_eq!(
+            self.direct_relation.free_nodes_left(),
+            self.converse_relation.free_nodes_left()
+        );
+
         Ok((maybe_old_key, maybe_old_val))
     }
 
