@@ -112,21 +112,21 @@ where
     }
 
     #[must_use]
-    pub fn get_key_value_by_key<Q>(&self, k: &Q) -> Option<(K, V)>
+    pub fn get_entry_by_key<Q>(&self, k: &Q) -> Option<(K, V)>
     where
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
-        self.direct_relation.get_key_value(k)
+        self.direct_relation.get_entry(k)
     }
 
     #[must_use]
-    pub fn get_key_value_by_value<Q>(&self, v: &Q) -> Option<(K, V)>
+    pub fn get_entry_by_value<Q>(&self, v: &Q) -> Option<(K, V)>
     where
         V: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
-        self.converse_relation.get_key_value(v).map(|(v, k)| (k, v))
+        self.converse_relation.get_entry(v).map(|(v, k)| (k, v))
     }
 
     #[must_use]
