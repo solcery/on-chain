@@ -277,7 +277,9 @@ mod tests {
     fn init() {
         let mut slice = vec![0; one_to_one_size(4, 4, 100)];
 
-        OneToOne::<u32, u32, 4, 4>::init_slice(&mut slice).unwrap();
+        let container = OneToOne::<u32, u32, 4, 4>::init_slice(&mut slice).unwrap();
+
+        assert!(container.is_empty());
 
         unsafe {
             OneToOne::<u32, u32, 4, 4>::from_slice(&mut slice).unwrap();
@@ -398,9 +400,6 @@ mod tests {
         assert_eq!(container.get_key("smol"), None);
         assert_eq!(container.get_key("too long value"), None);
 
-        dbg!(&container.direct_relation);
-        dbg!(&container.converse_relation);
-
         // Ok replacements for old values
         assert_eq!(
             container
@@ -408,16 +407,12 @@ mod tests {
                 .unwrap(),
             (None, Some("six".to_string()))
         );
-        dbg!(&container.direct_relation);
-        dbg!(&container.converse_relation);
         assert_eq!(
             container
                 .insert("seven".to_string(), "ten".to_string())
                 .unwrap(),
             (None, Some("eight".to_string()))
         );
-        dbg!(&container.direct_relation);
-        dbg!(&container.converse_relation);
 
         // By key
         assert_eq!(container.get_value("one"), Some("two".to_string()));
@@ -436,5 +431,107 @@ mod tests {
 
         assert_eq!(container.get_key("smol"), None);
         assert_eq!(container.get_key("too long value"), None);
+
+        // Ok replacement for old pair
+        assert_eq!(
+            container
+                .insert("one".to_string(), "nine".to_string())
+                .unwrap(),
+            (Some("five".to_string()), Some("two".to_string()))
+        );
+
+        // By key
+        assert_eq!(container.get_value("one"), Some("nine".to_string()));
+        assert_eq!(container.get_value("three"), Some("four".to_string()));
+        assert_eq!(container.get_value("five"), None);
+        assert_eq!(container.get_value("seven"), Some("ten".to_string()));
+
+        assert_eq!(container.get_value("too long key"), None);
+        assert_eq!(container.get_value("smol"), None);
+
+        // By value
+        assert_eq!(container.get_key("two"), None);
+        assert_eq!(container.get_key("four"), Some("three".to_string()));
+        assert_eq!(container.get_key("nine"), Some("one".to_string()));
+        assert_eq!(container.get_key("ten"), Some("seven".to_string()));
+
+        assert_eq!(container.get_key("smol"), None);
+        assert_eq!(container.get_key("too long value"), None);
+    }
+
+    #[test]
+    fn remove_value() {
+        let mut slice = vec![0; one_to_one_size(4, 4, 100)];
+
+        let mut container = OneToOne::<u32, u32, 4, 4>::init_slice(&mut slice).unwrap();
+
+        assert_eq!(container.insert(1, 6).unwrap(), (None, None));
+        assert_eq!(container.insert(2, 7).unwrap(), (None, None));
+        assert_eq!(container.insert(3, 8).unwrap(), (None, None));
+        assert_eq!(container.insert(4, 9).unwrap(), (None, None));
+        assert_eq!(container.insert(5, 10).unwrap(), (None, None));
+
+        assert_eq!(container.get_value(&1), Some(6));
+        assert_eq!(container.get_value(&2), Some(7));
+        assert_eq!(container.get_value(&3), Some(8));
+        assert_eq!(container.get_value(&4), Some(9));
+        assert_eq!(container.get_value(&5), Some(10));
+        assert_eq!(container.get_value(&6), None);
+
+        assert_eq!(container.get_key(&6), Some(1));
+        assert_eq!(container.get_key(&7), Some(2));
+        assert_eq!(container.get_key(&8), Some(3));
+        assert_eq!(container.get_key(&9), Some(4));
+        assert_eq!(container.get_key(&10), Some(5));
+        assert_eq!(container.get_key(&1), None);
+
+        assert_eq!(container.remove_by_key(&1), Some(6));
+        assert_eq!(container.remove_by_key(&2), Some(7));
+        assert_eq!(container.remove_by_value(&8), Some(3));
+        assert_eq!(container.remove_by_value(&9), Some(4));
+        assert_eq!(container.remove_by_value(&10), Some(5));
+
+        assert_eq!(container.get_key(&6), None);
+        assert_eq!(container.get_key(&7), None);
+        assert_eq!(container.get_value(&3), None);
+        assert_eq!(container.get_value(&4), None);
+        assert_eq!(container.get_value(&5), None);
+
+        assert!(container.is_empty());
+    }
+
+    #[test]
+    fn remove_entry() {
+        let mut slice = vec![0; one_to_one_size(4, 4, 100)];
+
+        let mut container = OneToOne::<u32, u32, 4, 4>::init_slice(&mut slice).unwrap();
+
+        assert_eq!(container.insert(1, 6).unwrap(), (None, None));
+        assert_eq!(container.insert(2, 7).unwrap(), (None, None));
+        assert_eq!(container.insert(3, 8).unwrap(), (None, None));
+        assert_eq!(container.insert(4, 9).unwrap(), (None, None));
+        assert_eq!(container.insert(5, 10).unwrap(), (None, None));
+
+        assert_eq!(container.get_value(&1), Some(6));
+        assert_eq!(container.get_value(&2), Some(7));
+        assert_eq!(container.get_value(&3), Some(8));
+        assert_eq!(container.get_value(&4), Some(9));
+        assert_eq!(container.get_value(&5), Some(10));
+        assert_eq!(container.get_value(&6), None);
+
+        assert_eq!(container.get_key(&6), Some(1));
+        assert_eq!(container.get_key(&7), Some(2));
+        assert_eq!(container.get_key(&8), Some(3));
+        assert_eq!(container.get_key(&9), Some(4));
+        assert_eq!(container.get_key(&10), Some(5));
+        assert_eq!(container.get_key(&1), None);
+
+        assert_eq!(container.remove_entry_by_key(&1), Some((1, 6)));
+        assert_eq!(container.remove_entry_by_key(&2), Some((2, 7)));
+        assert_eq!(container.remove_entry_by_value(&8), Some((3, 8)));
+        assert_eq!(container.remove_entry_by_value(&9), Some((4, 9)));
+        assert_eq!(container.remove_entry_by_value(&10), Some((5, 10)));
+
+        assert!(container.is_empty());
     }
 }
