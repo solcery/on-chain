@@ -61,12 +61,12 @@ where
     }
 
     #[must_use]
-    pub fn get_key_value<Q>(&self, k: &Q) -> Option<(K, V)>
+    pub fn get_entry<Q>(&self, k: &Q) -> Option<(K, V)>
     where
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
-        self.0.get_key_value(0, k)
+        self.0.get_entry(0, k)
     }
 
     #[must_use]
