@@ -1,7 +1,7 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use core::borrow::Borrow;
 use core::cmp::Ord;
-use core::fmt::{Debug, Formatter};
+use core::fmt;
 
 use super::{
     forest_size, init_forest, Error, KeysIterator, PairsIterator, RBForest, ValuesIterator,
@@ -140,12 +140,12 @@ where
     }
 }
 
-impl<'a, K, V, const KSIZE: usize, const VSIZE: usize> Debug for RBTree<'a, K, V, KSIZE, VSIZE>
+impl<'a, K, V, const KSIZE: usize, const VSIZE: usize> fmt::Debug for RBTree<'a, K, V, KSIZE, VSIZE>
 where
-    K: Ord + BorshDeserialize + BorshSerialize + Debug,
-    V: BorshDeserialize + BorshSerialize + Debug,
+    K: Ord + BorshDeserialize + BorshSerialize + fmt::Debug,
+    V: BorshDeserialize + BorshSerialize + fmt::Debug,
 {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), core::fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         f.debug_map().entries(self.pairs()).finish()
     }
 }

@@ -3,7 +3,7 @@ use bytemuck::{cast_mut, cast_slice_mut};
 use core::borrow::Borrow;
 use core::cmp::Ord;
 use core::cmp::Ordering;
-use core::fmt::{Debug, Formatter};
+use core::fmt;
 use core::marker::PhantomData;
 use core::mem;
 
@@ -1025,12 +1025,13 @@ where
     }
 }
 
-impl<'a, K, V, const KSIZE: usize, const VSIZE: usize> Debug for RBForest<'a, K, V, KSIZE, VSIZE>
+impl<'a, K, V, const KSIZE: usize, const VSIZE: usize> fmt::Debug
+    for RBForest<'a, K, V, KSIZE, VSIZE>
 where
-    K: Ord + BorshDeserialize + BorshSerialize + Debug,
-    V: BorshDeserialize + BorshSerialize + Debug,
+    K: Ord + BorshDeserialize + BorshSerialize + fmt::Debug,
+    V: BorshDeserialize + BorshSerialize + fmt::Debug,
 {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), core::fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         let max_roots = self.max_roots();
         f.debug_map()
             .entries((0..max_roots).map(|i| (i, self.pairs(i))))
@@ -1083,13 +1084,13 @@ where
     }
 }
 
-impl<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize> Debug
+impl<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize> fmt::Debug
     for PairsIterator<'a, 'b, K, V, KSIZE, VSIZE>
 where
-    K: Ord + BorshDeserialize + BorshSerialize + Debug,
-    V: BorshDeserialize + BorshSerialize + Debug,
+    K: Ord + BorshDeserialize + BorshSerialize + fmt::Debug,
+    V: BorshDeserialize + BorshSerialize + fmt::Debug,
 {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), core::fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         let PairsIterator { next_node, tree } = self;
         let new_iter = PairsIterator {
             next_node: *next_node,
@@ -1143,13 +1144,13 @@ where
     }
 }
 
-impl<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize> Debug
+impl<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize> fmt::Debug
     for KeysIterator<'a, 'b, K, V, KSIZE, VSIZE>
 where
-    K: Ord + BorshDeserialize + BorshSerialize + Debug,
-    V: BorshDeserialize + BorshSerialize + Debug,
+    K: Ord + BorshDeserialize + BorshSerialize + fmt::Debug,
+    V: BorshDeserialize + BorshSerialize + fmt::Debug,
 {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), core::fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         let KeysIterator { next_node, tree } = self;
         let new_iter = KeysIterator {
             next_node: *next_node,
@@ -1203,13 +1204,13 @@ where
     }
 }
 
-impl<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize> Debug
+impl<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize> fmt::Debug
     for ValuesIterator<'a, 'b, K, V, KSIZE, VSIZE>
 where
-    K: Ord + BorshDeserialize + BorshSerialize + Debug,
-    V: BorshDeserialize + BorshSerialize + Debug,
+    K: Ord + BorshDeserialize + BorshSerialize + fmt::Debug,
+    V: BorshDeserialize + BorshSerialize + fmt::Debug,
 {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), core::fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         let ValuesIterator { next_node, tree } = self;
         let new_iter = ValuesIterator {
             next_node: *next_node,
