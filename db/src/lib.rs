@@ -236,7 +236,7 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
         let mut accessed_columns = self.accessed_columns.borrow_mut();
 
         if let Some(column) = accessed_columns.get_mut(&column_id) {
-            Ok(column.set(primary_key, value))
+            column.set(primary_key, value)
         } else {
             let column_header = self
                 .column_headers
@@ -253,11 +253,11 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
                 column_slice,
             )?;
 
-            let old_value = column.set(primary_key, value);
+            let result = column.set(primary_key, value);
 
             accessed_columns.insert(column_header.id(), column);
 
-            Ok(old_value)
+            result
         }
     }
 
@@ -468,7 +468,7 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
                 column_slice,
             )?;
 
-            let primary_key = key_column.get_value(secondary_key);
+            let primary_key = key_column.get_key(secondary_key);
 
             accessed_columns.insert(column_header.id(), key_column);
 

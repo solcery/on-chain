@@ -14,6 +14,7 @@ pub enum Error {
     SecondaryKeyWithNonExistentPrimaryKey,
     // It happens, if not all columns are accessible during DB deletion
     NotAllColumnsArePresent,
+    NonUniqueSecondaryKey,
 }
 
 impl From<FSError> for Error {

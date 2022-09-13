@@ -27,7 +27,6 @@ fn column_impls(attrs: &TokenStream, input: proc_macro::TokenStream) -> TokenStr
 
     let holder_attrs = quote! {
         #[derive #derive_attrs]
-        //#[derive(PartialEq, Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
     };
 
     let column_trait_implementations = variants.iter().map(|key| {
@@ -53,11 +52,11 @@ fn column_impls(attrs: &TokenStream, input: proc_macro::TokenStream) -> TokenStr
                         }
                     }
 
-                    fn set(&mut self, key: #holder_ident, value: #holder_ident) -> Option<#holder_ident> {
+                    fn set(&mut self, key: #holder_ident, value: #holder_ident) -> Result<Option<#holder_ident>, #error_ident> {
                         if let (#holder_ident::#key_ident(unwrapped_key), #holder_ident::#value_ident(unwrapped_value)) = (key, value) {
                             self.insert(unwrapped_key, unwrapped_value)
-                                .expect("Unexpected RBTree error")
-                                .map(|old_value| #holder_ident::#value_ident(old_value))
+                                .map(|maybe_old_val| maybe_old_val.map(|old_val|#holder_ident::#value_ident(old_val)))
+                                .map_err(|e| #error_ident::from(e))
                         } else {
                             panic!("Type mismatch!");
                         }
