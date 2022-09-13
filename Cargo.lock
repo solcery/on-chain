@@ -3862,6 +3862,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "solcery-impl-generator",
+ "solcery-reltab",
  "test-case 1.2.3",
  "thiserror",
 ]
@@ -3881,6 +3882,7 @@ dependencies = [
  "slice-rbtree",
  "solana-program",
  "solcery-data-types",
+ "solcery-reltab",
  "tinyvec",
 ]
 
@@ -3922,6 +3924,7 @@ dependencies = [
  "proc-macro2 1.0.43",
  "quote 1.0.21",
  "slice-rbtree",
+ "solcery-reltab",
  "syn 1.0.99",
 ]
 

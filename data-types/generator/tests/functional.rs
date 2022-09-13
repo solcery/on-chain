@@ -1,4 +1,4 @@
-use slice_rbtree::{Error, RBTree};
+use slice_rbtree::Error;
 use solcery_impl_generator::generate_column_impls;
 
 pub trait Column {
@@ -11,10 +11,12 @@ pub trait Column {
 
 pub enum ErrorType {
     Test,
+    NonUniqueSecondaryKey,
 }
 
 pub enum ColumnType {
     RBTree,
+    OneToOne,
 }
 
 impl From<Error> for ErrorType {
@@ -23,6 +25,7 @@ impl From<Error> for ErrorType {
     }
 }
 
+//TODO: rewtire this with trybuild
 #[generate_column_impls(HolderName, Column, ErrorType, derives(Debug))]
 pub enum Test {
     #[type_params(i32, 4)]

@@ -39,8 +39,9 @@ fn column_impls(attrs: &TokenStream, input: proc_macro::TokenStream) -> TokenStr
             let value_type = &value.typ;
             let value_size = &value.size;
             quote!{
-                impl<'a> #trait_ident for RBTree<'a, #key_type, #value_type, #key_size, #value_size> {
+                impl<'a> #trait_ident for slice_rbtree::RBTree<'a, #key_type, #value_type, #key_size, #value_size> {
                     fn get_key(&self, value: #holder_ident) -> Option<#holder_ident> {
+                        //TODO: implement a slow but working variant
                         None
                     }
 
@@ -71,14 +72,74 @@ fn column_impls(attrs: &TokenStream, input: proc_macro::TokenStream) -> TokenStr
                     }
 
                     fn delete_by_value(&mut self, value: #holder_ident) -> bool {
+                        //TODO: implement a slow but working variant
                         panic!("It is impossible to delete by value in RBTree");
+                    }
+                }
+                impl<'a> #trait_ident for solcery_reltab::one_to_one::OneToOne<'a, #key_type, #value_type, #key_size, #value_size> {
+                    fn get_key(&self, value: #holder_ident) -> Option<#holder_ident> {
+                        if let #holder_ident::#value_ident(unwrapped_value) = value {
+                            self.get_key(&unwrapped_value).map(|key| #holder_ident::#key_ident(key))
+                        } else {
+                            panic!("Type mismatch!");
+                        }
+                    }
+
+                    fn get_value(&self, key: #holder_ident) -> Option<#holder_ident> {
+                        if let #holder_ident::#key_ident(unwrapped_key) = key {
+                            self.get_value(&unwrapped_key).map(|val| #holder_ident::#value_ident(val))
+                        } else {
+                            panic!("Type mismatch!");
+                        }
+                    }
+
+                    fn set(&mut self, key: #holder_ident, value: #holder_ident) -> Result<Option<#holder_ident>, #error_ident> {
+                        if let (#holder_ident::#key_ident(unwrapped_key), #holder_ident::#value_ident(unwrapped_value)) = (key, value) {
+                            //TODO: Do something with tis allocations
+                            let result = self.insert(unwrapped_key.clone(), unwrapped_value.clone());
+                            match result {
+                                Ok((Some(old_key), None)) => {
+                                    self.insert(old_key, unwrapped_value).expect("Failed to revert changes, DB is now corrupted");
+                                    Err(#error_ident::NonUniqueSecondaryKey)
+                                }
+                                Ok((Some(old_key), Some(old_value))) => {
+                                    self.insert(old_key, unwrapped_value).expect("Failed to revert changes, DB is now corrupted");
+                                    self.insert(unwrapped_key, old_value).expect("Failed to revert changes, DB is now corrupted");
+                                    Err(#error_ident::NonUniqueSecondaryKey)
+                                }
+                                Ok((None, maybe_old_val)) => {
+                                    Ok(maybe_old_val.map(|old_val|#holder_ident::#value_ident(old_val)))
+                                }
+                                Err(e) => {
+                                    Err(#error_ident::from(e))
+                                }
+                            }
+                        } else {
+                            panic!("Type mismatch!");
+                        }
+                    }
+
+                    fn delete_by_key(&mut self, key: #holder_ident) -> bool {
+                        if let #holder_ident::#key_ident(unwrapped_key) = key {
+                            self.remove_by_key(&unwrapped_key).is_some()
+                        } else {
+                            panic!("Type mismatch!");
+                        }
+                    }
+
+                    fn delete_by_value(&mut self, value: #holder_ident) -> bool {
+                        if let #holder_ident::#value_ident(unwrapped_value) = value {
+                            self.remove_by_value(&unwrapped_value).is_some()
+                        } else {
+                            panic!("Type mismatch!");
+                        }
                     }
                 }
             }
         }).collect::<TokenStream>()
     }).collect::<TokenStream>();
 
-    let (slice_init_variants, slice_from_variants): (TokenStream, TokenStream)  = variants.iter().map(|key| {
+    let result: ((TokenStream, TokenStream), (TokenStream, TokenStream))  = variants.iter().map(|key| {
         let key_ident = key.ident.clone();
         let key_type = key.typ.clone();
         let key_size = key.size.clone();
@@ -88,21 +149,42 @@ fn column_impls(attrs: &TokenStream, input: proc_macro::TokenStream) -> TokenStr
             let value_type = value.typ.clone();
             let value_size = value.size.clone();
 
-            let init_variant = quote! {
-                (#enum_ident::#key_ident, #enum_ident::#value_ident) => RBTree::<#key_type, #value_type, #key_size, #value_size>::init_slice(slice)
+            let slice_init_variant = quote! {
+                (#enum_ident::#key_ident, #enum_ident::#value_ident) => slice_rbtree::RBTree::<#key_type, #value_type, #key_size, #value_size>::init_slice(slice)
                     .map(|tree| Box::new(tree) as Box<dyn #trait_ident>)
                     .map_err(|e| #error_ident::from(e)),
             };
 
-            let from_variant = quote! {
-                (#enum_ident::#key_ident, #enum_ident::#value_ident) => RBTree::<#key_type, #value_type, #key_size, #value_size>::from_slice(slice)
+            let slice_from_variant = quote! {
+                (#enum_ident::#key_ident, #enum_ident::#value_ident) => slice_rbtree::RBTree::<#key_type, #value_type, #key_size, #value_size>::from_slice(slice)
                     .map(|tree| Box::new(tree) as Box<dyn #trait_ident>)
                     .map_err(|e| #error_ident::from(e)),
             };
 
-            (init_variant, from_variant)
-        }).unzip::<TokenStream, TokenStream, TokenStream, TokenStream>()
+            let one_to_one_init_variant = quote! {
+                (#enum_ident::#key_ident, #enum_ident::#value_ident) => solcery_reltab::one_to_one::OneToOne::<#key_type, #value_type, #key_size, #value_size>::init_slice(slice)
+                    .map(|container| Box::new(container) as Box<dyn #trait_ident>)
+                    .map_err(|e| #error_ident::from(e)),
+            };
+
+            let one_to_one_from_variant = quote! {
+                (#enum_ident::#key_ident, #enum_ident::#value_ident) => solcery_reltab::one_to_one::OneToOne::<#key_type, #value_type, #key_size, #value_size>::from_slice(slice)
+                    .map(|container| Box::new(container) as Box<dyn #trait_ident>)
+                    .map_err(|e| #error_ident::from(e)),
+            };
+
+            (
+                (slice_init_variant, slice_from_variant),
+                (one_to_one_init_variant, one_to_one_from_variant)
+            )
+        })
+        .unzip::<(TokenStream, TokenStream), (TokenStream, TokenStream), (TokenStream, TokenStream), (TokenStream, TokenStream)>()
     }).unzip();
+
+    let (
+        (slice_init_variants, slice_from_variants),
+        (one_to_one_init_variants, one_to_one_from_variants),
+    ) = result;
 
     let from_slice_fn = quote! {
         pub fn from_column_slice<'a,'b: 'a>(
@@ -116,6 +198,13 @@ fn column_impls(attrs: &TokenStream, input: proc_macro::TokenStream) -> TokenStr
                     unsafe {
                         match (pk_type, val_type) {
                             #slice_from_variants
+                        }
+                    }
+                },
+                ColumnType::OneToOne => {
+                    unsafe {
+                        match (pk_type, val_type) {
+                            #one_to_one_from_variants
                         }
                     }
                 },
@@ -135,7 +224,14 @@ fn column_impls(attrs: &TokenStream, input: proc_macro::TokenStream) -> TokenStr
                     match (pk_type, val_type) {
                         #slice_init_variants
                     }
-                }
+                },
+                ColumnType::OneToOne => {
+                    unsafe {
+                        match (pk_type, val_type) {
+                            #one_to_one_init_variants
+                        }
+                    }
+                },
             }
         }
     };

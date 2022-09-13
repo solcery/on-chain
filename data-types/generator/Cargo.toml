@@ -12,6 +12,7 @@ syn = {version="1.0.58", features = ["full", "visit", "parsing", "extra-traits"]
 
 [dev-dependencies]
 slice-rbtree = { path = "../../slice-rbtree" }
+solcery-reltab = { path = "../../reltab" }
 
 [lib]
 proc-macro = true
