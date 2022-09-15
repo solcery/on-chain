@@ -13,6 +13,7 @@ getrandom = { version = "0.2.2", features = ["custom"] }
 num-derive = "0.3"
 num-traits = "0.2"
 slice-rbtree = { path = "../slice-rbtree" }
+solcery-reltab = { path = "../reltab" }
 solana-program = "1.7.8"
 solcery-data-types = { path = "../data-types" }
 tinyvec = "1.0.0"

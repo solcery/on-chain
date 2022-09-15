@@ -668,6 +668,298 @@ async fn add_value() {
     assert_eq!(value, Some(Data::Int(365)));
 }
 
+#[tokio::test]
+async fn add_secondary_key_column() {
+    let ProgramEnvironment {
+        global_state: global_state_id,
+        mint: mint_id,
+        program: program_key,
+        test: program,
+        token: token_key,
+        ..
+    } = prepare_environment();
+
+    let program_id = program_key.pubkey();
+    let token_id = token_key.pubkey();
+
+    let fs_account_key = Keypair::new();
+
+    let (mut banks_client, admin, recent_blockhash) = program.start().await;
+
+    let create_fs_account = create_account(
+        &admin.pubkey(),
+        &fs_account_key.pubkey(),
+        AMOUNT * 2,
+        1_000_000,
+        &program_id,
+    );
+
+    let db_create = DBInstruction::CreateDB(CreateDBParams {
+        primary_key_type: DataType::Int,
+        columns: vec![],
+        table_name: String::from("Test DB"),
+        max_columns: 10,
+        max_rows: 10,
+        is_initialized: false,
+    });
+
+    let create = SolanaInstruction::new_with_borsh(
+        program_id,
+        &db_create,
+        vec![
+            AccountMeta::new_readonly(global_state_id, false),
+            AccountMeta::new_readonly(token_id, true),
+            AccountMeta::new(fs_account_key.pubkey(), false),
+        ],
+    );
+
+    let add_column = DBInstruction::AddColumn(AddColumnParams {
+        db: SegmentId {
+            id: 0,
+            pubkey: fs_account_key.pubkey(),
+        },
+        name: "Secondary column".to_string(),
+        dtype: DataType::Int,
+        is_secondary_key: true,
+        is_initialized: false,
+    });
+
+    let add_column = SolanaInstruction::new_with_borsh(
+        program_id,
+        &add_column,
+        vec![
+            AccountMeta::new_readonly(global_state_id, false),
+            AccountMeta::new_readonly(token_id, true),
+            AccountMeta::new(fs_account_key.pubkey(), false),
+        ],
+    );
+
+    let mut token_transaction = Transaction::new_with_payer(
+        &[create_fs_account, create, add_column],
+        Some(&admin.pubkey()),
+    );
+
+    token_transaction.sign(&[&admin, &token_key, &fs_account_key], recent_blockhash);
+
+    banks_client
+        .process_transaction(token_transaction)
+        .await
+        .unwrap();
+
+    // Retrieving accounts
+    let fs_account = banks_client
+        .get_account(fs_account_key.pubkey())
+        .await
+        .unwrap()
+        .unwrap();
+
+    let mut account_internals = (fs_account_key.pubkey(), fs_account);
+    let fs_account = vec![AccountInfo::from(&mut account_internals)];
+
+    // Deserializing data
+    let fs = Rc::new(RefCell::new(
+        FS::from_account_iter(&program_id, &mut fs_account.iter()).unwrap(),
+    ));
+
+    let db = DB::from_segment(
+        fs,
+        SegmentId {
+            id: 0,
+            pubkey: fs_account_key.pubkey(),
+        },
+    )
+    .unwrap();
+
+    let value = db.value(Data::Int(1), ColumnId::new(0)).unwrap();
+
+    dbg!(&db);
+
+    assert_eq!(value, None);
+}
+
+#[tokio::test]
+async fn add_value_by_secondary_key() {
+    let ProgramEnvironment {
+        global_state: global_state_id,
+        mint: mint_id,
+        program: program_key,
+        test: program,
+        token: token_key,
+        ..
+    } = prepare_environment();
+
+    let program_id = program_key.pubkey();
+    let token_id = token_key.pubkey();
+
+    let fs_account_key = Keypair::new();
+
+    let (mut banks_client, admin, recent_blockhash) = program.start().await;
+
+    let create_fs_account = create_account(
+        &admin.pubkey(),
+        &fs_account_key.pubkey(),
+        AMOUNT * 2,
+        1_000_000,
+        &program_id,
+    );
+
+    let db_create = DBInstruction::CreateDB(CreateDBParams {
+        primary_key_type: DataType::Int,
+        columns: vec![],
+        table_name: String::from("Test DB"),
+        max_columns: 10,
+        max_rows: 10,
+        is_initialized: false,
+    });
+
+    let create = SolanaInstruction::new_with_borsh(
+        program_id,
+        &db_create,
+        vec![
+            AccountMeta::new_readonly(global_state_id, false),
+            AccountMeta::new_readonly(token_id, true),
+            AccountMeta::new(fs_account_key.pubkey(), false),
+        ],
+    );
+
+    let add_column = DBInstruction::AddColumn(AddColumnParams {
+        db: SegmentId {
+            id: 0,
+            pubkey: fs_account_key.pubkey(),
+        },
+        name: "Test column".to_string(),
+        dtype: DataType::Int,
+        is_secondary_key: false,
+        is_initialized: true,
+    });
+
+    let add_column = SolanaInstruction::new_with_borsh(
+        program_id,
+        &add_column,
+        vec![
+            AccountMeta::new_readonly(global_state_id, false),
+            AccountMeta::new_readonly(token_id, true),
+            AccountMeta::new(fs_account_key.pubkey(), false),
+        ],
+    );
+
+    let add_secondary_column = DBInstruction::AddColumn(AddColumnParams {
+        db: SegmentId {
+            id: 0,
+            pubkey: fs_account_key.pubkey(),
+        },
+        name: "Secondary column".to_string(),
+        dtype: DataType::ShortString,
+        is_secondary_key: true,
+        is_initialized: true,
+    });
+
+    let add_secondary_column = SolanaInstruction::new_with_borsh(
+        program_id,
+        &add_secondary_column,
+        vec![
+            AccountMeta::new_readonly(global_state_id, false),
+            AccountMeta::new_readonly(token_id, true),
+            AccountMeta::new(fs_account_key.pubkey(), false),
+        ],
+    );
+
+    let add_value = DBInstruction::SetValue(SetValueParams {
+        db: SegmentId {
+            id: 0,
+            pubkey: fs_account_key.pubkey(),
+        },
+        key: Data::Int(1),
+        value: Data::ShortString("test".to_string()),
+        column: ColumnId::new(1),
+        is_initialized: true,
+    });
+
+    let add_value = SolanaInstruction::new_with_borsh(
+        program_id,
+        &add_value,
+        vec![
+            AccountMeta::new_readonly(global_state_id, false),
+            AccountMeta::new_readonly(token_id, true),
+            AccountMeta::new(fs_account_key.pubkey(), false),
+        ],
+    );
+
+    let add_value_secondary = DBInstruction::SetValueSecondary(SetValueSecondaryParams {
+        db: SegmentId {
+            id: 0,
+            pubkey: fs_account_key.pubkey(),
+        },
+        key_column: ColumnId::new(1),
+        secondary_key: Data::ShortString("test".to_string()),
+        value_column: ColumnId::new(0),
+        value: Data::Int(324),
+        is_initialized: true,
+    });
+
+    let add_value_secondary = SolanaInstruction::new_with_borsh(
+        program_id,
+        &add_value_secondary,
+        vec![
+            AccountMeta::new_readonly(global_state_id, false),
+            AccountMeta::new_readonly(token_id, true),
+            AccountMeta::new(fs_account_key.pubkey(), false),
+        ],
+    );
+
+    let mut token_transaction = Transaction::new_with_payer(
+        &[
+            create_fs_account,
+            create,
+            add_column,
+            add_secondary_column,
+            add_value,
+            add_value_secondary,
+        ],
+        Some(&admin.pubkey()),
+    );
+
+    token_transaction.sign(&[&admin, &token_key, &fs_account_key], recent_blockhash);
+
+    banks_client
+        .process_transaction(token_transaction)
+        .await
+        .unwrap();
+
+    // Retrieving accounts
+    let fs_account = banks_client
+        .get_account(fs_account_key.pubkey())
+        .await
+        .unwrap()
+        .unwrap();
+
+    let mut account_internals = (fs_account_key.pubkey(), fs_account);
+    let fs_account = vec![AccountInfo::from(&mut account_internals)];
+
+    // Deserializing data
+    let fs = Rc::new(RefCell::new(
+        FS::from_account_iter(&program_id, &mut fs_account.iter()).unwrap(),
+    ));
+
+    let db = DB::from_segment(
+        fs,
+        SegmentId {
+            id: 0,
+            pubkey: fs_account_key.pubkey(),
+        },
+    )
+    .unwrap();
+
+    let value = db.value(Data::Int(1), ColumnId::new(1)).unwrap();
+    let secondary_value = db.value(Data::Int(1), ColumnId::new(0)).unwrap();
+
+    dbg!(&db);
+
+    assert_eq!(value, Some(Data::ShortString("test".to_string())));
+
+    assert_eq!(secondary_value, Some(Data::Int(324)));
+}
+
 struct ProgramEnvironment {
     global_state: Pubkey,
     mint: Pubkey,

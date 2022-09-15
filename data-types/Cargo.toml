@@ -12,6 +12,7 @@ bytemuck = "1.7.2"
 num_enum = "0.5.7"
 serde = { version = "1.0", features = ["derive"] }
 slice-rbtree = { path = "../slice-rbtree" }
+solcery-reltab = { path = "../reltab" }
 solana-program = "1.8.2"
 solcery-impl-generator = { path = "generator" }
 thiserror = "1.0.24"
