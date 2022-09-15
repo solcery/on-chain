@@ -1,3 +1,7 @@
+//! A `#[no_std]` Red-Black tree, fully packed in a single slice
+//!
+//! Originally developed for storing data in [Solana]() [Accounts](), this crate allows you to
+//! access tree nodes without deserializing the whole tree.
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(missing_debug_implementations)]
 //#![deny(missing_docs)]
