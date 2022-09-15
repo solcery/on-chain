@@ -15,6 +15,7 @@ use tinyvec::SliceVec;
 use account_fs::{SegmentId, FS};
 use slice_rbtree::tree_size;
 use solcery_data_types::db::schema::{from_column_slice, init_column_slice};
+use solcery_reltab::one_to_one::{one_to_one_size, OneToOne};
 
 pub use solcery_data_types::db::{
     column::Column,
@@ -129,31 +130,51 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
         }
 
         let mut borrowed_fs = self.fs.borrow_mut();
-        let segment = borrowed_fs.allocate_segment(tree_size(
-            self.index.primary_key_type().size(),
-            dtype.size(),
-            self.index.max_rows(),
-        ))?;
+
+        let size = if is_secondary_key {
+            one_to_one_size(
+                self.index.primary_key_type().size(),
+                dtype.size(),
+                self.index.max_rows(),
+            )
+        } else {
+            tree_size(
+                self.index.primary_key_type().size(),
+                dtype.size(),
+                self.index.max_rows(),
+            )
+        };
+        let segment = borrowed_fs.allocate_segment(size)?;
 
         // We've just successfully allocated this segment, so this operation is infailible;
-        let tree = borrowed_fs.segment(&segment).unwrap();
+        let container = borrowed_fs.segment(&segment).unwrap();
         let column = if is_secondary_key {
-            unimplemented!();
+            init_column_slice(
+                self.index.primary_key_type(),
+                dtype,
+                ColumnType::OneToOne,
+                container,
+            )
         } else {
             init_column_slice(
                 self.index.primary_key_type(),
                 dtype,
                 ColumnType::RBTree,
-                tree,
+                container,
             )
         }
+        //FIXME: Document unwrap
         .unwrap();
 
         drop(borrowed_fs);
 
         let id = ColumnId::new(self.index.generate_id());
-        let column_header =
-            unsafe { ColumnHeader::new(name, id, segment, dtype, ColumnType::RBTree) };
+
+        let column_header = if is_secondary_key {
+            unsafe { ColumnHeader::new(name, id, segment, dtype, ColumnType::OneToOne) }
+        } else {
+            unsafe { ColumnHeader::new(name, id, segment, dtype, ColumnType::RBTree) }
+        };
 
         self.column_headers.push(column_header);
 
@@ -236,7 +257,7 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
         let mut accessed_columns = self.accessed_columns.borrow_mut();
 
         if let Some(column) = accessed_columns.get_mut(&column_id) {
-            Ok(column.set(primary_key, value))
+            column.set(primary_key, value)
         } else {
             let column_header = self
                 .column_headers
@@ -253,11 +274,11 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
                 column_slice,
             )?;
 
-            let old_value = column.set(primary_key, value);
+            let result = column.set(primary_key, value);
 
             accessed_columns.insert(column_header.id(), column);
 
-            Ok(old_value)
+            result
         }
     }
 
@@ -468,7 +489,7 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
                 column_slice,
             )?;
 
-            let primary_key = key_column.get_value(secondary_key);
+            let primary_key = key_column.get_key(secondary_key);
 
             accessed_columns.insert(column_header.id(), key_column);
 

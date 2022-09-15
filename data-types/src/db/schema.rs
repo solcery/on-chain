@@ -6,7 +6,6 @@ use solana_program::pubkey::Pubkey;
 
 use super::column::Column as ColumnTrait;
 use super::error::Error;
-use slice_rbtree::RBTree;
 use solcery_impl_generator::generate_column_impls;
 
 pub type Tables = Vec<AllowedTypes>;
@@ -123,8 +122,8 @@ impl Schema {
 #[repr(u8)]
 pub enum ColumnType {
     RBTree,
+    OneToOne,
     // This types are not implemented yet
-    //OneToOne,
     //OneToMany,
     //ManyToOne,
     //ManyToMany,

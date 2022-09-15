@@ -1,11 +1,12 @@
 use std::fmt::Debug;
 
+use super::error::Error;
 use super::schema::Data;
 
 pub trait Column: Debug {
     fn get_key(&self, value: Data) -> Option<Data>;
     fn get_value(&self, key: Data) -> Option<Data>;
-    fn set(&mut self, key: Data, value: Data) -> Option<Data>;
+    fn set(&mut self, key: Data, value: Data) -> Result<Option<Data>, Error>;
     fn delete_by_key(&mut self, key: Data) -> bool;
     fn delete_by_value(&mut self, value: Data) -> bool;
     //fn keys(&self) -> KeysAscendingIterator;
