@@ -7,16 +7,24 @@ use super::{
     forest_size, init_forest, Error, KeysIterator, PairsIterator, RBForest, ValuesIterator,
 };
 
+/// determine the required size of the array
+/// * `k_size` --- key buffer size
+/// * `v_size` --- value buffer size
+/// * `max_nodes` --- maximum number of nodees in the tree
 #[must_use]
 #[inline]
 pub fn tree_size(k_size: usize, v_size: usize, max_nodes: usize) -> usize {
     forest_size(k_size, v_size, max_nodes, 1)
 }
 
+/// initialize [RBTree] in the given slice without returning it
+///
+/// This function can be used than you don't know buffer sizes at compile time.
 pub fn init_tree(k_size: usize, v_size: usize, slice: &mut [u8]) -> Result<(), Error> {
     init_forest(k_size, v_size, slice, 1)
 }
 
+/// A slice-based Red-Black tree
 pub struct RBTree<'a, K, V, const KSIZE: usize, const VSIZE: usize>(
     RBForest<'a, K, V, KSIZE, VSIZE>,
 )
