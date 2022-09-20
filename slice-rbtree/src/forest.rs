@@ -101,6 +101,9 @@ where
     roots: &'a mut [[u8; 4]],
     _phantom_key: PhantomData<K>,
     _phantom_value: PhantomData<V>,
+    // This field is used to check if new value fits the existing node
+    // See put() method
+    buffer: [u8; VSIZE],
 }
 
 impl<'a, K, V, const KSIZE: usize, const VSIZE: usize> RBForest<'a, K, V, KSIZE, VSIZE>
@@ -157,6 +160,7 @@ where
             roots,
             _phantom_key: PhantomData::<K>,
             _phantom_value: PhantomData::<V>,
+            buffer: [0; VSIZE],
         })
     }
 
@@ -205,6 +209,7 @@ where
             roots,
             _phantom_key: PhantomData::<K>,
             _phantom_value: PhantomData::<V>,
+            buffer: [0; VSIZE],
         })
     }
 
@@ -473,14 +478,14 @@ where
                     old_val = V::deserialize(&mut self.nodes[id as usize].value.as_slice()).ok();
                     // This is needed to check if the value fits in the slice
                     // Otherwise we can invalidate data in the node
-                    let mut serialization_container = [0; VSIZE];
+                    let serialization_container = &mut self.buffer;
                     let serialization_result =
                         value.serialize(&mut serialization_container.as_mut_slice());
 
                     match serialization_result {
                         Ok(()) => self.nodes[id as usize]
                             .value
-                            .copy_from_slice(&serialization_container),
+                            .copy_from_slice(serialization_container.as_slice()),
                         Err(_) => return Err(Error::ValueSerializationError),
                     }
                 }
