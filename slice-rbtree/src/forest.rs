@@ -15,6 +15,11 @@ pub(crate) use node::Node;
 
 use super::Error;
 
+/// Returns the required size of the slice
+/// * `k_size` --- key buffer size
+/// * `v_size` --- value buffer size
+/// * `max_nodes` --- maximum number of nodes in the tree
+/// * `max_roots` --- maximum number of trees in the forest
 #[must_use]
 #[inline]
 pub fn forest_size(k_size: usize, v_size: usize, max_nodes: usize, max_roots: usize) -> usize {
@@ -23,6 +28,14 @@ pub fn forest_size(k_size: usize, v_size: usize, max_nodes: usize, max_roots: us
         + 4 * max_roots
 }
 
+/// Initializes [super::RBTree] in the given slice without returning it
+///
+/// This function can be used than you don't know buffer sizes at compile time.
+///
+/// * `k_size` --- key buffer size
+/// * `v_size` --- value buffer size
+/// * `max_roots` --- maximum number of trees in the forest
+/// * `slice` --- a place, where the forest should be initialized
 pub fn init_forest(
     k_size: usize,
     v_size: usize,
@@ -42,7 +55,7 @@ pub fn init_forest(
     let (nodes, roots) = tail.split_at_mut(tail.len() - max_roots * 4);
 
     if nodes.len() % (mem::size_of::<Node<0, 0>>() + k_size + v_size) != 0 {
-        return Err(Error::WrongNodePoolSize);
+        return Err(Error::WrongSliceSize);
     }
 
     let header: &mut [[u8; mem::size_of::<Header>()]] = cast_slice_mut(header);
@@ -91,6 +104,15 @@ pub fn init_forest(
     Ok(())
 }
 
+/// A slice-based forest of Red-Black trees
+///
+/// It sometimmes happens, that you have to use a set of similar trees of unknown size. In that
+/// case you could allocate such trees in different slices, but it will be very ineffective: you
+/// have to think about capacity of each tree beforehand and it is still possible, that some trees
+/// will be full, while others are (almost empty).
+///
+/// [RBForest] solves this issue, by using a common node pool for a set of trees.
+/// the API of [RBForest] mimics [super::RBTree] but with one additional argument: index of the tree.
 pub struct RBForest<'a, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,
@@ -111,6 +133,7 @@ where
     K: Ord + BorshDeserialize + BorshSerialize,
     V: BorshDeserialize + BorshSerialize,
 {
+    /// Initializes [RBForest] in a given slice
     pub fn init_slice(slice: &'a mut [u8], max_roots: usize) -> Result<Self, Error> {
         if slice.len() <= mem::size_of::<Header>() {
             return Err(Error::TooSmall);
@@ -164,6 +187,11 @@ where
         })
     }
 
+    /// Returns [RBForest], contained in the given slice
+    ///
+    /// # Safety
+    /// This function must be called only on slices, previously initialized as [RBForest] using
+    /// [init_forest] or [RBForest::init_slice]
     pub unsafe fn from_slice(slice: &'a mut [u8]) -> Result<Self, Error> {
         if slice.len() <= mem::size_of::<Header>() {
             return Err(Error::TooSmall);
@@ -186,7 +214,7 @@ where
         let roots: &mut [[u8; 4]] = cast_slice_mut(roots);
 
         if nodes.len() % mem::size_of::<Node<KSIZE, VSIZE>>() != 0 {
-            return Err(Error::WrongNodePoolSize);
+            return Err(Error::WrongSliceSize);
         }
 
         let nodes: &mut [Node<KSIZE, VSIZE>] = cast_slice_mut(nodes);
@@ -213,16 +241,23 @@ where
         })
     }
 
+    /// Returns the number of occupied nodes
+    ///
+    /// This function runs in `O(n)`, where `n` - is the number of nodes
     #[must_use]
     pub fn len(&self, tree_id: usize) -> usize {
         self.size(self.root(tree_id))
     }
 
+    /// Returns the maximum number of trees in the forest
     #[must_use]
     pub fn max_roots(&self) -> usize {
         self.header.max_roots() as usize
     }
 
+    /// Returns the number of free nodes
+    ///
+    /// This function runs in `O(n)`, where `n` - is the number of nodes
     #[must_use]
     pub fn free_nodes_left(&self) -> usize {
         let mut counter = 0;
@@ -234,6 +269,9 @@ where
         counter
     }
 
+    /// Clears the forest
+    ///
+    /// This function runs in `O(n)`, where `n` - is the number of nodes
     pub fn clear(&mut self) {
         unsafe {
             // Allocator reinitialization
@@ -250,6 +288,9 @@ where
         }
     }
 
+    /// Returns true if the map contains a value for the specified key
+    ///
+    /// This function runs in `O(log(n))`, where `n` - is the number of nodes
     #[must_use]
     pub fn contains_key<Q>(&self, tree_id: usize, k: &Q) -> bool
     where
@@ -259,6 +300,9 @@ where
         self.get_key_index(tree_id, k).is_some()
     }
 
+    /// Returns a key-value pair corresponding to the supplied key
+    ///
+    /// This function runs in `O(log(n))`, where `n` - is the number of nodes
     #[must_use]
     pub fn get_entry<Q>(&self, tree_id: usize, k: &Q) -> Option<(K, V)>
     where
@@ -273,6 +317,9 @@ where
         })
     }
 
+    /// Returns the value corresponding to the key
+    ///
+    /// This function runs in `O(log(n))`, where `n` - is the number of nodes
     #[must_use]
     pub fn get<Q>(&self, tree_id: usize, k: &Q) -> Option<V>
     where
@@ -286,6 +333,9 @@ where
         })
     }
 
+    /// Inserts a new key-value pair and returns the old value if it was present
+    ///
+    /// This function runs in `O(log(n))`, where `n` - is the number of nodes
     pub fn insert(&mut self, tree_id: usize, key: K, value: V) -> Result<Option<V>, Error> {
         let result = self.put(tree_id, self.root(tree_id), None, key, value);
         match result {
@@ -300,11 +350,15 @@ where
         }
     }
 
+    /// Returns `true` if the tree contains no elements
     #[must_use]
     pub fn is_empty(&self, tree_id: usize) -> bool {
         self.root(tree_id).is_none()
     }
 
+    /// Deletes entry and returns deserialized value
+    ///
+    /// This function runs in `O(log(n))`, where `n` - is the number of nodes
     pub fn remove<Q>(&mut self, tree_id: usize, key: &Q) -> Option<V>
     where
         K: Borrow<Q> + Ord,
@@ -319,6 +373,9 @@ where
         })
     }
 
+    /// Deletes entry and returns deserialized key-value pair
+    ///
+    /// This function runs in `O(log(n))`, where `n` - is the number of nodes
     pub fn remove_entry<Q>(&mut self, tree_id: usize, key: &Q) -> Option<(K, V)>
     where
         K: Borrow<Q> + Ord,
@@ -350,6 +407,7 @@ where
             .is_some()
     }
 
+    /// Creates an iterator over key-value pairs, in order by key
     #[must_use]
     pub fn pairs<'b>(&'b self, tree_id: usize) -> PairsIterator<'b, 'a, K, V, KSIZE, VSIZE> {
         PairsIterator {
@@ -358,6 +416,7 @@ where
         }
     }
 
+    /// Creates an iterator over keys, from smallest to biggest
     #[must_use]
     pub fn keys<'b>(&'b self, tree_id: usize) -> KeysIterator<'b, 'a, K, V, KSIZE, VSIZE> {
         KeysIterator {
@@ -366,6 +425,7 @@ where
         }
     }
 
+    /// Creates an iterator over values, in order by key
     #[must_use]
     pub fn values<'b>(&'b self, tree_id: usize) -> ValuesIterator<'b, 'a, K, V, KSIZE, VSIZE> {
         ValuesIterator {
@@ -374,6 +434,9 @@ where
         }
     }
 
+    /// Returns the first key-value pair in the map
+    ///
+    /// This function runs in `O(log(n))`, where `n` - is the number of nodes
     #[must_use]
     pub fn first_entry(&self, tree_id: usize) -> Option<(K, V)> {
         self.root(tree_id).map(|root_id| {
@@ -384,6 +447,9 @@ where
         })
     }
 
+    /// Returns the last key-value pair in the map
+    ///
+    /// This function runs in `O(log(n))`, where `n` - is the number of nodes
     #[must_use]
     pub fn last_entry(&self, tree_id: usize) -> Option<(K, V)> {
         self.root(tree_id).map(|root_id| {
@@ -1044,6 +1110,7 @@ where
     }
 }
 
+#[doc(hidden)]
 pub struct PairsIterator<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,
@@ -1105,6 +1172,7 @@ where
     }
 }
 
+#[doc(hidden)]
 pub struct KeysIterator<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,
@@ -1165,6 +1233,7 @@ where
     }
 }
 
+#[doc(hidden)]
 pub struct ValuesIterator<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,

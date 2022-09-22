@@ -10,7 +10,7 @@ use super::{
 /// Returns the required size of the slice
 /// * `k_size` --- key buffer size
 /// * `v_size` --- value buffer size
-/// * `max_nodes` --- maximum number of nodees in the tree
+/// * `max_nodes` --- maximum number of nodes in the tree
 #[must_use]
 #[inline]
 pub fn tree_size(k_size: usize, v_size: usize, max_nodes: usize) -> usize {
@@ -23,6 +23,7 @@ pub fn tree_size(k_size: usize, v_size: usize, max_nodes: usize) -> usize {
 ///
 /// * `k_size` --- key buffer size
 /// * `v_size` --- value buffer size
+/// * `slice` --- a place, where the tree should be initialized
 pub fn init_tree(k_size: usize, v_size: usize, slice: &mut [u8]) -> Result<(), Error> {
     init_forest(k_size, v_size, slice, 1)
 }
@@ -101,7 +102,7 @@ where
         self.0.get_entry(0, k)
     }
 
-    /// Returns the value coressponding to the key
+    /// Returns the value corresponding to the key
     ///
     /// This function runs in `O(log(n))`, where `n` - is the number of nodes
     #[must_use]
@@ -121,8 +122,6 @@ where
     }
 
     /// Returns `true` if the tree contains no elements
-    ///
-    /// This function is basically one asserion, so it runs in constant time
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty(0)
