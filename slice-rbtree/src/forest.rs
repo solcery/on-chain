@@ -148,7 +148,7 @@ where
         let (nodes, roots) = tail.split_at_mut(tail.len() - max_roots * 4);
 
         if nodes.len() % mem::size_of::<Node<KSIZE, VSIZE>>() != 0 {
-            return Err(Error::WrongNodePoolSize);
+            return Err(Error::WrongSliceSize);
         }
 
         let nodes: &mut [Node<KSIZE, VSIZE>] = cast_slice_mut(nodes);

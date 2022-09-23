@@ -138,34 +138,46 @@ fn init() {
 
     let mut tree = RBForest::<i32, u32, 4, 4>::init_slice(vec.as_mut_slice(), 1).unwrap();
     assert!(tree.is_empty(0));
+    assert_eq!(tree.free_nodes_left(), 5);
 
     assert_eq!(tree.insert(0, 12, 32), Ok(None));
     assert_eq!(tree.get(0, &12), Some(32));
     assert_eq!(tree.len(0), 1);
+    assert_eq!(tree.free_nodes_left(), 4);
 
     assert_eq!(tree.insert(0, 32, 44), Ok(None));
     assert_eq!(tree.get(0, &32), Some(44));
     assert_eq!(tree.len(0), 2);
+    assert_eq!(tree.free_nodes_left(), 3);
 
     assert_eq!(tree.insert(0, 123, 321), Ok(None));
     assert_eq!(tree.get(0, &123), Some(321));
     assert_eq!(tree.len(0), 3);
+    assert_eq!(tree.free_nodes_left(), 2);
 
     assert_eq!(tree.insert(0, 123, 322), Ok(Some(321)));
     assert_eq!(tree.get(0, &123), Some(322));
     assert_eq!(tree.len(0), 3);
+    assert_eq!(tree.free_nodes_left(), 2);
 
     assert_eq!(tree.insert(0, 14, 32), Ok(None));
     assert_eq!(tree.get(0, &14), Some(32));
     assert_eq!(tree.len(0), 4);
+    assert_eq!(tree.free_nodes_left(), 1);
 
     assert_eq!(tree.insert(0, 1, 2), Ok(None));
+    assert_eq!(tree.free_nodes_left(), 0);
     assert_eq!(tree.insert(0, 1, 4), Ok(Some(2)));
+    assert_eq!(tree.free_nodes_left(), 0);
     assert_eq!(tree.insert(0, 3, 4), Err(Error::NoNodesLeft));
 
     assert_eq!(tree.get(0, &15), None);
 
     assert_eq!(tree.len(0), 5);
+
+    tree.clear();
+    assert_eq!(tree.len(0), 0);
+    assert_eq!(tree.free_nodes_left(), 5);
 }
 
 #[test]
@@ -459,9 +471,10 @@ fn too_small() {
 fn fractional_node_count() {
     let mut vec = vec![0; forest_size(1, 1, 1, 1) + 1];
     let tree = RBForest::<u8, u8, 1, 1>::init_slice(vec.as_mut_slice(), 1).unwrap_err();
-    assert_eq!(tree, Error::WrongNodePoolSize);
+    assert_eq!(tree, Error::WrongSliceSize);
 }
 
+// This is an example of byte-packed forest used to check binary compatibility
 const FOREST_BYTES: [u8; 160] = [
     83, 108, 105, 99, 101, 95, 82, 66, 84, 114, 101, 101, 0, 1, 0, 1, 0, 0, 0, 8, 0, 0, 0, 3, 255,
     255, 255, 255, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 12, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -556,5 +569,62 @@ mod init_forest_tests {
     #[test]
     fn one_ten_forest() {
         assert_init_test::<1, 10>(10, 10);
+    }
+}
+
+mod init_forest {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn init() {
+        let mut vec = create_vec(4, 4, 5, 1);
+
+        init_forest(4, 4, vec.as_mut_slice(), 1).unwrap();
+        let mut tree =
+            unsafe { RBForest::<i32, u32, 4, 4>::from_slice(vec.as_mut_slice()).unwrap() };
+        assert!(tree.is_empty(0));
+
+        assert_eq!(tree.insert(0, 12, 32), Ok(None));
+        assert_eq!(tree.get(0, &12), Some(32));
+        assert_eq!(tree.len(0), 1);
+
+        assert_eq!(tree.insert(0, 32, 44), Ok(None));
+        assert_eq!(tree.get(0, &32), Some(44));
+        assert_eq!(tree.len(0), 2);
+
+        assert_eq!(tree.insert(0, 123, 321), Ok(None));
+        assert_eq!(tree.get(0, &123), Some(321));
+        assert_eq!(tree.len(0), 3);
+
+        assert_eq!(tree.insert(0, 123, 322), Ok(Some(321)));
+        assert_eq!(tree.get(0, &123), Some(322));
+        assert_eq!(tree.len(0), 3);
+
+        assert_eq!(tree.insert(0, 14, 32), Ok(None));
+        assert_eq!(tree.get(0, &14), Some(32));
+        assert_eq!(tree.len(0), 4);
+
+        assert_eq!(tree.insert(0, 1, 2), Ok(None));
+        assert_eq!(tree.insert(0, 1, 4), Ok(Some(2)));
+        assert_eq!(tree.insert(0, 3, 4), Err(Error::NoNodesLeft));
+
+        assert_eq!(tree.get(0, &15), None);
+
+        assert_eq!(tree.len(0), 5);
+    }
+
+    #[test]
+    fn too_small() {
+        let mut vec = vec![1, 2, 3];
+        let tree = init_forest(1, 1, vec.as_mut_slice(), 1).unwrap_err();
+        assert_eq!(tree, Error::TooSmall);
+    }
+
+    #[test]
+    fn fractional_node_count() {
+        let mut vec = vec![0; forest_size(1, 1, 1, 1) + 1];
+        let tree = init_forest(1, 1, vec.as_mut_slice(), 1).unwrap_err();
+        assert_eq!(tree, Error::WrongSliceSize);
     }
 }
