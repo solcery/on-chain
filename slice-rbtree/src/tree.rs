@@ -17,7 +17,7 @@ pub fn tree_size(k_size: usize, v_size: usize, max_nodes: usize) -> usize {
     forest_size(k_size, v_size, max_nodes, 1)
 }
 
-/// Initializes [RBTree] in the given slice without returning it
+/// Initializes [`RBTree`] in the given slice without returning it
 ///
 /// This function can be used than you don't know buffer sizes at compile time.
 ///
@@ -41,16 +41,16 @@ where
     K: Ord + BorshDeserialize + BorshSerialize,
     V: BorshDeserialize + BorshSerialize,
 {
-    /// Initializes [RBTree] in a given slice
+    /// Initializes [`RBTree`] in a given slice
     pub fn init_slice(slice: &'a mut [u8]) -> Result<Self, Error> {
         RBForest::<'a, K, V, KSIZE, VSIZE>::init_slice(slice, 1).map(|tree| Self(tree))
     }
 
-    /// Returns [RBTree], contained in the given slice
+    /// Returns [`RBTree`], contained in the given slice
     ///
     /// # Safety
-    /// This function must be called only on slices, previously initialized as [RBTree] using
-    /// [init_tree] or [RBTree::init_slice]
+    /// This function must be called only on slices, previously initialized as [`RBTree`] using
+    /// [`init_tree`] or [`RBTree::init_slice`]
     pub unsafe fn from_slice(slice: &'a mut [u8]) -> Result<Self, Error> {
         unsafe { RBForest::<'a, K, V, KSIZE, VSIZE>::from_slice(slice).map(|tree| Self(tree)) }
     }

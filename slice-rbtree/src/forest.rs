@@ -28,7 +28,7 @@ pub fn forest_size(k_size: usize, v_size: usize, max_nodes: usize, max_roots: us
         + 4 * max_roots
 }
 
-/// Initializes [super::RBTree] in the given slice without returning it
+/// Initializes [`super::RBTree`] in the given slice without returning it
 ///
 /// This function can be used than you don't know buffer sizes at compile time.
 ///
@@ -111,8 +111,8 @@ pub fn init_forest(
 /// have to think about capacity of each tree beforehand and it is still possible, that some trees
 /// will be full, while others are (almost empty).
 ///
-/// [RBForest] solves this issue, by using a common node pool for a set of trees.
-/// the API of [RBForest] mimics [super::RBTree] but with one additional argument: index of the tree.
+/// [`RBForest`] solves this issue, by using a common node pool for a set of trees.
+/// the API of [`RBForest`] mimics [`super::RBTree`] but with one additional argument: index of the tree.
 pub struct RBForest<'a, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,
@@ -133,7 +133,7 @@ where
     K: Ord + BorshDeserialize + BorshSerialize,
     V: BorshDeserialize + BorshSerialize,
 {
-    /// Initializes [RBForest] in a given slice
+    /// Initializes [`RBForest`] in a given slice
     pub fn init_slice(slice: &'a mut [u8], max_roots: usize) -> Result<Self, Error> {
         if slice.len() <= mem::size_of::<Header>() {
             return Err(Error::TooSmall);
@@ -187,11 +187,11 @@ where
         })
     }
 
-    /// Returns [RBForest], contained in the given slice
+    /// Returns [`RBForest`], contained in the given slice
     ///
     /// # Safety
-    /// This function must be called only on slices, previously initialized as [RBForest] using
-    /// [init_forest] or [RBForest::init_slice]
+    /// This function must be called only on slices, previously initialized as [`RBForest`] using
+    /// [`init_forest`] or [`RBForest::init_slice`]
     pub unsafe fn from_slice(slice: &'a mut [u8]) -> Result<Self, Error> {
         if slice.len() <= mem::size_of::<Header>() {
             return Err(Error::TooSmall);

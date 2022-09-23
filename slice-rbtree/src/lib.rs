@@ -40,7 +40,7 @@ pub use forest::{forest_size, init_forest, RBForest};
 pub use forest::{KeysIterator, PairsIterator, ValuesIterator};
 pub use tree::{init_tree, tree_size, RBTree};
 
-/// Possible errors for [RBTree] and [RBForest]
+/// Possible errors for [`RBTree`] and [`RBForest`]
 #[derive(Debug, PartialEq, Eq, Copy, Clone, BorshDeserialize, BorshSerialize)]
 pub enum Error {
     /// Failed to serialize key to key buffer, maybe it is too big?

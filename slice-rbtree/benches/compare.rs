@@ -1,5 +1,5 @@
 use borsh::{BorshDeserialize, BorshSerialize};
-use criterion::{black_box, criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use slice_rbtree::{tree_size, RBTree};
 use std::collections::BTreeMap;
 
@@ -13,8 +13,8 @@ struct MyType {
 
 impl MyType {
     fn gen(i: u8) -> Self {
-        let i6 = i as u64;
-        let i3 = i as u32;
+        let i6 = u64::from(i);
+        let i3 = u32::from(i);
         MyType {
             array: [i; 10],
             float: f64::from(i) * 1.25,
@@ -104,8 +104,8 @@ pub fn add_one_value(c: &mut Criterion) {
     let mut group = c.benchmark_group("Add one value");
     let map = (0..100)
         .map(|i| {
-            let i6 = i as u64;
-            let i3 = i as u32;
+            let i6 = u64::from(i);
+            let i3 = u32::from(i);
             let value = MyType {
                 array: [i; 10],
                 float: f64::from(i) * 1.25,
@@ -133,8 +133,8 @@ pub fn add_one_value(c: &mut Criterion) {
     .unwrap();
 
     for i in 0..100 {
-        let i6 = i as u64;
-        let i3 = i as u32;
+        let i6 = u64::from(i);
+        let i3 = u32::from(i);
         let value = MyType {
             array: [i; 10],
             float: f64::from(i) * 1.25,

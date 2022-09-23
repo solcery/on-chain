@@ -8,25 +8,9 @@ where
     K: Eq + Ord + BorshDeserialize + BorshSerialize,
     V: Eq + BorshDeserialize + BorshSerialize,
 {
-    fn is_balanced(&self) -> bool {
-        self.0.is_balanced(0)
-    }
-
     unsafe fn set_node(&mut self, id: usize, node: &Node<KSIZE, VSIZE>) {
         unsafe {
             self.0.set_node(id, node);
-        }
-    }
-
-    unsafe fn set_root(&mut self, root: Option<u32>) {
-        unsafe {
-            self.0.set_root(0, root);
-        }
-    }
-
-    unsafe fn set_head(&mut self, head: Option<u32>) {
-        unsafe {
-            self.0.set_head(head);
         }
     }
 
