@@ -1,10 +1,12 @@
 [package]
 name = "fs_test"
-version = "0.0.0"
-edition = "2021"
+version.workspace = true
+license.workspace = true
+homepage.workspace = true
+edition.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 account-fs = { path = "../" }
-solana-program = "1.7.8"
+solana-program.workspace = true
