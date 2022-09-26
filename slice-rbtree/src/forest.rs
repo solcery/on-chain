@@ -1,11 +1,11 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use bytemuck::{cast_mut, cast_slice_mut};
-use std::borrow::Borrow;
-use std::cmp::Ord;
-use std::cmp::Ordering;
-use std::fmt::{Debug, Formatter};
-use std::marker::PhantomData;
-use std::mem;
+use core::borrow::Borrow;
+use core::cmp::Ord;
+use core::cmp::Ordering;
+use core::fmt;
+use core::marker::PhantomData;
+use core::mem;
 
 mod header;
 mod node;
@@ -15,6 +15,11 @@ pub(crate) use node::Node;
 
 use super::Error;
 
+/// Returns the required size of the slice
+/// * `k_size` --- key buffer size
+/// * `v_size` --- value buffer size
+/// * `max_nodes` --- maximum number of nodes in the tree
+/// * `max_roots` --- maximum number of trees in the forest
 #[must_use]
 #[inline]
 pub fn forest_size(k_size: usize, v_size: usize, max_nodes: usize, max_roots: usize) -> usize {
@@ -23,6 +28,14 @@ pub fn forest_size(k_size: usize, v_size: usize, max_nodes: usize, max_roots: us
         + 4 * max_roots
 }
 
+/// Initializes [`super::RBTree`] in the given slice without returning it
+///
+/// This function can be used than you don't know buffer sizes at compile time.
+///
+/// * `k_size` --- key buffer size
+/// * `v_size` --- value buffer size
+/// * `max_roots` --- maximum number of trees in the forest
+/// * `slice` --- a place, where the forest should be initialized
 pub fn init_forest(
     k_size: usize,
     v_size: usize,
@@ -42,7 +55,7 @@ pub fn init_forest(
     let (nodes, roots) = tail.split_at_mut(tail.len() - max_roots * 4);
 
     if nodes.len() % (mem::size_of::<Node<0, 0>>() + k_size + v_size) != 0 {
-        return Err(Error::WrongNodePoolSize);
+        return Err(Error::WrongSliceSize);
     }
 
     let header: &mut [[u8; mem::size_of::<Header>()]] = cast_slice_mut(header);
@@ -91,6 +104,93 @@ pub fn init_forest(
     Ok(())
 }
 
+/// A slice-based forest of Red-Black trees
+///
+/// It sometimes happens, that you have to use a set of similar trees of unknown size. In that
+/// case you could allocate such trees in different slices, but it will be very ineffective: you
+/// have to think about capacity of each tree beforehand and it is still possible, that some trees
+/// will be full, while others are (almost) empty.
+///
+/// [`RBForest`] solves this issue, by using a common node pool for a set of trees.
+/// the API of [`RBForest`] mimics [`RBTree`](super::RBTree) but with one additional argument: index of the tree.
+///
+///```
+/// use slice_rbtree::{forest_size, RBForest};
+/// // RBTree requires input slice to have a proper size
+/// // Each node in the `RBTree` has a fixed size known at compile time, so to estimate this size `KSIZE` and `VSIZE` parameters should passed to forest_size
+/// let size = forest_size(50, 50, 10, 2);
+/// let mut buffer = vec![0; size];
+/// // `String` type has variable length, but we have to chose some fixed maximum length (50 bytes for both key and value)
+/// let mut reviews: RBForest<String, String, 50, 50> = RBForest::init_slice(&mut buffer, 2).unwrap();
+///
+/// // Let tree 0 be the movie tree and tree 1 - the book tree
+///
+/// // review some movies.
+/// reviews.insert(0,"Office Space".to_string(),       "Deals with real issues in the workplace.".to_string());
+/// reviews.insert(0,"Pulp Fiction".to_string(),       "Masterpiece.".to_string());
+/// reviews.insert(0,"The Godfather".to_string(),      "Very enjoyable.".to_string());
+/// reviews.insert(0,"The Blues Brothers".to_string(), "Eye lyked it a lot.".to_string());
+///
+/// // review some books
+/// reviews.insert(1,"Fight club".to_string(),       "Brad Pitt is cool!".to_string());
+/// reviews.insert(1,"Alice in Wonderland".to_string(),       "Deep than you think.".to_string());
+/// reviews.insert(1,"1984".to_string(),      "A scary dystopia.".to_string());
+/// reviews.insert(1,"The Lord of the Rings".to_string(), "Poor Gollum.".to_string());
+///
+/// // check for a specific one.
+/// if !reviews.contains_key(0,"Les Misérables") {
+///     println!("We've got {} movie reviews, but Les Misérables ain't one.",
+///              reviews.len(0));
+/// }
+/// if reviews.contains_key(1,"1984") {
+///     println!("We've got {} book reviews and 1984 among them: {}.",
+///              reviews.len(0), reviews.get(1, "1984").unwrap());
+/// }
+///
+/// // oops, this review has a lot of spelling mistakes, let's delete it.
+/// reviews.remove(0, "The Blues Brothers");
+///
+/// // look up the values associated with some keys.
+/// let to_find = ["Up!".to_string(), "Office Space".to_string()];
+/// for movie in &to_find {
+///     match reviews.get(0, movie) {
+///        Some(review) => println!("{movie}: {review}"),
+///        None => println!("{movie} is unreviewed.")
+///     }
+/// }
+///
+/// // iterate over movies.
+/// for (movie, review) in reviews.pairs(0) {
+///     println!("{movie}: \"{review}\"");
+/// }
+///
+/// // Too many reviews, delete them all!
+/// reviews.clear();
+/// assert!(reviews.is_empty(0));
+/// assert!(reviews.is_empty(1));
+/// ```
+///
+/// # Internal structure
+///
+/// > **Warning:** this section contains links to internal structures, not exposed in the public API
+/// If you want to look at them, compile documentation with `--document-private-items` flag
+///
+/// Each [`RBForest`] consists of [`Header`], array of the tree roots and a pool of [`Nodes`](Node).
+/// All this structs are designed in such a way, that they does not have any alignment requirements
+/// (all of them are byte-aligned).
+/// [`Header`] contains parameters and sizes of sections and a magic string [`HEADER_MAGIC`](header::HEADER_MAGIC) used to check, that the given slice is indeed [`RBForest`].
+///
+/// After the [`Header`] the array of `max_roots` (see [`Header`] docs) indices is placed. Indices
+/// are `Option<u32>` encoded as big-endian  `u32` with `None` variant encoded as `u32::MAX`.
+///
+///
+///The last part of the [`RBForest`] is an array of `max_nodes` (see [`Header`] docs)
+///[`Nodes`](Node).
+///
+///[`from_slice()`](RBForest::from_slice) method checks the following invariants:
+/// * magic string is present
+/// * `KSIZE` and `VSIZE` matches corresponding fields in the [Header]
+/// * node pool contains exactly `max_nodes` [Nodes](Node)
 pub struct RBForest<'a, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,
@@ -101,6 +201,9 @@ where
     roots: &'a mut [[u8; 4]],
     _phantom_key: PhantomData<K>,
     _phantom_value: PhantomData<V>,
+    // This field is used to check if new value fits the existing node
+    // See put() method
+    buffer: [u8; VSIZE],
 }
 
 impl<'a, K, V, const KSIZE: usize, const VSIZE: usize> RBForest<'a, K, V, KSIZE, VSIZE>
@@ -108,6 +211,7 @@ where
     K: Ord + BorshDeserialize + BorshSerialize,
     V: BorshDeserialize + BorshSerialize,
 {
+    /// Initializes [`RBForest`] in a given slice
     pub fn init_slice(slice: &'a mut [u8], max_roots: usize) -> Result<Self, Error> {
         if slice.len() <= mem::size_of::<Header>() {
             return Err(Error::TooSmall);
@@ -122,7 +226,7 @@ where
         let (nodes, roots) = tail.split_at_mut(tail.len() - max_roots * 4);
 
         if nodes.len() % mem::size_of::<Node<KSIZE, VSIZE>>() != 0 {
-            return Err(Error::WrongNodePoolSize);
+            return Err(Error::WrongSliceSize);
         }
 
         let nodes: &mut [Node<KSIZE, VSIZE>] = cast_slice_mut(nodes);
@@ -157,9 +261,15 @@ where
             roots,
             _phantom_key: PhantomData::<K>,
             _phantom_value: PhantomData::<V>,
+            buffer: [0; VSIZE],
         })
     }
 
+    /// Returns [`RBForest`], contained in the given slice
+    ///
+    /// # Safety
+    /// This function must be called only on slices, previously initialized as [`RBForest`] using
+    /// [`init_forest`] or [`RBForest::init_slice`]
     pub unsafe fn from_slice(slice: &'a mut [u8]) -> Result<Self, Error> {
         if slice.len() <= mem::size_of::<Header>() {
             return Err(Error::TooSmall);
@@ -182,7 +292,7 @@ where
         let roots: &mut [[u8; 4]] = cast_slice_mut(roots);
 
         if nodes.len() % mem::size_of::<Node<KSIZE, VSIZE>>() != 0 {
-            return Err(Error::WrongNodePoolSize);
+            return Err(Error::WrongSliceSize);
         }
 
         let nodes: &mut [Node<KSIZE, VSIZE>] = cast_slice_mut(nodes);
@@ -205,19 +315,27 @@ where
             roots,
             _phantom_key: PhantomData::<K>,
             _phantom_value: PhantomData::<V>,
+            buffer: [0; VSIZE],
         })
     }
 
+    /// Returns the number of occupied nodes
+    ///
+    /// This function runs in `O(n)`, where `n` - is the number of nodes
     #[must_use]
     pub fn len(&self, tree_id: usize) -> usize {
         self.size(self.root(tree_id))
     }
 
+    /// Returns the maximum number of trees in the forest
     #[must_use]
     pub fn max_roots(&self) -> usize {
         self.header.max_roots() as usize
     }
 
+    /// Returns the number of free nodes
+    ///
+    /// This function runs in `O(n)`, where `n` - is the number of nodes
     #[must_use]
     pub fn free_nodes_left(&self) -> usize {
         let mut counter = 0;
@@ -229,6 +347,9 @@ where
         counter
     }
 
+    /// Clears the forest
+    ///
+    /// This function runs in `O(n)`, where `n` - is the number of nodes
     pub fn clear(&mut self) {
         unsafe {
             // Allocator reinitialization
@@ -245,6 +366,9 @@ where
         }
     }
 
+    /// Returns true if the map contains a value for the specified key
+    ///
+    /// This function runs in `O(log(n))`, where `n` - is the number of nodes
     #[must_use]
     pub fn contains_key<Q>(&self, tree_id: usize, k: &Q) -> bool
     where
@@ -254,6 +378,9 @@ where
         self.get_key_index(tree_id, k).is_some()
     }
 
+    /// Returns a key-value pair corresponding to the supplied key
+    ///
+    /// This function runs in `O(log(n))`, where `n` - is the number of nodes
     #[must_use]
     pub fn get_entry<Q>(&self, tree_id: usize, k: &Q) -> Option<(K, V)>
     where
@@ -268,6 +395,9 @@ where
         })
     }
 
+    /// Returns the value corresponding to the key
+    ///
+    /// This function runs in `O(log(n))`, where `n` - is the number of nodes
     #[must_use]
     pub fn get<Q>(&self, tree_id: usize, k: &Q) -> Option<V>
     where
@@ -281,6 +411,9 @@ where
         })
     }
 
+    /// Inserts a new key-value pair and returns the old value if it was present
+    ///
+    /// This function runs in `O(log(n))`, where `n` - is the number of nodes
     pub fn insert(&mut self, tree_id: usize, key: K, value: V) -> Result<Option<V>, Error> {
         let result = self.put(tree_id, self.root(tree_id), None, key, value);
         match result {
@@ -295,11 +428,15 @@ where
         }
     }
 
+    /// Returns `true` if the tree contains no elements
     #[must_use]
     pub fn is_empty(&self, tree_id: usize) -> bool {
         self.root(tree_id).is_none()
     }
 
+    /// Deletes entry and returns deserialized value
+    ///
+    /// This function runs in `O(log(n))`, where `n` - is the number of nodes
     pub fn remove<Q>(&mut self, tree_id: usize, key: &Q) -> Option<V>
     where
         K: Borrow<Q> + Ord,
@@ -314,6 +451,9 @@ where
         })
     }
 
+    /// Deletes entry and returns deserialized key-value pair
+    ///
+    /// This function runs in `O(log(n))`, where `n` - is the number of nodes
     pub fn remove_entry<Q>(&mut self, tree_id: usize, key: &Q) -> Option<(K, V)>
     where
         K: Borrow<Q> + Ord,
@@ -345,6 +485,7 @@ where
             .is_some()
     }
 
+    /// Creates an iterator over key-value pairs, in order by key
     #[must_use]
     pub fn pairs<'b>(&'b self, tree_id: usize) -> PairsIterator<'b, 'a, K, V, KSIZE, VSIZE> {
         PairsIterator {
@@ -353,6 +494,7 @@ where
         }
     }
 
+    /// Creates an iterator over keys, from smallest to biggest
     #[must_use]
     pub fn keys<'b>(&'b self, tree_id: usize) -> KeysIterator<'b, 'a, K, V, KSIZE, VSIZE> {
         KeysIterator {
@@ -361,6 +503,7 @@ where
         }
     }
 
+    /// Creates an iterator over values, in order by key
     #[must_use]
     pub fn values<'b>(&'b self, tree_id: usize) -> ValuesIterator<'b, 'a, K, V, KSIZE, VSIZE> {
         ValuesIterator {
@@ -369,6 +512,9 @@ where
         }
     }
 
+    /// Returns the first key-value pair in the map
+    ///
+    /// This function runs in `O(log(n))`, where `n` - is the number of nodes
     #[must_use]
     pub fn first_entry(&self, tree_id: usize) -> Option<(K, V)> {
         self.root(tree_id).map(|root_id| {
@@ -379,6 +525,9 @@ where
         })
     }
 
+    /// Returns the last key-value pair in the map
+    ///
+    /// This function runs in `O(log(n))`, where `n` - is the number of nodes
     #[must_use]
     pub fn last_entry(&self, tree_id: usize) -> Option<(K, V)> {
         self.root(tree_id).map(|root_id| {
@@ -473,14 +622,14 @@ where
                     old_val = V::deserialize(&mut self.nodes[id as usize].value.as_slice()).ok();
                     // This is needed to check if the value fits in the slice
                     // Otherwise we can invalidate data in the node
-                    let mut serialization_container = [0; VSIZE];
+                    let serialization_container = &mut self.buffer;
                     let serialization_result =
                         value.serialize(&mut serialization_container.as_mut_slice());
 
                     match serialization_result {
                         Ok(()) => self.nodes[id as usize]
                             .value
-                            .copy_from_slice(&serialization_container),
+                            .copy_from_slice(serialization_container.as_slice()),
                         Err(_) => return Err(Error::ValueSerializationError),
                     }
                 }
@@ -1025,12 +1174,13 @@ where
     }
 }
 
-impl<'a, K, V, const KSIZE: usize, const VSIZE: usize> Debug for RBForest<'a, K, V, KSIZE, VSIZE>
+impl<'a, K, V, const KSIZE: usize, const VSIZE: usize> fmt::Debug
+    for RBForest<'a, K, V, KSIZE, VSIZE>
 where
-    K: Ord + BorshDeserialize + BorshSerialize + Debug,
-    V: BorshDeserialize + BorshSerialize + Debug,
+    K: Ord + BorshDeserialize + BorshSerialize + fmt::Debug,
+    V: BorshDeserialize + BorshSerialize + fmt::Debug,
 {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         let max_roots = self.max_roots();
         f.debug_map()
             .entries((0..max_roots).map(|i| (i, self.pairs(i))))
@@ -1038,6 +1188,7 @@ where
     }
 }
 
+#[doc(hidden)]
 pub struct PairsIterator<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,
@@ -1083,13 +1234,13 @@ where
     }
 }
 
-impl<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize> Debug
+impl<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize> fmt::Debug
     for PairsIterator<'a, 'b, K, V, KSIZE, VSIZE>
 where
-    K: Ord + BorshDeserialize + BorshSerialize + Debug,
-    V: BorshDeserialize + BorshSerialize + Debug,
+    K: Ord + BorshDeserialize + BorshSerialize + fmt::Debug,
+    V: BorshDeserialize + BorshSerialize + fmt::Debug,
 {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         let PairsIterator { next_node, tree } = self;
         let new_iter = PairsIterator {
             next_node: *next_node,
@@ -1099,6 +1250,7 @@ where
     }
 }
 
+#[doc(hidden)]
 pub struct KeysIterator<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,
@@ -1120,7 +1272,7 @@ where
         self.next_node.map(|mut id| {
             let nodes = &self.tree.nodes;
 
-            let key = K::deserialize(&mut dbg!(nodes[id].key.as_slice())).expect("Key corrupted");
+            let key = K::deserialize(&mut nodes[id].key.as_slice()).expect("Key corrupted");
 
             // find next
             if let Some(right_id) = nodes[id].right() {
@@ -1143,13 +1295,13 @@ where
     }
 }
 
-impl<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize> Debug
+impl<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize> fmt::Debug
     for KeysIterator<'a, 'b, K, V, KSIZE, VSIZE>
 where
-    K: Ord + BorshDeserialize + BorshSerialize + Debug,
-    V: BorshDeserialize + BorshSerialize + Debug,
+    K: Ord + BorshDeserialize + BorshSerialize + fmt::Debug,
+    V: BorshDeserialize + BorshSerialize + fmt::Debug,
 {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         let KeysIterator { next_node, tree } = self;
         let new_iter = KeysIterator {
             next_node: *next_node,
@@ -1159,6 +1311,7 @@ where
     }
 }
 
+#[doc(hidden)]
 pub struct ValuesIterator<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,
@@ -1203,13 +1356,13 @@ where
     }
 }
 
-impl<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize> Debug
+impl<'a, 'b, K, V, const KSIZE: usize, const VSIZE: usize> fmt::Debug
     for ValuesIterator<'a, 'b, K, V, KSIZE, VSIZE>
 where
-    K: Ord + BorshDeserialize + BorshSerialize + Debug,
-    V: BorshDeserialize + BorshSerialize + Debug,
+    K: Ord + BorshDeserialize + BorshSerialize + fmt::Debug,
+    V: BorshDeserialize + BorshSerialize + fmt::Debug,
 {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         let ValuesIterator { next_node, tree } = self;
         let new_iter = ValuesIterator {
             next_node: *next_node,

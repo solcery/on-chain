@@ -1,22 +1,29 @@
 use bytemuck::{Pod, Zeroable};
-use std::fmt;
+use core::fmt;
 
+/// A single node of red-black tree
 #[repr(C)]
 #[derive(Clone, Copy, Zeroable)]
 pub struct Node<const KSIZE: usize, const VSIZE: usize> {
+    /// offset: `0` - bytes of the key
     pub key: [u8; KSIZE],
+    /// offset: `KSIZE` - bytes of the value
     pub value: [u8; VSIZE],
+    /// offset: `KSIZE + VSIZE` - `Option<u32>`  encoded as big-endian `u32`, `None` value is indicated in the `flags` field, index of the left child
     left: [u8; 4],
+    /// offset: `KSIZE + VSIZE + 4` - `Option<u32>`  encoded as big-endian `u32`, `None` value is indicated in the `flags` field, index of the right child
     right: [u8; 4],
+    /// offset: `KSIZE + VSIZE + 8` - `Option<u32>`  encoded as big-endian `u32`, `None` value is indicated in the `flags` field, index of the parent
     parent: [u8; 4],
+    /// offset: `KSIZE + VSIZE + 12` - 4 flags packed in one `u8`
+    ///
     /// Flag layout:
     ///
     /// 0. is_left_present
     /// 1. is_right_present
     /// 2. is_parent_present
     /// 3. is_red
-    flags: u8, // Will change it to BitArray, then it become Pod
-               // Total size KSIZE + VSIZE + 17
+    flags: u8,
 }
 
 unsafe impl<const KSIZE: usize, const VSIZE: usize> Pod for Node<KSIZE, VSIZE> {}
