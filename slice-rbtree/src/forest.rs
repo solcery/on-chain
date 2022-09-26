@@ -106,13 +106,35 @@ pub fn init_forest(
 
 /// A slice-based forest of Red-Black trees
 ///
-/// It sometimmes happens, that you have to use a set of similar trees of unknown size. In that
+/// It sometimes happens, that you have to use a set of similar trees of unknown size. In that
 /// case you could allocate such trees in different slices, but it will be very ineffective: you
 /// have to think about capacity of each tree beforehand and it is still possible, that some trees
-/// will be full, while others are (almost empty).
+/// will be full, while others are (almost) empty.
 ///
 /// [`RBForest`] solves this issue, by using a common node pool for a set of trees.
-/// the API of [`RBForest`] mimics [`super::RBTree`] but with one additional argument: index of the tree.
+/// the API of [`RBForest`] mimics [`RBTree`](super::RBTree) but with one additional argument: index of the tree.
+///
+/// # Internal structure
+///
+/// > **Warning:** this section contains links to internal structures, not exposed in the public API
+/// If you want to look at them, compile documentation with `--document-private-items` flag
+///
+/// Each [`RBForest`] consists of [`Header`], array of the tree roots and a pool of [`Nodes`](Node).
+/// All this structs are designed in such a way, that they does not have any alignment requirements
+/// (all of them are byte-aligned).
+/// [`Header`] contains parameters and sizes of sections and a magic string [`HEADER_MAGIC`](header::HEADER_MAGIC) used to check, that the given slice is indeed [`RBForest`].
+///
+/// After the [`Header`] the array of `max_roots` (see [`Header`] docs) indices is placed. Indices
+/// are `Option<u32>` encoded as big-endian  `u32` with `None` variant encoded as `u32::MAX`.
+///
+///
+///The last part of the [`RBForest`] is an array of `max_nodes` (see [`Header`] docs)
+///[`Nodes`](Node).
+///
+///[`from_slice()`](RBForest::from_slice) method checks the following invariants:
+/// * magic string is present
+/// * `KSIZE` and `VSIZE` matches corresponding fields in the [Header]
+/// * node pool contains exactly `max_nodes` [Nodes](Node)
 pub struct RBForest<'a, K, V, const KSIZE: usize, const VSIZE: usize>
 where
     K: Ord + BorshDeserialize + BorshSerialize,

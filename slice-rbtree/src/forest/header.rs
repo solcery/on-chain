@@ -3,15 +3,22 @@ use core::fmt;
 
 const HEADER_MAGIC: [u8; 12] = *b"Slice_RBTree";
 
+/// [RBForest](super::RBForest) header struct
 #[repr(C)]
 #[derive(Pod, Clone, Copy, Zeroable)]
 pub struct Header {
+    /// offset: 0 - Magic string, must be equal to [HEADER_MAGIC]
     magic: [u8; 12],
+    /// offset: 12 - big-endian encoded `u16`, must be equal to `KSIZE` parameter of [`RBForest`](super::RBForest)
     k_size: [u8; 2],
+    /// offset: 14 - big-endian encoded `u16`, must be equal to `VSIZE` parameter of [`RBForest`](super::RBForest)
     v_size: [u8; 2],
+    /// offset: 16 - big-endian encoded `u32`, must be equal to the node pool size
     max_nodes: [u8; 4],
+    /// offset: 20 - big-endian encoded `u32`, must be equal to the size of the array of tree roots
     max_roots: [u8; 4],
-    /// head of the linked list of empty nodes
+    /// offset: 24 - `Option<u32>`  encoded as big-endian `u32` with `None` value represented by
+    /// `u32::MAX`, head of the linked list of empty nodes
     head: [u8; 4],
 }
 
