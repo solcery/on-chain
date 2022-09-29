@@ -1,25 +1,23 @@
 [package]
 name = "solcery-db"
-version.workspace = true
-license.workspace = true
-homepage.workspace = true
-edition.workspace = true
+version = "0.0.0"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 account-fs = { path = "../fs" }
-borsh.workspace = true
-bytemuck.workspace = true
-getrandom.workspace = true
+borsh = "0.9.1"
+bytemuck = {version = "1.7.2", features = ['derive','min_const_generics']}
+getrandom = { version = "0.2.2", features = ["custom"] }
 num-derive = "0.3"
 num-traits = "0.2"
 slice-rbtree = { path = "../slice-rbtree" }
 solcery-reltab = { path = "../reltab" }
-solana-program.workspace = true
+solana-program = "1.7.8"
 solcery-data-types = { path = "../data-types" }
 tinyvec = "1.0.0"
 
 [dev-dependencies]
-pretty_assertions.workspace = true
+pretty_assertions = "1.3.0"
 fs_test = { path = "../fs/fs_test" }

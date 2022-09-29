@@ -1,17 +1,17 @@
 [package]
 name = "solcery-vm"
-version.workspace = true
-license.workspace = true
-homepage.workspace = true
-edition.workspace = true
+version = "0.0.0"
+license = "Apache-2.0"
+homepage = "https://solcery.xyz/"
+edition = "2021"
 
 [dependencies]
+borsh = "0.9.1"
 #thiserror = "1.0.24"
-borsh.workspace = true
 solcery-data-types = { path = "../data-types" }
 
 [dev-dependencies]
-pretty_assertions.workspace = true
-solana-program-test.workspace = true
-solana-sdk.workspace = true
+pretty_assertions = "1.3.0"
+solana-program-test = "1.8.2"
+solana-sdk = "1.8.2"
 test-case = "2.2.0"
