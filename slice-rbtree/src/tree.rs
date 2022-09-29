@@ -30,6 +30,7 @@ pub fn init_tree(k_size: usize, v_size: usize, slice: &mut [u8]) -> Result<(), E
 }
 
 /// A slice-based Red-Black tree
+///
 /// Let's assume you want to create a tree holding up to 100 pairs of `u8 <-> f64`:
 /// ```
 /// use slice_rbtree::{tree_size, RBTree};
