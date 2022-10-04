@@ -2,14 +2,15 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use std::borrow::Borrow;
 use std::fmt;
 
-use slice_rbtree::{tree_size, Error, KeysIterator, RBTree};
+use slice_rbtree::tree::{tree_size, KeysIterator, RBTree, TreeParams};
+use slice_rbtree::Error;
 
 pub const MAGIC: &[u8; 18] = b"OneToOne container";
 
 #[must_use]
 #[inline]
 pub fn one_to_one_size(k_size: usize, v_size: usize, max_nodes: usize) -> usize {
-    2 * tree_size(k_size, v_size, max_nodes) + MAGIC.len()
+    2 * tree_size(TreeParams { k_size, v_size }, max_nodes) + MAGIC.len()
 }
 
 pub struct OneToOne<'a, K, V, const KSIZE: usize, const VSIZE: usize>

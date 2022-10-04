@@ -12,7 +12,7 @@ bytemuck = {version = "1.7.2", features = ['derive','min_const_generics']}
 getrandom = { version = "0.2.2", features = ["custom"] }
 num-derive = "0.3"
 num-traits = "0.2"
-slice-rbtree = { path = "../slice-rbtree" }
+slice-rbtree = { path = "../slice-rbtree", version = "0.1.0-alpha" }
 solcery-reltab = { path = "../reltab" }
 solana-program = "1.7.8"
 solcery-data-types = { path = "../data-types" }

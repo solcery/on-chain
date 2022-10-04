@@ -1,6 +1,6 @@
 use std::cell::RefMut;
 
-use slice_rbtree::RBTree;
+use slice_rbtree::tree::RBTree;
 use solcery_data_types::db::messages::db_manager::{CreateDB, DBId, Query, RemoveDB, DB};
 
 use crate::db_error::DBManagerError;

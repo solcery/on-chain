@@ -13,7 +13,7 @@ use std::rc::Rc;
 use tinyvec::SliceVec;
 
 use account_fs::{SegmentId, FS};
-use slice_rbtree::tree_size;
+use slice_rbtree::tree::{tree_size, TreeParams};
 use solcery_data_types::db::schema::{from_column_slice, init_column_slice};
 use solcery_reltab::one_to_one::{one_to_one_size, OneToOne};
 
@@ -139,8 +139,10 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
             )
         } else {
             tree_size(
-                self.index.primary_key_type().size(),
-                dtype.size(),
+                TreeParams {
+                    k_size: self.index.primary_key_type().size(),
+                    v_size: dtype.size(),
+                },
                 self.index.max_rows(),
             )
         };

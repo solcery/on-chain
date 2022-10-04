@@ -1,6 +1,6 @@
 use crate::schemas_error::SchemasManagerError;
 use borsh::BorshSerialize;
-use slice_rbtree::RBTree;
+use slice_rbtree::tree::RBTree;
 use solcery_data_types::db::{
     messages::schemas_manager::{AddSchema, GetSchema, RemoveSchema, UpdateSchema},
     schema::{contains_one_primary_key, Schema},

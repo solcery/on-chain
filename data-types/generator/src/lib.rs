@@ -39,7 +39,7 @@ fn column_impls(attrs: &TokenStream, input: proc_macro::TokenStream) -> TokenStr
             let value_type = &value.typ;
             let value_size = &value.size;
             quote!{
-                impl<'a> #trait_ident for slice_rbtree::RBTree<'a, #key_type, #value_type, #key_size, #value_size> {
+                impl<'a> #trait_ident for slice_rbtree::tree::RBTree<'a, #key_type, #value_type, #key_size, #value_size> {
                     fn get_key(&self, value: #holder_ident) -> Option<#holder_ident> {
                         //TODO: implement a slow but working variant
                         None
@@ -150,13 +150,13 @@ fn column_impls(attrs: &TokenStream, input: proc_macro::TokenStream) -> TokenStr
             let value_size = value.size.clone();
 
             let slice_init_variant = quote! {
-                (#enum_ident::#key_ident, #enum_ident::#value_ident) => slice_rbtree::RBTree::<#key_type, #value_type, #key_size, #value_size>::init_slice(slice)
+                (#enum_ident::#key_ident, #enum_ident::#value_ident) => slice_rbtree::tree::RBTree::<#key_type, #value_type, #key_size, #value_size>::init_slice(slice)
                     .map(|tree| Box::new(tree) as Box<dyn #trait_ident>)
                     .map_err(|e| #error_ident::from(e)),
             };
 
             let slice_from_variant = quote! {
-                (#enum_ident::#key_ident, #enum_ident::#value_ident) => slice_rbtree::RBTree::<#key_type, #value_type, #key_size, #value_size>::from_slice(slice)
+                (#enum_ident::#key_ident, #enum_ident::#value_ident) => slice_rbtree::tree::RBTree::<#key_type, #value_type, #key_size, #value_size>::from_slice(slice)
                     .map(|tree| Box::new(tree) as Box<dyn #trait_ident>)
                     .map_err(|e| #error_ident::from(e)),
             };
