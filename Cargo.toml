@@ -9,6 +9,5 @@ members = [
 	"fs/fs_test",
 	"game",
 	"reltab",
-	"slice-rbtree",
 	"vm",
 ]
