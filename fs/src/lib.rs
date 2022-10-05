@@ -1,6 +1,8 @@
-//! SolceryDB Account Filesystem
+//! Solcery Account Filesystem
 //!
-//! This module manages data layout inside each account in the DB.
+//! This crate manages data layout inside accounts.
+//! The idea is to work with a set of accounts as an abstract allocator ("file system") wich can
+//! allocate and deallocate slices of bytes.
 //!
 //! Each account used in the DB has the following layout:
 //!
@@ -11,7 +13,7 @@
 
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(missing_debug_implementations)]
-//#![deny(missing_docs)]
+#![deny(missing_docs)]
 #![feature(cell_leak)]
 
 use solana_program::{account_info::AccountInfo, pubkey::Pubkey};
@@ -29,6 +31,7 @@ use account_allocator::AccountAllocator;
 pub use account_allocator::Error as FSError;
 pub use segment_id::SegmentId;
 
+/// A struct which allocates and deallocates bytes
 pub struct FS<'long: 'short, 'short> {
     allocators: BTreeMap<Pubkey, (AccountAllocator<'short>, &'short AccountInfo<'long>)>,
 }
@@ -141,7 +144,8 @@ impl<'long: 'short, 'short> FS<'long, 'short> {
         }
     }
 
-    pub fn defragment_fs(&mut self) {
+    #[doc(hidden)]
+    pub fn defragment(&mut self) {
         for (_, (alloc, _)) in self.allocators.iter_mut() {
             alloc.merge_segments();
         }

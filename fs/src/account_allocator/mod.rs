@@ -179,7 +179,7 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
                     inode.occupy(id);
                 } else {
                     self.inode_data.swap_remove(index);
-                    //TODO: reimplement wihout copying
+                    //TODO: reimplement without copying
                     let new_inode1 = Inode::from_raw_parts(start, start + size, Some(id));
                     let new_inode2 = Inode::from_raw_parts(start + size, end, None);
 
@@ -410,20 +410,32 @@ impl<'a> PartialEq for AccountAllocator<'a> {
     }
 }
 
+/// The reasons, why FS operations may fail.
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum Error {
-    // attempt to borrow one segment twice
+    /// attempted to borrow one segment twice
     AlreadyBorrowed,
-    // attempt to deallocate borrowed segment
+    /// attempted to deallocate borrowed segment
     Borrowed,
+    /// There are no free inodes left in the account
     NoInodesLeft,
+    /// There are no segments with the given id in the given account
     NoSuchIndex,
+    /// There are no accounts in the [`FS`](super::FS) with the supplied [`Pubkey`](super::Pubkey)
     NoSuchPubkey,
+    /// There is segment with the supplied [`SegmentId`](super::SegmentId)
     NoSuchSegment,
+    /// There are no continuous area in the account, that can be allocated
+    ///
+    /// Try to call [`defragment`](super::FS::defragment)
     NoSuitableSegmentFound,
+    /// The account is too small for [`FS`](super::FS) internal structures
     TooSmall,
+    /// [`FS`](super::FS) header has incorrect magic, maybe it is not initialized?
     WrongMagic,
+    /// The size of [`FS`](super::FS) in the header does no match with the actual account size
     WrongSize,
+    /// The account owner does not match `program_id`, such account can not be used as part of [`FS`](super::FS)
     WrongOwner,
 }
 
