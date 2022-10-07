@@ -1,15 +1,12 @@
-//! Solcery Account Filesystem
+//! # Solcery Account Filesystem
 //!
 //! This crate manages data layout inside accounts.
 //! The idea is to work with a set of accounts as an abstract allocator ("file system") wich can
 //! allocate and deallocate slices of bytes.
 //!
-//! Each account used in the DB has the following layout:
-//!
-//! * First 33 bytes contain [AllocationTable](account_allocator::AllocationTable) struct
-//! * then goes [Inode](account_allocator::Inode) table with `inodes_max` elements. Size of each
-//! Inode is 13 bytes.
-//! * All the remaining space is usable for data.
+//! # Intternal structure
+//! Internally [`FS`] is set of [`AccountAllocators`](AccountAllocator). Build docs with
+//! `--document-private-items` to see its documentation
 
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(missing_debug_implementations)]
@@ -122,7 +119,7 @@ impl<'long: 'short, 'short> FS<'long, 'short> {
         global_result
     }
 
-    /// Deallocates segment of data in the first account with available space
+    /// Deallocates the segment with a given [`SegmentId`]
     ///
     /// Only unborrowed segments can be deallocated
     pub fn deallocate_segment(&mut self, id: &SegmentId) -> Result<(), FSError> {
