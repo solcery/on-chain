@@ -25,6 +25,9 @@ mod inode;
 use allocation_table::AllocationTable;
 use inode::Inode;
 
+/// Slice allocator for a single [`Account`](super::AccountInfo)
+///
+/// See [module](self) level documentation for more info.
 pub struct AccountAllocator<'long> {
     ptr: NonNull<u8>,
     len: usize,
@@ -35,7 +38,7 @@ pub struct AccountAllocator<'long> {
 }
 
 impl<'long: 'short, 'short> AccountAllocator<'long> {
-    /// Initialize account, by writing [`AllocationTable`] at the begining of its data field.
+    /// Initialize account, by writing [`AllocationTable`] and [`Inode`]  table at the begining of its data field.
     pub unsafe fn init_account(data: &'long mut [u8], max_inodes: usize) -> Result<Self, Error> {
         let account_data = data;
 

@@ -2,14 +2,19 @@ use bytemuck::{Pod, Zeroable};
 use std::fmt;
 
 // Header magic, used to check the validity of account data structures
-const ACCOUNT_HEADER_MAGIC: [u8; 25] = *b"Solcery_DB_Account_Header";
+const ACCOUNT_HEADER_MAGIC: [u8; 25] = *b"Solcery_FS_Account_Header";
 
+/// Metadata required to operate with account data
 #[repr(C)]
 #[derive(Pod, Clone, Copy, Zeroable)]
 pub struct AllocationTable {
+    /// Magic value, should be equal to [`ACCOUNT_HEADER_MAGIC`]
     magic: [u8; 25],
+    /// Number of used inodes in the inode table, encoded as big-endian `u16`
     inodes_count: [u8; 2],
+    /// Maximum number of inodes in the table, encoded as big-endian `u16`
     inodes_max: [u8; 2],
+    /// Internal monotonic counter used to create unique chunk indexes, encoded as big-endian `u32`
     id_autoincrement: [u8; 4],
 }
 
@@ -38,6 +43,7 @@ impl AllocationTable {
         self.inodes_count = u16::to_be_bytes(inodes_count);
     }
 
+    /// initialize the given [`AllocationTable`] with proper values
     pub unsafe fn fill(&mut self, inodes_max: usize) {
         assert!(inodes_max < u16::MAX as usize);
 

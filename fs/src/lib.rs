@@ -4,7 +4,7 @@
 //! The idea is to work with a set of accounts as an abstract allocator ("file system") wich can
 //! allocate and deallocate slices of bytes.
 //!
-//! # Intternal structure
+//! # Internal structure
 //! Internally [`FS`] is set of [`AccountAllocators`](AccountAllocator). Build docs with
 //! `--document-private-items` to see its documentation
 
@@ -34,7 +34,7 @@ pub struct FS<'long: 'short, 'short> {
 }
 
 impl<'long: 'short, 'short> FS<'long, 'short> {
-    /// Constructs [FS], assuming that all accounts are initialized as filesystem accounts
+    /// Constructs [`FS`], assuming that all accounts are initialized as filesystem accounts
     pub fn from_account_iter<AccountIter>(
         program_id: &Pubkey,
         accounts_iter: &mut AccountIter,
@@ -62,7 +62,7 @@ impl<'long: 'short, 'short> FS<'long, 'short> {
         result.map(|allocators| Self { allocators })
     }
 
-    /// Constructs [FS], assuming that some (or all) accounts may be uninitialized as filesystem accounts
+    /// Constructs [`FS`], assuming that some (or all) accounts may be uninitialized as filesystem accounts
     pub fn from_uninit_account_iter<AccountIter>(
         program_id: &Pubkey,
         accounts_iter: &mut AccountIter,
@@ -148,7 +148,7 @@ impl<'long: 'short, 'short> FS<'long, 'short> {
         }
     }
 
-    /// Borrows a segment with given [SegmentId]
+    /// Borrows a segment with given [`SegmentId`]
     pub fn segment(&mut self, id: &SegmentId) -> Result<&'short mut [u8], FSError> {
         match self.allocators.get_mut(&id.pubkey) {
             Some((alloc, _)) => alloc.segment(id.id),
@@ -156,7 +156,10 @@ impl<'long: 'short, 'short> FS<'long, 'short> {
         }
     }
 
-    /// Checks if a segment with given [SegmentId] is present in the FS
+    /// Checks if a segment with given [`SegmentId`] can be accessed in the FS
+    ///
+    /// [`SegmentId`] consists of [`Pubkey`] and `u32` id. This function checks, if account with the
+    /// given [`Pubkey`] present in the [`FS`].
     pub fn is_accessible(&self, id: &SegmentId) -> bool {
         self.allocators.contains_key(&id.pubkey)
     }
