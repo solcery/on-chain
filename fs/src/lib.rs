@@ -4,6 +4,67 @@
 //! The idea is to work with a set of accounts as an abstract allocator ("file system") wich can
 //! allocate and deallocate slices of bytes.
 //!
+//! # Minimal example
+//! We are in a program with some `program_id` and want to initialize [`FS`] in a set of accounts,
+//! owned by this program. This accounts are in `accounts_iter` iterator.
+//!
+//! When initializing accounts, we have to say, into how much chunks we want to split each account.
+//! We neeed to do it, because it dictates, how much space must be allocated for internal
+//! structures.
+//!
+//!```rust
+//! # use fs_test::*;
+//! use account_fs::FS;
+//! # use solana_program::pubkey::Pubkey;
+//!
+//! # let program_id = Pubkey::new_unique();
+//! # let params = AccountParams {
+//! #     address: None,
+//! #     owner: program_id,
+//! #     data: AccountData::Empty(10_000),
+//! # };
+//! # let generated_accounts: Vec<_> = std::iter::repeat(params)
+//! #     .take(4)
+//! #     .map(|account| prepare_account_info(account))
+//! #     .collect();
+//! # let mut accounts_iter = generated_accounts.iter();
+//! // ... somehow obtained program_id and accounts_iter
+//!
+//!// Build FS with account initialization
+//! let mut fs =
+//!     FS::from_uninit_account_iter(
+//!         &program_id,
+//!         &mut accounts_iter,
+//!         10 // This is the maximum number of segments in each account
+//!     ).unwrap();
+//!
+//! // Allocate a segment of 150 bytes
+//! let segment_id = fs.allocate_segment(150).unwrap();
+//!
+//! // work with segments
+//! {
+//!     // Borrow previously allocated segment
+//!     let segment: &mut [u8] = fs.segment(&segment_id).unwrap();
+//!
+//!     // Attempt to borrow the segment for the second time will fail
+//!     fs.segment(&segment_id).unwrap_err();
+//!     // do stuff
+//!     segment[0] = 10;
+//!     segment[15] = 118;
+//! }
+//!
+//! // The borrow of the segment is dropped, so it is safe to mark the segment as not borrowed
+//! unsafe {
+//!     // This function is unsafe, because the absence of non-dropped borrows has to be checked manually.
+//!     fs.release_borrowed_segment(&segment_id);
+//! }
+//!
+//! // Check, that the values we've written are still there
+//! let segment: &mut [u8] = fs.segment(&segment_id).unwrap();
+//!
+//! assert_eq!(segment[0], 10);
+//! assert_eq!(segment[15], 118);
+//!```
 //! # Internal structure
 //! Internally [`FS`] is set of [`AccountAllocators`](AccountAllocator). Build docs with
 //! `--document-private-items` to see its documentation
