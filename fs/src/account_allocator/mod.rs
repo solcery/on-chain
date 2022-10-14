@@ -1,3 +1,15 @@
+//! # Account allocator
+//!
+//! This module manages segment allocations inside a single [`Account`](super::AccountInfo).
+//!
+//! Each account used in the [`FS`](super::FS) has the following layout:
+//!
+//! * First 33 bytes contain [`AllocationTable`] struct
+//! * then goes [`Inode`] table with `inodes_max` elements. Size of each
+//! [`Inode`] is 13 bytes.
+//! * All the remaining space is usable for data.
+//!
+//! All data manipulation is done through [AccountAllocator] API.
 use bytemuck::{cast_mut, cast_slice_mut};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
@@ -10,16 +22,12 @@ use tinyvec::SliceVec;
 mod allocation_table;
 mod inode;
 
-#[cfg(not(doc))]
 use allocation_table::AllocationTable;
-#[cfg(not(doc))]
 use inode::Inode;
 
-#[cfg(doc)]
-pub use allocation_table::AllocationTable;
-#[cfg(doc)]
-pub use inode::Inode;
-
+/// Slice allocator for a single [`Account`](super::AccountInfo)
+///
+/// See [module](self) level documentation for more info.
 pub struct AccountAllocator<'long> {
     ptr: NonNull<u8>,
     len: usize,
@@ -30,6 +38,7 @@ pub struct AccountAllocator<'long> {
 }
 
 impl<'long: 'short, 'short> AccountAllocator<'long> {
+    /// Initialize account, by writing [`AllocationTable`] and [`Inode`]  table at the begining of its data field.
     pub unsafe fn init_account(data: &'long mut [u8], max_inodes: usize) -> Result<Self, Error> {
         let account_data = data;
 
@@ -75,6 +84,7 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
         Ok(allocator)
     }
 
+    /// Get [`AccountAllocator`] from data slice.
     pub unsafe fn from_account(account_data: &'long mut [u8]) -> Result<Self, Error> {
         if account_data.len() < mem::size_of::<AllocationTable>() {
             return Err(Error::TooSmall);
@@ -116,6 +126,7 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
         Ok(allocator)
     }
 
+    /// Check if a given byte slice has a [`AllocationTable`]
     pub fn is_initialized(account_data: &'long mut [u8]) -> bool {
         if account_data.len() < mem::size_of::<AllocationTable>() {
             return false;
@@ -155,6 +166,8 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
         allocator.is_ordered()
     }
 
+    /// Allocates a segment with a given size.
+    /// Returns `id` of the allocated segment on success or [`Error`]
     pub fn allocate_segment(&mut self, size: usize) -> Result<u32, Error> {
         if self.inode_data.len() == self.inode_data.capacity() {
             return Err(Error::NoInodesLeft);
@@ -179,7 +192,7 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
                     inode.occupy(id);
                 } else {
                     self.inode_data.swap_remove(index);
-                    //TODO: reimplement wihout copying
+                    //TODO: reimplement without copying
                     let new_inode1 = Inode::from_raw_parts(start, start + size, Some(id));
                     let new_inode2 = Inode::from_raw_parts(start + size, end, None);
 
@@ -201,6 +214,9 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
         }
     }
 
+    /// Deallocates the segment with a given `id`
+    ///
+    /// Only unborrowed segments can be deallocated
     pub fn deallocate_segment(&mut self, id: u32) -> Result<(), Error> {
         if self.borrowed_segments.contains(&id) {
             return Err(Error::Borrowed);
@@ -410,20 +426,32 @@ impl<'a> PartialEq for AccountAllocator<'a> {
     }
 }
 
+/// The reasons, why FS operations may fail.
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum Error {
-    // attempt to borrow one segment twice
+    /// attempted to borrow one segment twice
     AlreadyBorrowed,
-    // attempt to deallocate borrowed segment
+    /// attempted to deallocate borrowed segment
     Borrowed,
+    /// There are no free inodes left in the account
     NoInodesLeft,
+    /// There are no segments with the given id in the given account
     NoSuchIndex,
+    /// There are no accounts in the [`FS`](super::FS) with the supplied [`Pubkey`](super::Pubkey)
     NoSuchPubkey,
+    /// There is segment with the supplied [`SegmentId`](super::SegmentId)
     NoSuchSegment,
+    /// There are no continuous area in the account, that can be allocated
+    ///
+    /// Try to call [`defragment`](super::FS::defragment)
     NoSuitableSegmentFound,
+    /// The account is too small for [`FS`](super::FS) internal structures
     TooSmall,
+    /// [`FS`](super::FS) header has incorrect magic, maybe it is not initialized?
     WrongMagic,
+    /// The size of [`FS`](super::FS) in the header does no match with the actual account size
     WrongSize,
+    /// The account owner does not match `program_id`, such account can not be used as part of [`FS`](super::FS)
     WrongOwner,
 }
 

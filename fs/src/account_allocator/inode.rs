@@ -1,12 +1,19 @@
 use bytemuck::{Pod, Zeroable};
 use std::fmt;
 
+/// Data stucture containing all the metadata of a single data chunk
 #[repr(C)]
 #[derive(Default, Pod, Clone, Copy, Zeroable, PartialEq, Eq)]
 pub struct Inode {
-    is_occupied: u8, // == 0 then inode is is_occupied
+    /// Flag layout:
+    /// 0. is node occupied
+    /// 1-7. not used
+    flags: u8,
+    /// index of the first byte of the data chunk, encoded as big-endian `u32`
     start_idx: [u8; 4],
+    /// index of the last + 1 byte of the data chunk, encoded as big-endian `u32`
     end_idx: [u8; 4],
+    /// id of the chunk, encoded as big-endian `u32`
     id: [u8; 4],
 }
 
@@ -20,7 +27,7 @@ impl Inode {
     }
 
     pub fn id(&self) -> Option<u32> {
-        if self.is_occupied == 0 {
+        if self.flags == 0 {
             Some(u32::from_be_bytes(self.id))
         } else {
             None
@@ -28,7 +35,7 @@ impl Inode {
     }
 
     pub fn is_occupied(&self) -> bool {
-        self.is_occupied == 0
+        self.flags == 0
     }
 
     pub fn len(&self) -> usize {
@@ -38,27 +45,28 @@ impl Inode {
     }
 
     pub fn unoccupy(&mut self) {
-        self.is_occupied = 1;
+        self.flags = 1;
     }
 
     pub unsafe fn occupy(&mut self, id: u32) {
-        self.is_occupied = 0;
+        self.flags = 0;
         self.id = u32::to_be_bytes(id);
     }
 
+    /// Generate new [`Inode`] with initial values proper values
     pub unsafe fn from_raw_parts(start_idx: usize, end_idx: usize, maybe_id: Option<u32>) -> Self {
         let start_idx = u32::to_be_bytes(start_idx as u32);
         let end_idx = u32::to_be_bytes(end_idx as u32);
         let id;
-        let is_occupied;
+        let flags;
         match maybe_id {
             Some(num) => {
                 id = u32::to_be_bytes(num);
-                is_occupied = 0;
+                flags = 0;
             }
             None => {
                 id = u32::to_be_bytes(0);
-                is_occupied = 1;
+                flags = 1;
             }
         }
 
@@ -66,18 +74,19 @@ impl Inode {
             start_idx,
             end_idx,
             id,
-            is_occupied,
+            flags,
         }
     }
 
-    pub unsafe fn fill(&mut self, start_idx: usize, end_idx: usize, id: u32, is_occupied: bool) {
+    /// initialize the given [`Inode`] with proper values
+    pub unsafe fn fill(&mut self, start_idx: usize, end_idx: usize, id: u32, flags: bool) {
         self.start_idx = u32::to_be_bytes(start_idx as u32);
         self.end_idx = u32::to_be_bytes(end_idx as u32);
         self.id = u32::to_be_bytes(id as u32);
-        if is_occupied {
-            self.is_occupied = 0;
+        if flags {
+            self.flags = 0;
         } else {
-            self.is_occupied = 1;
+            self.flags = 1;
         }
     }
 }

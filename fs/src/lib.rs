@@ -1,17 +1,77 @@
-//! SolceryDB Account Filesystem
+//! # Solcery Account Filesystem
 //!
-//! This module manages data layout inside each account in the DB.
+//! This crate manages data layout inside accounts.
+//! The idea is to work with a set of accounts as an abstract allocator ("file system") wich can
+//! allocate and deallocate slices of bytes.
 //!
-//! Each account used in the DB has the following layout:
+//! # Minimal example
+//! We are in a program with some `program_id` and want to initialize [`FS`] in a set of accounts,
+//! owned by this program. This accounts are in `accounts_iter` iterator.
 //!
-//! * First 33 bytes contain [AllocationTable](account_allocator::AllocationTable) struct
-//! * then goes [Inode](account_allocator::Inode) table with `inodes_max` elements. Size of each
-//! Inode is 13 bytes.
-//! * All the remaining space is usable for data.
+//! When initializing accounts, we have to say, into how much chunks we want to split each account.
+//! We neeed to do it, because it dictates, how much space must be allocated for internal
+//! structures.
+//!
+//!```rust
+//! # use fs_test::*;
+//! use account_fs::FS;
+//! # use solana_program::pubkey::Pubkey;
+//!
+//! # let program_id = Pubkey::new_unique();
+//! # let params = AccountParams {
+//! #     address: None,
+//! #     owner: program_id,
+//! #     data: AccountData::Empty(10_000),
+//! # };
+//! # let generated_accounts: Vec<_> = std::iter::repeat(params)
+//! #     .take(4)
+//! #     .map(|account| prepare_account_info(account))
+//! #     .collect();
+//! # let mut accounts_iter = generated_accounts.iter();
+//! // ... somehow obtained program_id and accounts_iter
+//!
+//!// Build FS with account initialization
+//! let mut fs =
+//!     FS::from_uninit_account_iter(
+//!         &program_id,
+//!         &mut accounts_iter,
+//!         10 // This is the maximum number of segments in each account
+//!     ).unwrap();
+//!
+//! // Allocate a segment of 150 bytes
+//! let segment_id = fs.allocate_segment(150).unwrap();
+//!
+//! // work with segments
+//! {
+//!     // Borrow previously allocated segment
+//!     let segment: &mut [u8] = fs.segment(&segment_id).unwrap();
+//!
+//!     // Attempt to borrow the segment for the second time will fail
+//!     fs.segment(&segment_id).unwrap_err();
+//!     // do stuff
+//!     segment[0] = 10;
+//!     segment[15] = 118;
+//! }
+//!
+//! // The borrow of the segment is dropped, so it is safe to mark the segment as not borrowed
+//! unsafe {
+//!     // This function is unsafe, because the absence of non-dropped borrows has to be checked manually.
+//!     fs.release_borrowed_segment(&segment_id);
+//! }
+//!
+//! // Check, that the values we've written are still there
+//! let segment: &mut [u8] = fs.segment(&segment_id).unwrap();
+//!
+//! assert_eq!(segment[0], 10);
+//! assert_eq!(segment[15], 118);
+//!```
+//! # Internal structure
+//! Internally [`FS`] is set of [`AccountAllocators`](AccountAllocator). Build docs with
+//! `--document-private-items` to see its documentation
 
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(missing_debug_implementations)]
-//#![deny(missing_docs)]
+#![deny(missing_docs)]
 #![feature(cell_leak)]
 
 use solana_program::{account_info::AccountInfo, pubkey::Pubkey};
@@ -29,12 +89,13 @@ use account_allocator::AccountAllocator;
 pub use account_allocator::Error as FSError;
 pub use segment_id::SegmentId;
 
+/// A struct which allocates and deallocates bytes
 pub struct FS<'long: 'short, 'short> {
     allocators: BTreeMap<Pubkey, (AccountAllocator<'short>, &'short AccountInfo<'long>)>,
 }
 
 impl<'long: 'short, 'short> FS<'long, 'short> {
-    /// Constructs [FS], assuming that all accounts are initialized as filesystem accounts
+    /// Constructs [`FS`], assuming that all accounts are initialized as filesystem accounts
     pub fn from_account_iter<AccountIter>(
         program_id: &Pubkey,
         accounts_iter: &mut AccountIter,
@@ -62,7 +123,7 @@ impl<'long: 'short, 'short> FS<'long, 'short> {
         result.map(|allocators| Self { allocators })
     }
 
-    /// Constructs [FS], assuming that some (or all) accounts may be uninitialized as filesystem accounts
+    /// Constructs [`FS`], assuming that some (or all) accounts may be uninitialized as filesystem accounts
     pub fn from_uninit_account_iter<AccountIter>(
         program_id: &Pubkey,
         accounts_iter: &mut AccountIter,
@@ -119,7 +180,7 @@ impl<'long: 'short, 'short> FS<'long, 'short> {
         global_result
     }
 
-    /// Deallocates segment of data in the first account with available space
+    /// Deallocates the segment with a given [`SegmentId`]
     ///
     /// Only unborrowed segments can be deallocated
     pub fn deallocate_segment(&mut self, id: &SegmentId) -> Result<(), FSError> {
@@ -141,13 +202,14 @@ impl<'long: 'short, 'short> FS<'long, 'short> {
         }
     }
 
-    pub fn defragment_fs(&mut self) {
+    #[doc(hidden)]
+    pub fn defragment(&mut self) {
         for (_, (alloc, _)) in self.allocators.iter_mut() {
             alloc.merge_segments();
         }
     }
 
-    /// Borrows a segment with given [SegmentId]
+    /// Borrows a segment with given [`SegmentId`]
     pub fn segment(&mut self, id: &SegmentId) -> Result<&'short mut [u8], FSError> {
         match self.allocators.get_mut(&id.pubkey) {
             Some((alloc, _)) => alloc.segment(id.id),
@@ -155,7 +217,10 @@ impl<'long: 'short, 'short> FS<'long, 'short> {
         }
     }
 
-    /// Checks if a segment with given [SegmentId] is present in the FS
+    /// Checks if a segment with given [`SegmentId`] can be accessed in the FS
+    ///
+    /// [`SegmentId`] consists of [`Pubkey`] and `u32` id. This function checks, if account with the
+    /// given [`Pubkey`] present in the [`FS`].
     pub fn is_accessible(&self, id: &SegmentId) -> bool {
         self.allocators.contains_key(&id.pubkey)
     }
