@@ -92,5 +92,4 @@ impl TryFrom<Word> for u32 {
 #[macro_export]
 macro_rules! word_vec {
         ($($elem:expr),* $(,)?) => { vec![$(Word::from($elem)),*]  };
-
 }

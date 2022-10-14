@@ -1,8 +1,9 @@
-use crate::vmcommand::{CommandByteCode, VMCommand};
 use bytemuck::cast_slice;
 use std::convert::TryFrom;
 use std::fmt;
 use std::mem;
+
+use super::vmcommand::{CommandByteCode, VMCommand};
 
 #[derive(Eq, PartialEq)]
 pub struct InstructionRom<'a> {

@@ -1,6 +1,6 @@
 use super::*;
 use pretty_assertions::assert_eq;
-use solcery_data_types::game_state::GameState;
+use solcery_vm::on_chain_types::game_state::GameState;
 
 fn new(
     project_ver: u32,

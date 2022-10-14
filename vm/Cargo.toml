@@ -7,8 +7,8 @@ edition = "2021"
 
 [dependencies]
 borsh = "0.9.1"
-#thiserror = "1.0.24"
-solcery-data-types = { path = "../data-types" }
+bytemuck = "1.7.2"
+thiserror = "1.0.24"
 
 [dev-dependencies]
 pretty_assertions = "1.3.0"

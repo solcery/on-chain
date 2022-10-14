@@ -1,11 +1,10 @@
 //! # The Sorcery Virtual Machine
 
+use super::on_chain_types::{
+    game_state::GameState, instruction_rom::InstructionRom, object_type_rom::ObjectTypesRom,
+    vmcommand::VMCommand, word::Word,
+};
 use borsh::{BorshDeserialize, BorshSerialize};
-use solcery_data_types::game_state::GameState;
-use solcery_data_types::instruction_rom::InstructionRom;
-use solcery_data_types::object_type_rom::ObjectTypesRom;
-use solcery_data_types::vmcommand::VMCommand;
-use solcery_data_types::word::Word;
 use std::convert::TryFrom;
 use std::convert::TryInto;
 
@@ -403,9 +402,9 @@ impl<'a> VM<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::on_chain_types::object_type::{EntryPoint, ObjectType};
+    use crate::word_vec;
     use pretty_assertions::assert_eq;
-    use solcery_data_types::object_type::{EntryPoint, ObjectType};
-    use solcery_data_types::word_vec;
 
     fn type1() -> ObjectType {
         let type1_attrs = word_vec![10, 5, true, false,];

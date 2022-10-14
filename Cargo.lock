@@ -4034,7 +4034,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "solcery-data-types",
+ "solcery-vm",
  "spl-token",
  "thiserror",
 ]
@@ -4065,11 +4065,12 @@ name = "solcery-vm"
 version = "0.0.0"
 dependencies = [
  "borsh",
+ "bytemuck",
  "pretty_assertions",
  "solana-program-test",
  "solana-sdk",
- "solcery-data-types",
  "test-case 2.2.1",
+ "thiserror",
 ]
 
 [[package]]
