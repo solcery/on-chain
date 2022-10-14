@@ -3977,7 +3977,6 @@ dependencies = [
  "borsh",
  "bytemuck",
  "fs_test",
- "getrandom 0.2.7",
  "num_enum",
  "pretty_assertions",
  "serde",
@@ -3995,7 +3994,6 @@ dependencies = [
  "account-fs",
  "borsh",
  "bytemuck",
- "getrandom 0.2.7",
  "pretty_assertions",
  "solana-program",
  "solana-program-test",
@@ -4009,7 +4007,6 @@ name = "solcery-game"
 version = "0.0.0"
 dependencies = [
  "borsh",
- "getrandom 0.2.7",
  "pretty_assertions",
  "solana-program",
  "solana-program-test",
