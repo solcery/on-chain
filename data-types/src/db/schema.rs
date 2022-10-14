@@ -8,26 +8,6 @@ use super::column::Column as ColumnTrait;
 use super::error::Error;
 use solcery_impl_generator::generate_column_impls;
 
-pub type Tables = Vec<AllowedTypes>;
-
-#[must_use]
-pub fn contains_one_primary_key(tables: &Tables) -> bool {
-    tables.iter().fold(0, |acc, t| match *t {
-        AllowedTypes::Int(KeyType::Primary)
-        | AllowedTypes::String(KeyType::Primary)
-        | AllowedTypes::Pubkey(KeyType::Primary) => acc + 1,
-        _ => acc,
-    }) == 1u64
-}
-
-#[derive(PartialEq, Clone, Eq, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
-pub enum KeyType {
-    Primary,
-    Secondary,
-    NotKey,
-    LongString(String), // 256 bytes
-}
-
 #[generate_column_impls(
     Data,
     ColumnTrait,
@@ -71,39 +51,10 @@ pub enum DataType {
 }
 
 #[derive(PartialEq, Clone, Eq, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
-pub enum AllowedTypes {
-    Int(KeyType),
-    String(KeyType),
-    Pubkey(KeyType),
-}
-
-#[derive(PartialEq, Clone, Eq, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct ColumnParams {
     name: String,
     data_type: DataType,
     column_type: ColumnType,
-}
-
-#[derive(PartialEq, Eq, Debug, Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
-pub struct Schema {
-    pub version: u64,
-    pub tables: Tables,
-}
-
-#[derive(PartialEq, Eq, Debug, Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
-pub struct NewSchema {
-    pub version: u64,
-    pub primary_key: DataType,
-    pub colums: Vec<DataType>,
-    pub max_colums: u32,
-    pub max_rows: u32,
-}
-
-impl Schema {
-    #[must_use]
-    pub fn index_size(&self) -> usize {
-        unimplemented!();
-    }
 }
 
 #[derive(

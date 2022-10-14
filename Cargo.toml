@@ -3,7 +3,6 @@ members = [
 	"data-types",
 	"data-types/generator",
 	"db",
-	"db-manager",
 	"db-program",
 	"fs",
 	"fs/fs_test",
