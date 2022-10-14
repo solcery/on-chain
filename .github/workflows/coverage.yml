@@ -28,6 +28,9 @@ jobs:
           default: true
           override: true
 
+      - name: Build code coverage tests
+        run: cargo tarpaulin --workspace --out Xml --verbose --no-run
+
       - name: Generate code coverage
         run: cargo tarpaulin --workspace --out Xml --verbose
 
