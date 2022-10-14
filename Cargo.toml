@@ -1,7 +1,6 @@
 [workspace]
 members = [
-	"data-types",
-	"data-types/generator",
+	"db/generator",
 	"db",
 	"db-program",
 	"fs",

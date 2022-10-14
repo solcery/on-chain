@@ -4,8 +4,8 @@ use solana_program::pubkey::Pubkey;
 use std::fmt;
 
 use super::column_id::ColumnId;
+use crate::types::schema::{ColumnType, DataType};
 use account_fs::SegmentId;
-use solcery_data_types::db::schema::{ColumnType, DataType};
 
 const NAME_LEN: usize = 64;
 

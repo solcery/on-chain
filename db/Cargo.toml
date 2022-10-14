@@ -7,15 +7,15 @@ edition = "2021"
 
 [dependencies]
 account-fs = { path = "../fs" }
-borsh = "0.9.1"
+borsh = "0.9.2"
 bytemuck = {version = "1.7.2", features = ['derive','min_const_generics']}
 getrandom = { version = "0.2.2", features = ["custom"] }
-num-derive = "0.3"
-num-traits = "0.2"
+num_enum = "0.5.7"
+serde = { version = "1.0", features = ["derive"] }
 slice-rbtree = { path = "../slice-rbtree", version = "0.1.0-alpha" }
+solana-program = "1.8.2"
+solcery-impl-generator = { path = "generator" }
 solcery-reltab = { path = "../reltab" }
-solana-program = "1.7.8"
-solcery-data-types = { path = "../data-types" }
 tinyvec = "1.0.0"
 
 [dev-dependencies]

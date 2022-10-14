@@ -1,6 +1,8 @@
 //! Solcery DB internal structures
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(missing_debug_implementations)]
+//#![deny(missing_docs)]
+//FIXME: Refactoring
 
 use bytemuck::{cast_mut, cast_slice_mut};
 
@@ -14,19 +16,19 @@ use tinyvec::SliceVec;
 
 use account_fs::{SegmentId, FS};
 use slice_rbtree::tree::{tree_size, TreeParams};
-use solcery_data_types::db::schema::{from_column_slice, init_column_slice};
 use solcery_reltab::one_to_one::{one_to_one_size, OneToOne};
 
-pub use solcery_data_types::db::{
+mod raw;
+pub mod types;
+
+use raw::column::ColumnHeader;
+use raw::index::Index;
+use types::schema::{from_column_slice, init_column_slice};
+pub use types::{
     column::Column,
     error::Error,
     schema::{ColumnParams, ColumnType, Data, DataType},
 };
-
-mod raw;
-
-use raw::column::ColumnHeader;
-use raw::index::Index;
 
 pub use raw::column_id::ColumnId;
 
