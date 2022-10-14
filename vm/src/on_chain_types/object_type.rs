@@ -1,6 +1,7 @@
-use crate::object::Object;
-use crate::word::Word;
 use borsh::{BorshDeserialize, BorshSerialize};
+
+use super::object::Object;
+use super::word::Word;
 
 #[derive(Default, Debug, Clone, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
 pub struct ObjectType {

@@ -1,7 +1,8 @@
-use crate::word::Word;
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::convert::TryFrom;
 use std::convert::TryInto;
+
+use super::word::Word;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
 pub enum VMCommand {

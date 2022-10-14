@@ -1,5 +1,5 @@
+use crate::on_chain_types::word::Word;
 use borsh::{BorshDeserialize, BorshSerialize};
-use solcery_data_types::word::Word;
 
 #[derive(Clone, Debug, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
 pub enum Event {

@@ -22,16 +22,19 @@ use spl_token::{
 use std::iter;
 use std::num::NonZeroU32;
 
-use solcery_data_types::{
-    container::Container,
-    game::{
-        Game, Item, Player as GamePlayer, Project, Status, CURRENT_GAME_PROJECT_VERSION,
-        CURRENT_GAME_VERSION,
+use solcery_game::{
+    process_instruction_bytes,
+    state::{
+        container::Container,
+        game::{
+            Game, Item, Player as GamePlayer, Project, Status, CURRENT_GAME_PROJECT_VERSION,
+            CURRENT_GAME_VERSION,
+        },
+        player::{Player, CURRENT_PLAYER_VERSION},
+        state::{Event, State, CURRENT_GAME_STATE_VERSION},
     },
-    player::{Player, CURRENT_PLAYER_VERSION},
-    state::{Event, State, CURRENT_GAME_STATE_VERSION},
+    Instruction as GameInstruction,
 };
-use solcery_game::{process_instruction_bytes, Instruction as GameInstruction};
 
 #[tokio::test]
 async fn create_player() {

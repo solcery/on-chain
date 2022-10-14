@@ -1,7 +1,7 @@
 use super::*;
+use crate::state::{game::Player as GamePlayer, player::Player};
 use pretty_assertions::assert_eq;
 use solana_sdk::program_option::COption;
-use solcery_data_types::{game::Player as GamePlayer, player::Player};
 use spl_token::state::{Account as TokenAccount, AccountState, Mint};
 use std::num::NonZeroU32;
 

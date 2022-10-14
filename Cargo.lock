@@ -867,23 +867,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ee2393c4a91429dffb4bedf19f4d6abf27d8a732c8ce4980305d782e5426d57"
 
 [[package]]
-name = "db-manager"
-version = "0.1.0"
-dependencies = [
- "borsh",
- "num-derive",
- "num-traits",
- "pretty_assertions",
- "slice-rbtree",
- "solana-program",
- "solana-program-test",
- "solana-sdk",
- "solcery-data-types",
- "spl-token",
- "thiserror",
-]
-
-[[package]]
 name = "der"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3987,26 +3970,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "solcery-data-types"
-version = "0.0.0"
-dependencies = [
- "account-fs",
- "borsh",
- "bytemuck",
- "num_enum",
- "pretty_assertions",
- "serde",
- "slice-rbtree",
- "solana-program",
- "solana-program-test",
- "solana-sdk",
- "solcery-impl-generator",
- "solcery-reltab",
- "test-case 1.2.3",
- "thiserror",
-]
-
-[[package]]
 name = "solcery-db"
 version = "0.0.0"
 dependencies = [
@@ -4015,12 +3978,12 @@ dependencies = [
  "bytemuck",
  "fs_test",
  "getrandom 0.2.7",
- "num-derive",
- "num-traits",
+ "num_enum",
  "pretty_assertions",
+ "serde",
  "slice-rbtree",
  "solana-program",
- "solcery-data-types",
+ "solcery-impl-generator",
  "solcery-reltab",
  "tinyvec",
 ]
@@ -4051,7 +4014,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "solcery-data-types",
+ "solcery-vm",
  "spl-token",
  "thiserror",
 ]
@@ -4082,11 +4045,12 @@ name = "solcery-vm"
 version = "0.0.0"
 dependencies = [
  "borsh",
+ "bytemuck",
  "pretty_assertions",
  "solana-program-test",
  "solana-sdk",
- "solcery-data-types",
- "test-case 2.2.1",
+ "test-case",
+ "thiserror",
 ]
 
 [[package]]
@@ -4326,19 +4290,6 @@ checksum = "633c1a546cee861a1a6d0dc69ebeca693bf4296661ba7852b9d21d159e0506df"
 dependencies = [
  "libc",
  "winapi",
-]
-
-[[package]]
-name = "test-case"
-version = "1.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e9e5f048404b43e8ae66dce036163515b6057024cf58c6377be501f250bd3c6a"
-dependencies = [
- "cfg-if",
- "proc-macro2 1.0.43",
- "quote 1.0.21",
- "syn 1.0.99",
- "version_check",
 ]
 
 [[package]]

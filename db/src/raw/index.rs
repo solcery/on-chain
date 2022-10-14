@@ -5,7 +5,7 @@ use std::fmt;
 use std::mem;
 
 use super::column::ColumnHeader;
-use solcery_data_types::db::schema::DataType;
+use crate::types::schema::DataType;
 
 const INDEX_MAGIC: [u8; 16] = *b"Solcery_DB_Index";
 const CURRENT_VERSION: u16 = 0;

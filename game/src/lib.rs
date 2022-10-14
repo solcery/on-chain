@@ -1,5 +1,8 @@
 #![deny(missing_debug_implementations)]
 //#![deny(missing_docs)]
+// FIXME: this crate needs heavy refactoring
+// especially, state module
+// I should reorganize the code according to solana's standard
 
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
@@ -9,19 +12,20 @@ use solana_program::{
     program_error::ProgramError,
     pubkey::Pubkey,
 };
-use solcery_data_types::container::Container;
+use state::container::Container;
 
 mod bundled;
 mod error;
 mod game;
+mod game_state;
 mod player;
-mod state;
+pub mod state;
 
 use bundled::Bundle;
 use error::Error;
 use game::{Game, Status as GameStatus};
+use game_state::{Event, State};
 use player::Player;
-use state::{Event, State};
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, BorshSerialize, BorshDeserialize)]
 pub enum Instruction {

@@ -11,7 +11,7 @@ no-entrypoint = []
 borsh = "0.9.1"
 getrandom = { version = "0.2.2", features = ["custom"] }
 solana-program = "1.7.8"
-solcery-data-types = { path = "../data-types" }
+solcery-vm = { path = "../vm" }
 spl-token = {version="3.3.0", features = ["no-entrypoint"]}
 thiserror = "1.0.24"
 

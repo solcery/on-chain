@@ -1,5 +1,5 @@
+use super::state::game::Error as GameError;
 use solana_program::program_error::ProgramError;
-use solcery_data_types::game::Error as GameError;
 use thiserror::Error;
 
 #[derive(Error, Clone, Eq, PartialEq, Debug)]

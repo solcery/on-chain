@@ -1,9 +1,8 @@
-use crate::object::Object;
-use crate::object_type::ObjectType;
-
 use borsh::{BorshDeserialize, BorshSerialize};
-
 use thiserror::Error;
+
+use super::object::Object;
+use super::object_type::ObjectType;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct ObjectTypesRom<'a> {
