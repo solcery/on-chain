@@ -5,13 +5,13 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-use crate::bundled::{Bundle, Bundled};
-use crate::error::Error;
-pub use solcery_data_types::{
+pub use super::state::{
     game::Game,
     player::Player,
     state::{Event, State, CURRENT_GAME_STATE_VERSION},
 };
+use crate::bundled::{Bundle, Bundled};
+use crate::error::Error;
 
 impl<'s, 't0> Bundled<'s, 't0, State> {
     pub fn add_events<'a, 'b>(
