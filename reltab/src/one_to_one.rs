@@ -1,3 +1,13 @@
+//! This container represents a one to one ([bijective](https://en.wikipedia.org/wiki/Bijection))
+//! relation.
+//!
+//! # Internal structure
+//! [`OneToOne`] container consists of three parts:
+//! - 18 bytes magic string, must be equal to [`MAGIC`]
+//! - `K -> V` [`RBTree`]
+//! - `V -> K` [`RBTree`]
+//!
+//! Both trees have the same size
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::borrow::Borrow;
 use std::fmt;
@@ -7,6 +17,7 @@ use slice_rbtree::Error;
 
 pub const MAGIC: &[u8; 18] = b"OneToOne container";
 
+/// Returns the required size of the slice
 #[must_use]
 #[inline]
 pub fn one_to_one_size(k_size: usize, v_size: usize, max_nodes: usize) -> usize {
