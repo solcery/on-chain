@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
-use super::error::Error;
-use super::schema::Data;
+use super::Data;
+use super::Error;
 
 pub trait Column: Debug {
     fn get_key(&self, value: Data) -> Option<Data>;

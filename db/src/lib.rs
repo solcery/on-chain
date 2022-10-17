@@ -2,10 +2,8 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(missing_debug_implementations)]
 //#![deny(missing_docs)]
-//FIXME: Refactoring
 
 use bytemuck::{cast_mut, cast_slice_mut};
-
 use solana_program::msg;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -16,19 +14,22 @@ use tinyvec::SliceVec;
 
 use account_fs::{SegmentId, FS};
 use slice_rbtree::tree::{tree_size, TreeParams};
-use solcery_reltab::one_to_one::{one_to_one_size, OneToOne};
+use solcery_reltab::one_to_one::one_to_one_size;
 
+mod column;
+mod data;
+mod error;
+mod params;
 mod raw;
-pub mod types;
 
+use data::{from_column_slice, init_column_slice};
 use raw::column::ColumnHeader;
 use raw::index::Index;
-use types::schema::{from_column_slice, init_column_slice};
-pub use types::{
-    column::Column,
-    error::Error,
-    schema::{ColumnParams, ColumnType, Data, DataType},
-};
+
+pub use column::Column;
+pub use data::{Data, DataType};
+pub use error::Error;
+pub use params::{ColumnParams, ColumnType};
 
 pub use raw::column_id::ColumnId;
 
@@ -506,7 +507,7 @@ impl<'long, 'short> Drop for DB<'long, 'short> {
     fn drop(&mut self) {
         let DB {
             fs,
-            index,
+            index: _,
             column_headers,
             accessed_columns,
             segment,

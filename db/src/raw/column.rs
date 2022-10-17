@@ -4,7 +4,7 @@ use solana_program::pubkey::Pubkey;
 use std::fmt;
 
 use super::column_id::ColumnId;
-use crate::types::schema::{ColumnType, DataType};
+use crate::{ColumnType, DataType};
 use account_fs::SegmentId;
 
 const NAME_LEN: usize = 64;
