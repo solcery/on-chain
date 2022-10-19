@@ -1,8 +1,8 @@
 [workspace]
 members = [
-	"db/generator",
 	"db",
 	"db-program",
+	"db/generator",
 	"fs",
 	"fs/fs_test",
 	"game",

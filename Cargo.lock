@@ -3103,7 +3103,7 @@ dependencies = [
 
 [[package]]
 name = "slice-rbtree"
-version = "0.1.0-alpha"
+version = "0.1.0-alpha.1"
 dependencies = [
  "borsh",
  "bytemuck",

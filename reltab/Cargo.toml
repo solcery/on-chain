@@ -2,13 +2,12 @@
 name = "solcery-reltab"
 version = "0.0.0"
 edition = "2021"
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 borsh = "0.9.1"
-bytemuck = {version = "1.7.2", features = ['derive','min_const_generics']}
-slice-rbtree = { path = "../slice-rbtree", version = "0.1.0-alpha" }
+bytemuck = { version = "1.7.2", features = ['derive','min_const_generics'] }
+slice-rbtree = { path = "../slice-rbtree", version = "0.1.0-alpha.1" }
 
 [dev-dependencies]
 pretty_assertions = "1.3.0"
