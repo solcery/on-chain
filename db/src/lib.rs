@@ -2,6 +2,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(missing_debug_implementations)]
 //#![deny(missing_docs)]
+#![warn(missing_docs)]
 
 use bytemuck::{cast_mut, cast_slice_mut};
 use solana_program::msg;
@@ -22,19 +23,19 @@ mod error;
 mod params;
 mod raw;
 
+use column::Column;
 use data::{from_column_slice, init_column_slice};
 use raw::column::ColumnHeader;
 use raw::index::Index;
 
-pub use column::Column;
 pub use data::{Data, DataType};
 pub use error::Error;
 pub use params::{ColumnParams, ColumnType};
-
 pub use raw::column_id::ColumnId;
 
 type FSCell<'long, 'short> = Rc<RefCell<FS<'long, 'short>>>;
 
+/// The main database structure
 pub struct DB<'long: 'short, 'short> {
     fs: FSCell<'long, 'short>,
     index: &'short mut Index,
@@ -44,6 +45,7 @@ pub struct DB<'long: 'short, 'short> {
 }
 
 impl<'long: 'short, 'short> DB<'long, 'short> {
+    /// Constructs [`DB`] struct, assuming that the DB header is placed in the `segment`
     pub fn from_segment(fs: FSCell<'long, 'short>, segment: SegmentId) -> Result<Self, Error> {
         let db_segment = fs.borrow_mut().segment(&segment)?;
 
@@ -74,6 +76,10 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
         })
     }
 
+    /// Initializes [`DB`] with the given parameters in the first suitable segment.
+    ///
+    /// On success, this function returns [`DB`] struct and [`SegmentId`] of the segment, there it
+    /// was initialized in.
     pub fn init_in_segment(
         fs: FSCell<'long, 'short>,
         table_name: &str,
@@ -122,6 +128,9 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
         ))
     }
 
+    /// Adds a new column to the [`DB`].
+    ///
+    /// On success, this function returns [`ColumnId`] of the added column.
     pub fn add_column(
         &mut self,
         name: &str,
@@ -191,6 +200,7 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
         Ok(id)
     }
 
+    /// Removes column from the [`DB`]
     pub fn remove_column(&mut self, column_id: ColumnId) -> Result<(), Error> {
         let (index, segment_id) = self
             .column_headers
@@ -207,9 +217,11 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
         unsafe {
             self.index.set_column_count(self.column_headers.len());
         }
+
         Ok(())
     }
 
+    /// Gets value in the `column_id` by its `primary_key`.
     pub fn value(&self, primary_key: Data, column_id: ColumnId) -> Result<Option<Data>, Error> {
         let mut accessed_columns = self.accessed_columns.borrow_mut();
 
@@ -239,6 +251,7 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
         }
     }
 
+    /// Gets value in the `column_id` by its `secondary_key`, located in `key_column_id`.
     pub fn value_secondary(
         &self,
         key_column_id: ColumnId,
@@ -253,6 +266,7 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
         }
     }
 
+    /// Sets `primary_key - value` pair in the `column_id`.
     pub fn set_value(
         &mut self,
         primary_key: Data,
@@ -287,6 +301,7 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
         }
     }
 
+    /// Sets `primary_key - value` pair in the `column_id`, where `primary_key` is optained from `secondary_key` in `key_column_id`.
     pub fn set_value_secondary(
         &mut self,
         key_column_id: ColumnId,
@@ -302,6 +317,7 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
         }
     }
 
+    /// Deletes `primary_key - value` pair in the `column_id`.
     pub fn delete_value(&mut self, primary_key: Data, column_id: ColumnId) -> Result<bool, Error> {
         let mut accessed_columns = self.accessed_columns.borrow_mut();
 
@@ -331,6 +347,7 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
         }
     }
 
+    /// Deletes `primary_key - value` pair in the `column_id`, where `primary_key` is optained from `secondary_key` in `key_column_id`.
     pub fn delete_value_secondary(
         &mut self,
         key_column_id: ColumnId,
@@ -345,10 +362,14 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
         }
     }
 
+    /// Sets values in each column with the given `primary_key`.
+    ///
+    /// Returns `true` if there were any old values in the row, otherwise returns `false`.
     pub fn set_row<Row>(&mut self, primary_key: Data, row: Row) -> Result<bool, Error>
     where
         Row: IntoIterator<Item = (ColumnId, Data)>,
     {
+        //FIXME: this opretion is not atomic
         row.into_iter()
             .map(|(column, value)| {
                 self.set_value(primary_key.clone(), column, value)
@@ -362,6 +383,7 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
             .expect("Row should be non-empty")
     }
 
+    /// Gets [`BTreeMap`] of `column <-> value` for a given `primary_key`.
     pub fn row(&self, primary_key: Data) -> Result<BTreeMap<ColumnId, Option<Data>>, Error> {
         let mut accessed_columns = self.accessed_columns.borrow_mut();
         self.column_headers
@@ -391,6 +413,8 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
             .collect()
     }
 
+    /// Gets [`BTreeMap`] of `column <-> value`, there `primary_key` is derived from the
+    /// `secondary_key` in the `key_column_id`.
     pub fn row_secondary_key(
         &self,
         key_column_id: ColumnId,
@@ -404,6 +428,8 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
         }
     }
 
+    /// Deletes all values, assosiated with the wiven `primary_key`, will return `Err(_)` if not
+    /// all columns are accessible.
     pub fn delete_row(&mut self, primary_key: Data) -> Result<(), Error> {
         let fs = self.fs.borrow();
         let mut columns = Vec::with_capacity(self.column_headers.len());
@@ -423,6 +449,8 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
         Ok(())
     }
 
+    /// Deletes all values, assosiated with the wiven `secondary_key`, will return `Err(_)` if not
+    /// all columns are accessible.
     pub fn delete_row_secondary(
         &mut self,
         key_column_id: ColumnId,
@@ -436,6 +464,7 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
         }
     }
 
+    /// Colmpeletely deletes [`DB`] by deallocating all the used [segments](SegmentId)
     pub fn drop_db(self) -> Result<(), Error> {
         let mut fs = self.fs.borrow_mut();
 

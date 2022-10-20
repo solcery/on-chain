@@ -27,6 +27,7 @@ fn column_impls(attrs: &TokenStream, input: proc_macro::TokenStream) -> TokenStr
 
     let holder_attrs = quote! {
         #[derive #derive_attrs]
+        #[allow(missing_docs)]
     };
 
     let column_trait_implementations = variants.iter().map(|key| {
@@ -187,6 +188,7 @@ fn column_impls(attrs: &TokenStream, input: proc_macro::TokenStream) -> TokenStr
     ) = result;
 
     let from_slice_fn = quote! {
+        /// Gets [`#trait_ident`] object from the given slice
         pub fn from_column_slice<'a,'b: 'a>(
             pk_type: #enum_ident,
             val_type: #enum_ident,
@@ -213,6 +215,7 @@ fn column_impls(attrs: &TokenStream, input: proc_macro::TokenStream) -> TokenStr
     };
 
     let init_slice_fn = quote! {
+        /// Inits [`#trait_ident`] object in the given slice
         pub fn init_column_slice<'a,'b: 'a>(
             pk_type: #enum_ident,
             val_type: #enum_ident,
@@ -321,6 +324,7 @@ fn generate_holder_enum(holder_ident: &Ident, variants: &[Params]) -> TokenStrea
         .collect();
 
     quote! {
+        /// Value from the table, packed in the enum, which preserves type information
         pub enum #holder_ident {
             #holder_vars
         }
@@ -342,6 +346,7 @@ fn generate_enum_impl(enum_ident: &Ident, variants: &[Params]) -> TokenStream {
 
     quote! {
         impl #enum_ident {
+            /// Returns size of the type
             pub const fn size(&self) -> usize {
                 match self {
                     #fn_vars
