@@ -1,8 +1,12 @@
 use std::fmt::Debug;
 
-use super::error::Error;
-use super::schema::Data;
+use super::Data;
+use super::Error;
 
+/// An interface for operations with columns
+///
+/// Any data structure can be used as a column in the [`DB`](crate::DB), as long as it implements
+/// this trait
 pub trait Column: Debug {
     fn get_key(&self, value: Data) -> Option<Data>;
     fn get_value(&self, key: Data) -> Option<Data>;

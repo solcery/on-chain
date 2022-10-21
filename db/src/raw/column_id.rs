@@ -1,11 +1,13 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::fmt;
 
+/// Opaque column identifier
 #[derive(BorshDeserialize, BorshSerialize, Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct ColumnId(u32);
 
 impl ColumnId {
+    /// Generates [`ColumnId`] from [`u32`]
     pub fn new(val: u32) -> Self {
         Self(val)
     }
