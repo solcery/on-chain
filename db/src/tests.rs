@@ -7,7 +7,18 @@ use fs_test::*;
 #[test]
 fn init_db() {
     let program_id = Pubkey::new_unique();
-    let fs = Rc::new(RefCell::new(prepare_fs(&program_id)));
+
+    let account_params = AccountParams {
+        address: None,
+        owner: program_id.clone(),
+        data: AccountData::Empty(10_000),
+    };
+    let mut fs_data = FSAccounts::replicate_params(account_params, 3);
+
+    let account_infos = fs_data.account_info_iter();
+    let fs = Rc::new(RefCell::new(
+        FS::from_uninit_account_iter(&program_id, &mut account_infos.iter(), 10).unwrap(),
+    ));
 
     let table_name = "Test DB";
     let max_columns = 12;
@@ -30,7 +41,18 @@ fn init_db() {
 #[test]
 fn columns() {
     let program_id = Pubkey::new_unique();
-    let fs = Rc::new(RefCell::new(prepare_fs(&program_id)));
+
+    let account_params = AccountParams {
+        address: None,
+        owner: program_id.clone(),
+        data: AccountData::Empty(10_000),
+    };
+    let mut fs_data = FSAccounts::replicate_params(account_params, 3);
+
+    let account_infos = fs_data.account_info_iter();
+    let fs = Rc::new(RefCell::new(
+        FS::from_uninit_account_iter(&program_id, &mut account_infos.iter(), 10).unwrap(),
+    ));
 
     let table_name = "Test DB";
     let max_columns = 12;
@@ -59,7 +81,18 @@ fn columns() {
 #[test]
 fn values() {
     let program_id = Pubkey::new_unique();
-    let fs = Rc::new(RefCell::new(prepare_fs(&program_id)));
+
+    let account_params = AccountParams {
+        address: None,
+        owner: program_id.clone(),
+        data: AccountData::Empty(10_000),
+    };
+    let mut fs_data = FSAccounts::replicate_params(account_params, 3);
+
+    let account_infos = fs_data.account_info_iter();
+    let fs = Rc::new(RefCell::new(
+        FS::from_uninit_account_iter(&program_id, &mut account_infos.iter(), 10).unwrap(),
+    ));
 
     let table_name = "Test DB";
     let max_columns = 12;
@@ -105,13 +138,24 @@ fn values() {
 #[test]
 fn secondary_key() {
     let program_id = Pubkey::new_unique();
-    let fs = Rc::new(RefCell::new(prepare_fs(&program_id)));
+
+    let account_params = AccountParams {
+        address: None,
+        owner: program_id.clone(),
+        data: AccountData::Empty(10_000),
+    };
+    let mut fs_data = FSAccounts::replicate_params(account_params, 3);
+
+    let account_infos = fs_data.account_info_iter();
+    let fs = Rc::new(RefCell::new(
+        FS::from_uninit_account_iter(&program_id, &mut account_infos.iter(), 10).unwrap(),
+    ));
 
     let table_name = "Test DB";
     let max_columns = 12;
     let max_rows = 53;
     let primary_key_type = DataType::ShortString;
-    let (mut db, segment) = DB::init_in_segment(
+    let (mut db, _) = DB::init_in_segment(
         fs.clone(),
         table_name,
         max_columns,

@@ -23,11 +23,10 @@
 //! #     owner: program_id,
 //! #     data: AccountData::Empty(10_000),
 //! # };
-//! # let generated_accounts: Vec<_> = std::iter::repeat(params)
-//! #     .take(4)
-//! #     .map(|account| prepare_account_info(account))
-//! #     .collect();
-//! # let mut accounts_iter = generated_accounts.iter();
+//! let mut fs_data = FSAccounts::replicate_params(params, 3);
+//! let account_infos = fs_data.account_info_iter();
+//!
+//! # let mut accounts_iter = account_infos.iter();
 //! // ... somehow obtained program_id and accounts_iter
 //!
 //!// Build FS with account initialization
