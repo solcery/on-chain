@@ -33,3 +33,5 @@ pub enum Test {
     #[type_params(u64, 8)]
     Unsigned,
 }
+
+fn main() {}
