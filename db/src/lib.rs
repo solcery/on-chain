@@ -613,6 +613,3 @@ impl<'long, 'short> fmt::Debug for DB<'long, 'short> {
             .finish()
     }
 }
-
-#[cfg(test)]
-mod tests;
