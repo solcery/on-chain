@@ -13,7 +13,7 @@ fn init_db() {
 
     let account_params = AccountParams {
         address: None,
-        owner: program_id.clone(),
+        owner: program_id,
         data: AccountData::Empty(10_000),
     };
     let mut fs_data = FSAccounts::replicate_params(account_params, 3);
@@ -47,7 +47,7 @@ fn columns() {
 
     let account_params = AccountParams {
         address: None,
-        owner: program_id.clone(),
+        owner: program_id,
         data: AccountData::Empty(10_000),
     };
     let mut fs_data = FSAccounts::replicate_params(account_params, 3);
@@ -87,7 +87,7 @@ fn values() {
 
     let account_params = AccountParams {
         address: None,
-        owner: program_id.clone(),
+        owner: program_id,
         data: AccountData::Empty(10_000),
     };
     let mut fs_data = FSAccounts::replicate_params(account_params, 3);
@@ -144,7 +144,7 @@ fn secondary_key() {
 
     let account_params = AccountParams {
         address: None,
-        owner: program_id.clone(),
+        owner: program_id,
         data: AccountData::Empty(10_000),
     };
     let mut fs_data = FSAccounts::replicate_params(account_params, 3);

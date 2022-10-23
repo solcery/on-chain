@@ -61,7 +61,7 @@ impl FSAccounts {
     pub fn replicate_params(params: AccountParams, count: usize) -> Self {
         let accounts = std::iter::repeat(params)
             .take(count)
-            .map(|params| InternalAccountInfo::from_account_params(params))
+            .map(InternalAccountInfo::from_account_params)
             .collect();
         Self(accounts)
     }
