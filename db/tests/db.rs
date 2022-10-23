@@ -199,3 +199,51 @@ fn secondary_key() {
     let no_value = db.value(primary_key, col_id).unwrap();
     assert_eq!(no_value, None);
 }
+
+#[test]
+#[ignore]
+fn db_initialization() {
+    let program_id = Pubkey::new_unique();
+
+    let account_params = AccountParams {
+        address: None,
+        owner: program_id.clone(),
+        data: AccountData::Empty(10_000),
+    };
+    let mut fs_data = FSAccounts::replicate_params(account_params, 3);
+
+    let account_infos = fs_data.account_info_iter();
+    let fs = Rc::new(RefCell::new(
+        FS::from_uninit_account_iter(&program_id, &mut account_infos.iter(), 10).unwrap(),
+    ));
+
+    let table_name = "Test DB";
+    let max_columns = 12;
+    let max_rows = 53;
+    let primary_key_type = DataType::ShortString;
+    let (mut db, segment) = DB::init_in_segment(
+        fs.clone(),
+        table_name,
+        max_columns,
+        max_rows,
+        primary_key_type,
+    )
+    .unwrap();
+
+    let column_name = "Test Column";
+    let dtype = DataType::Int;
+    let col_id = db.add_column(column_name, dtype, false).unwrap();
+
+    let value = Data::Int(123);
+    let primary_key = Data::ShortString("test".to_string());
+    let old_val = db
+        .set_value(primary_key.clone(), col_id, value.clone())
+        .unwrap();
+    assert_eq!(old_val, None);
+
+    drop(db);
+    drop(fs);
+    drop(account_infos);
+
+    todo!("Add more db data");
+}
