@@ -7,3 +7,4 @@ edition = "2021"
 [dependencies]
 account-fs = { path = "../" }
 solana-program = "1.7.8"
+borsh = "0.9.1"

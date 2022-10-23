@@ -1193,6 +1193,7 @@ name = "fs_test"
 version = "0.0.0"
 dependencies = [
  "account-fs",
+ "borsh",
  "solana-program",
 ]
 
