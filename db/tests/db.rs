@@ -11,80 +11,6 @@ use fs_test::*;
 use solcery_db::*;
 
 #[test]
-fn init_db() {
-    let program_id = Pubkey::new_unique();
-
-    let account_params = AccountParams {
-        address: None,
-        owner: program_id,
-        data: AccountData::Empty(10_000),
-    };
-    let mut fs_data = FSAccounts::replicate_params(account_params, 3);
-
-    let account_infos = fs_data.account_info_iter();
-    let fs = Rc::new(RefCell::new(
-        FS::from_uninit_account_iter(&program_id, &mut account_infos.iter(), 10).unwrap(),
-    ));
-
-    let table_name = "Test DB";
-    let max_columns = 12;
-    let max_rows = 53;
-    let primary_key_type = DataType::ShortString;
-    let (db, segment) = DB::init_in_segment(
-        fs.clone(),
-        table_name,
-        max_columns,
-        max_rows,
-        primary_key_type,
-    )
-    .unwrap();
-
-    drop(db);
-
-    DB::from_segment(fs.clone(), segment).unwrap();
-}
-
-#[test]
-fn columns() {
-    let program_id = Pubkey::new_unique();
-
-    let account_params = AccountParams {
-        address: None,
-        owner: program_id,
-        data: AccountData::Empty(10_000),
-    };
-    let mut fs_data = FSAccounts::replicate_params(account_params, 3);
-
-    let account_infos = fs_data.account_info_iter();
-    let fs = Rc::new(RefCell::new(
-        FS::from_uninit_account_iter(&program_id, &mut account_infos.iter(), 10).unwrap(),
-    ));
-
-    let table_name = "Test DB";
-    let max_columns = 12;
-    let max_rows = 53;
-    let primary_key_type = DataType::ShortString;
-    let (mut db, segment) = DB::init_in_segment(
-        fs.clone(),
-        table_name,
-        max_columns,
-        max_rows,
-        primary_key_type,
-    )
-    .unwrap();
-
-    let column_name = "Test Column";
-    let dtype = DataType::Int;
-    let col_id = db.add_column(column_name, dtype, false).unwrap();
-
-    drop(db);
-
-    let mut db = DB::from_segment(fs.clone(), segment).unwrap();
-
-    db.remove_column(col_id).unwrap();
-}
-
-#[test]
 fn values() {
     let program_id = Pubkey::new_unique();
 
@@ -298,6 +224,7 @@ fn creation_of_the_test_db() {
         assert_eq!(old_val, None);
     }
 
+    dbg!(segment.pubkey.to_bytes());
     drop(db);
     drop(fs);
     drop(account_infos);
@@ -312,6 +239,41 @@ fn creation_of_the_test_db() {
     let expected_fs_data = FSAccounts::deserialize(&mut db_fs_bytes.as_slice()).unwrap();
 
     assert_eq!(fs_data, expected_fs_data);
+}
+
+const DB_SEGMENT: SegmentId = SegmentId {
+    pubkey: Pubkey::new_from_array([
+        0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0,
+    ]),
+    id: 0,
+};
+
+#[test]
+#[ignore]
+fn remove_column() {
+    let filename = format!("{}/tests/fs_images/prepared_db", env!("CARGO_MANIFEST_DIR"));
+
+    let mut file = File::open(filename).unwrap();
+
+    let mut db_fs_bytes = Vec::new();
+    file.read_to_end(&mut db_fs_bytes).unwrap();
+
+    let mut fs_data = FSAccounts::deserialize(&mut db_fs_bytes.as_slice()).unwrap();
+
+    let program_id = fs_data.owner_pubkey().unwrap();
+
+    let account_infos = fs_data.account_info_iter();
+    let fs = Rc::new(RefCell::new(
+        FS::from_account_iter(&program_id, &mut account_infos.iter()).unwrap(),
+    ));
+
+    let mut db = DB::from_segment(fs.clone(), DB_SEGMENT).unwrap();
+
+    let name_column = ColumnId::new(0);
+    let obtained_val = db.value(Data::Int(0), name_column).unwrap();
+    assert_eq!(obtained_val, Some(Data::ShortString("Alice".to_string())));
+    db.remove_column(name_column).unwrap();
 }
 
 // This function was used to create an image of empty FS, which is now used as a basis for DB
@@ -337,12 +299,4 @@ fn fs_initialization() {
     let mut file = File::create(filename).unwrap();
 
     fs_data.serialize(&mut file).unwrap();
-
-    todo!();
-    let mut clean_fs_bytes = Vec::new();
-    file.read_to_end(&mut clean_fs_bytes).unwrap();
-
-    let expected_fs_data = FSAccounts::deserialize(&mut clean_fs_bytes.as_slice()).unwrap();
-
-    assert_eq!(fs_data, expected_fs_data);
 }
