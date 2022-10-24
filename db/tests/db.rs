@@ -1,6 +1,9 @@
+use borsh::{BorshDeserialize, BorshSerialize};
 use pretty_assertions::assert_eq;
 use solana_program::pubkey::Pubkey;
 use std::cell::RefCell;
+use std::fs::File;
+use std::io::Read;
 use std::rc::Rc;
 
 use account_fs::*;
@@ -201,26 +204,27 @@ fn secondary_key() {
 }
 
 #[test]
-#[ignore]
-fn db_initialization() {
-    let program_id = Pubkey::new_unique();
+fn creation_of_the_test_db() {
+    let filename = format!("{}/tests/fs_images/clean_fs", env!("CARGO_MANIFEST_DIR"));
 
-    let account_params = AccountParams {
-        address: None,
-        owner: program_id.clone(),
-        data: AccountData::Empty(10_000),
-    };
-    let mut fs_data = FSAccounts::replicate_params(account_params, 3);
+    let mut file = File::open(filename).unwrap();
+
+    let mut clean_fs_bytes = Vec::new();
+    file.read_to_end(&mut clean_fs_bytes).unwrap();
+
+    let mut fs_data = FSAccounts::deserialize(&mut clean_fs_bytes.as_slice()).unwrap();
+
+    let program_id = fs_data.owner_pubkey().unwrap();
 
     let account_infos = fs_data.account_info_iter();
     let fs = Rc::new(RefCell::new(
-        FS::from_uninit_account_iter(&program_id, &mut account_infos.iter(), 10).unwrap(),
+        FS::from_account_iter(&program_id, &mut account_infos.iter()).unwrap(),
     ));
 
-    let table_name = "Test DB";
-    let max_columns = 12;
-    let max_rows = 53;
-    let primary_key_type = DataType::ShortString;
+    let table_name = "Test DB: people";
+    let max_columns = 4;
+    let max_rows = 10;
+    let primary_key_type = DataType::Int;
     let (mut db, segment) = DB::init_in_segment(
         fs.clone(),
         table_name,
@@ -230,20 +234,115 @@ fn db_initialization() {
     )
     .unwrap();
 
-    let column_name = "Test Column";
-    let dtype = DataType::Int;
-    let col_id = db.add_column(column_name, dtype, false).unwrap();
+    {
+        // Name
+        let column_name = "Name";
+        let dtype = DataType::ShortString;
+        let col_id = db.add_column(column_name, dtype, true).unwrap();
 
-    let value = Data::Int(123);
-    let primary_key = Data::ShortString("test".to_string());
-    let old_val = db
-        .set_value(primary_key.clone(), col_id, value.clone())
-        .unwrap();
-    assert_eq!(old_val, None);
+        let id = Data::Int(0);
+        let name = Data::ShortString("Alice".to_string());
+        let old_val = db.set_value(id.clone(), col_id, name.clone()).unwrap();
+        assert_eq!(old_val, None);
+
+        let id = Data::Int(1);
+        let name = Data::ShortString("Bob".to_string());
+        let old_val = db.set_value(id.clone(), col_id, name.clone()).unwrap();
+        assert_eq!(old_val, None);
+
+        let id = Data::Int(2);
+        let name = Data::ShortString("Carol".to_string());
+        let old_val = db.set_value(id.clone(), col_id, name.clone()).unwrap();
+        assert_eq!(old_val, None);
+
+        let id = Data::Int(3);
+        let name = Data::ShortString("Chad".to_string());
+        let old_val = db.set_value(id.clone(), col_id, name.clone()).unwrap();
+        assert_eq!(old_val, None);
+
+        let id = Data::Int(4);
+        let name = Data::ShortString("Eve".to_string());
+        let old_val = db.set_value(id.clone(), col_id, name.clone()).unwrap();
+        assert_eq!(old_val, None);
+    }
+
+    {
+        // Age
+        let column_name = "Age";
+        let dtype = DataType::Int;
+        let col_id = db.add_column(column_name, dtype, false).unwrap();
+
+        let id = Data::Int(0);
+        let name = Data::Int(22);
+        let old_val = db.set_value(id.clone(), col_id, name.clone()).unwrap();
+        assert_eq!(old_val, None);
+
+        let id = Data::Int(1);
+        let name = Data::Int(23);
+        let old_val = db.set_value(id.clone(), col_id, name.clone()).unwrap();
+        assert_eq!(old_val, None);
+
+        let id = Data::Int(2);
+        let name = Data::Int(22);
+        let old_val = db.set_value(id.clone(), col_id, name.clone()).unwrap();
+        assert_eq!(old_val, None);
+
+        let id = Data::Int(3);
+        let name = Data::Int(20);
+        let old_val = db.set_value(id.clone(), col_id, name.clone()).unwrap();
+        assert_eq!(old_val, None);
+
+        let id = Data::Int(4);
+        let name = Data::Int(30);
+        let old_val = db.set_value(id.clone(), col_id, name.clone()).unwrap();
+        assert_eq!(old_val, None);
+    }
 
     drop(db);
     drop(fs);
     drop(account_infos);
 
-    todo!("Add more db data");
+    let filename = format!("{}/tests/fs_images/prepared_db", env!("CARGO_MANIFEST_DIR"));
+
+    let mut file = File::open(filename).unwrap();
+
+    let mut db_fs_bytes = Vec::new();
+    file.read_to_end(&mut db_fs_bytes).unwrap();
+
+    let expected_fs_data = FSAccounts::deserialize(&mut db_fs_bytes.as_slice()).unwrap();
+
+    assert_eq!(fs_data, expected_fs_data);
+}
+
+// This function was used to create an image of empty FS, which is now used as a basis for DB
+// creation
+fn fs_initialization() {
+    let program_id = Pubkey::new_unique();
+
+    let account_params = AccountParams {
+        address: None,
+        owner: program_id,
+        data: AccountData::Empty(1_000),
+    };
+    let mut fs_data = FSAccounts::replicate_params(account_params, 3);
+
+    let account_infos = fs_data.account_info_iter();
+    let fs = FS::from_uninit_account_iter(&program_id, &mut account_infos.iter(), 10).unwrap();
+
+    drop(fs);
+    drop(account_infos);
+
+    let filename = format!("{}/tests/fs_images/clean_fs", env!("CARGO_MANIFEST_DIR"));
+
+    let mut file = File::create(filename).unwrap();
+
+    fs_data.serialize(&mut file).unwrap();
+
+    todo!();
+    let mut clean_fs_bytes = Vec::new();
+    file.read_to_end(&mut clean_fs_bytes).unwrap();
+
+    let expected_fs_data = FSAccounts::deserialize(&mut clean_fs_bytes.as_slice()).unwrap();
+
+    assert_eq!(fs_data, expected_fs_data);
 }
