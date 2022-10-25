@@ -250,7 +250,6 @@ const DB_SEGMENT: SegmentId = SegmentId {
 };
 
 #[test]
-#[ignore]
 fn remove_column() {
     let filename = format!("{}/tests/fs_images/prepared_db", env!("CARGO_MANIFEST_DIR"));
 
@@ -274,11 +273,14 @@ fn remove_column() {
     let obtained_val = db.value(Data::Int(0), name_column).unwrap();
     assert_eq!(obtained_val, Some(Data::ShortString("Alice".to_string())));
     db.remove_column(name_column).unwrap();
+
+    let age_column = ColumnId::new(1);
+    db.remove_column(age_column).unwrap();
 }
 
 // This function was used to create an image of empty FS, which is now used as a basis for DB
 // creation
-fn fs_initialization() {
+fn _fs_initialization() {
     let program_id = Pubkey::new_unique();
 
     let account_params = AccountParams {
