@@ -2,6 +2,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use pretty_assertions::assert_eq;
 use solana_program::pubkey::Pubkey;
 use std::cell::RefCell;
+use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Read;
 use std::rc::Rc;
@@ -369,7 +370,6 @@ fn delete_value() {
 
     let mut db = DB::from_segment(fs.clone(), DB_SEGMENT).unwrap();
 
-    let name_column = ColumnId::new(0);
     let age_column = ColumnId::new(1);
 
     let val = db.delete_value(Data::Int(6), age_column).unwrap();
@@ -429,8 +429,138 @@ fn delete_value_secondary() {
     assert_eq!(val, false);
 }
 
+#[test]
+fn set_row() {
+    let filename = format!("{}/tests/fs_images/prepared_db", env!("CARGO_MANIFEST_DIR"));
+
+    let mut file = File::open(filename).unwrap();
+
+    let mut db_fs_bytes = Vec::new();
+    file.read_to_end(&mut db_fs_bytes).unwrap();
+
+    let mut fs_data = FSAccounts::deserialize(&mut db_fs_bytes.as_slice()).unwrap();
+
+    let program_id = fs_data.owner_pubkey().unwrap();
+
+    let account_infos = fs_data.account_info_iter();
+    let fs = Rc::new(RefCell::new(
+        FS::from_account_iter(&program_id, &mut account_infos.iter()).unwrap(),
+    ));
+
+    let mut db = DB::from_segment(fs.clone(), DB_SEGMENT).unwrap();
+
+    let name_column = ColumnId::new(0);
+    let age_column = ColumnId::new(1);
+
+    let val = db.value(Data::Int(6), age_column).unwrap();
+
+    assert_eq!(val, None);
+
+    let new_row = vec![
+        (ColumnId::new(0), Data::ShortString("Ann".to_string())),
+        (ColumnId::new(1), Data::Int(29)),
+    ];
+
+    let new_row = BTreeMap::from_iter(new_row.into_iter());
+
+    db.set_row(Data::Int(6), new_row.clone()).unwrap();
+
+    let added_row = db.row(Data::Int(6)).unwrap();
+
+    let added_row = BTreeMap::from_iter(
+        added_row
+            .into_iter()
+            .map(|(k, v)| match v {
+                Some(v) => Some((k, v)),
+                None => None,
+            })
+            .flatten(),
+    );
+
+    assert_eq!(added_row, new_row);
+
+    let added_row = db
+        .row_secondary_key(name_column, Data::ShortString("Ann".to_string()))
+        .unwrap();
+
+    let added_row = BTreeMap::from_iter(
+        added_row
+            .into_iter()
+            .map(|(k, v)| match v {
+                Some(v) => Some((k, v)),
+                None => None,
+            })
+            .flatten(),
+    );
+
+    assert_eq!(added_row, new_row);
+}
+
+#[test]
+fn delete_row() {
+    let filename = format!("{}/tests/fs_images/prepared_db", env!("CARGO_MANIFEST_DIR"));
+
+    let mut file = File::open(filename).unwrap();
+
+    let mut db_fs_bytes = Vec::new();
+    file.read_to_end(&mut db_fs_bytes).unwrap();
+
+    let mut fs_data = FSAccounts::deserialize(&mut db_fs_bytes.as_slice()).unwrap();
+
+    let program_id = fs_data.owner_pubkey().unwrap();
+
+    let account_infos = fs_data.account_info_iter();
+    let fs = Rc::new(RefCell::new(
+        FS::from_account_iter(&program_id, &mut account_infos.iter()).unwrap(),
+    ));
+
+    let mut db = DB::from_segment(fs.clone(), DB_SEGMENT).unwrap();
+
+    db.delete_row(Data::Int(6)).unwrap();
+    db.delete_row(Data::Int(0)).unwrap();
+
+    let row: Vec<_> = db.row(Data::Int(0)).unwrap().into_values().collect();
+
+    assert_eq!(row, vec![None, None]);
+}
+
+#[test]
+fn delete_row_secondary() {
+    let filename = format!("{}/tests/fs_images/prepared_db", env!("CARGO_MANIFEST_DIR"));
+
+    let mut file = File::open(filename).unwrap();
+
+    let mut db_fs_bytes = Vec::new();
+    file.read_to_end(&mut db_fs_bytes).unwrap();
+
+    let mut fs_data = FSAccounts::deserialize(&mut db_fs_bytes.as_slice()).unwrap();
+
+    let program_id = fs_data.owner_pubkey().unwrap();
+
+    let account_infos = fs_data.account_info_iter();
+    let fs = Rc::new(RefCell::new(
+        FS::from_account_iter(&program_id, &mut account_infos.iter()).unwrap(),
+    ));
+
+    let mut db = DB::from_segment(fs.clone(), DB_SEGMENT).unwrap();
+
+    let name_column = ColumnId::new(0);
+
+    let err = db
+        .delete_row_secondary(name_column, Data::ShortString("Ann".to_string()))
+        .unwrap_err();
+    db.delete_row_secondary(name_column, Data::ShortString("Alice".to_string()))
+        .unwrap();
+
+    let row: Vec<_> = db.row(Data::Int(0)).unwrap().into_values().collect();
+
+    assert_eq!(err, Error::SecondaryKeyWithNonExistentPrimaryKey);
+    assert_eq!(row, vec![None, None]);
+}
+
 // This function was used to create an image of empty FS, which is now used as a basis for DB
 // creation
+#[cfg_attr(tarpaulin, ignore)]
 fn _fs_initialization() {
     let program_id = Pubkey::new_unique();
 

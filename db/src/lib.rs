@@ -390,6 +390,7 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
                 (Err(err), _) => Err(err),
                 (Ok(_), Err(err)) => Err(err),
             })
+            //FIXME: we should report empty rows as errors
             .expect("Row should be non-empty")
     }
 
