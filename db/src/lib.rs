@@ -210,9 +210,19 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
             .map(|(index, col)| (index, col.segment_id()))
             .ok_or(Error::NoSuchColumn)?;
 
-        self.fs.borrow_mut().deallocate_segment(&segment_id)?;
+        let mut fs = self.fs.borrow_mut();
+
+        if let Some(_) = self.accessed_columns.borrow_mut().remove(&column_id) {
+            unsafe {
+                // # Safety
+                // The only mutable borrow of this segment was storred in `accessed_columns` and
+                // we've just removed it,
+                fs.release_borrowed_segment(&segment_id);
+            }
+        }
+        fs.deallocate_segment(&segment_id)?;
+
         self.column_headers.remove(index);
-        self.accessed_columns.borrow_mut().remove(&column_id);
 
         unsafe {
             self.index.set_column_count(self.column_headers.len());
@@ -380,6 +390,7 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
                 (Err(err), _) => Err(err),
                 (Ok(_), Err(err)) => Err(err),
             })
+            //FIXME: we should report empty rows as errors
             .expect("Row should be non-empty")
     }
 
@@ -613,6 +624,3 @@ impl<'long, 'short> fmt::Debug for DB<'long, 'short> {
             .finish()
     }
 }
-
-#[cfg(test)]
-mod tests;

@@ -165,14 +165,14 @@ where
 
         self.direct_relation.insert(k.clone(), v.clone())?;
         self.converse_relation
-            .insert(v.clone(), k.clone())
+            .insert(v, k)
             .expect("insertion in second relation failed, the container is now corrupted");
 
         if let Some(ref old_key) = maybe_old_key {
-            self.direct_relation.delete(&old_key);
+            self.direct_relation.delete(old_key);
         }
         if let Some(ref old_val) = maybe_old_val {
-            self.converse_relation.delete(&old_val);
+            self.converse_relation.delete(old_val);
         }
 
         debug_assert_eq!(
