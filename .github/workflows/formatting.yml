@@ -21,9 +21,8 @@ jobs:
           path: |
             ~/.cargo/
             ~/.rustup/
-            ~/.local/share/solana/
             target/
-          key: ${{ runner.os }}-cargo-ci
+          key: ${{ runner.os }}-cargo-lints
 
       - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1

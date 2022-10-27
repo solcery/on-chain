@@ -30,7 +30,7 @@ jobs:
             ~/.rustup/
             ~/.local/share/solana/
             target/
-          key: ${{ runner.os }}-cargo-ci
+          key: ${{ runner.os }}-cargo-native
 
       - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
@@ -62,7 +62,7 @@ jobs:
             ~/.rustup/
             ~/.local/share/solana/
             target/
-          key: ${{ runner.os }}-cargo-ci
+          key: ${{ runner.os }}-cargo-onchain
 
       - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
