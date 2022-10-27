@@ -28,7 +28,7 @@ jobs:
           path: |
             ~/.cargo/
             target/
-          key: ${{ runner.os }}-cargo-native
+          key: ${{ runner.os }}-cargo-ci
 
       - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
@@ -59,7 +59,7 @@ jobs:
             ~/.cargo/
             ~/.local/share/solana/
             target/
-          key: ${{ runner.os }}-cargo-onchain
+          key: ${{ runner.os }}-cargo-ci
 
       - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1

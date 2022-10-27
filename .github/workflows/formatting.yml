@@ -15,12 +15,21 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install stable toolchain
+      - name: Cache toolchain
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/
+            target/
+          key: ${{ runner.os }}-cargo-ci
+
+      - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: nightly
           default: true
+          override: true
           components: rustfmt
 
       - name: Run cargo fmt
