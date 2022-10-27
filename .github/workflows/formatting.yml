@@ -20,6 +20,8 @@ jobs:
         with:
           path: |
             ~/.cargo/
+            ~/.rustup/
+            ~/.local/share/solana/
             target/
           key: ${{ runner.os }}-cargo-ci
 

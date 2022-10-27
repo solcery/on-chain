@@ -29,6 +29,7 @@ jobs:
         with:
           path: |
             ~/.cargo/
+            ~/.rustup/
             target/
           key: ${{ runner.os }}-cargo-coverage
 
