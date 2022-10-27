@@ -558,6 +558,29 @@ fn delete_row_secondary() {
     assert_eq!(row, vec![None, None]);
 }
 
+#[test]
+fn drop_db() {
+    let filename = format!("{}/tests/fs_images/prepared_db", env!("CARGO_MANIFEST_DIR"));
+
+    let mut file = File::open(filename).unwrap();
+
+    let mut db_fs_bytes = Vec::new();
+    file.read_to_end(&mut db_fs_bytes).unwrap();
+
+    let mut fs_data = FSAccounts::deserialize(&mut db_fs_bytes.as_slice()).unwrap();
+
+    let program_id = fs_data.owner_pubkey().unwrap();
+
+    let account_infos = fs_data.account_info_iter();
+    let fs = Rc::new(RefCell::new(
+        FS::from_account_iter(&program_id, &mut account_infos.iter()).unwrap(),
+    ));
+
+    let db = DB::from_segment(fs.clone(), DB_SEGMENT).unwrap();
+
+    db.drop_db().unwrap();
+}
+
 // This function was used to create an image of empty FS, which is now used as a basis for DB
 // creation
 #[cfg_attr(tarpaulin, ignore)]
