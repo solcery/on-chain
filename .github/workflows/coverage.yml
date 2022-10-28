@@ -30,7 +30,7 @@ jobs:
           path: |
             ~/.cargo/
             ~/.rustup/
-            target/
+            ~/runner/work/on-chain/on-chain/target/
           key: ${{ runner.os }}-cargo-coverage
 
       - name: Install nightly toolchain

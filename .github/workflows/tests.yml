@@ -29,7 +29,7 @@ jobs:
             ~/.cargo/
             ~/.rustup/
             ~/.local/share/solana/
-            target/
+            ~/runner/work/on-chain/on-chain/target/
           key: ${{ runner.os }}-cargo-native
 
       - name: Install nightly toolchain
@@ -61,7 +61,7 @@ jobs:
             ~/.cargo/
             ~/.rustup/
             ~/.local/share/solana/
-            target/
+            ~/runner/work/on-chain/on-chain/target/
           key: ${{ runner.os }}-cargo-onchain
 
       - name: Install nightly toolchain
