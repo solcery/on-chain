@@ -297,6 +297,23 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
     }
 
     pub fn merge_segments(&mut self) {
+        let (merged_inodes_table, _) = self.inode_data.partition_dedup_by_key(|inode| inode.id());
+        let len = merged_inodes_table.len();
+        self.inode_data.set_len(len);
+
+        unsafe {
+            self.allocation_table.set_inodes_count(len);
+
+            for i in 1..len {
+                let end_idx = self.inode_data[i].start_idx();
+                self.inode_data[i - 1].set_end_idx(end_idx);
+            }
+        }
+
+        debug_assert!(self.is_ordered());
+    }
+
+    pub fn defragment(&mut self) {
         unimplemented!();
     }
 

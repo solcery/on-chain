@@ -118,3 +118,25 @@ fn segments() {
         Error::AlreadyBorrowed
     );
 }
+
+#[test]
+fn merge() {
+    let mut account_vec = vec![0; AccountAllocator::account_size(10, 210)];
+
+    let slice = &mut account_vec;
+    let mut alloc = unsafe { AccountAllocator::init_account(slice, 10).unwrap() };
+
+    let id_0 = alloc.allocate_segment(50).unwrap();
+    let id_1 = alloc.allocate_segment(50).unwrap();
+    alloc.allocate_segment(100).unwrap();
+
+    alloc.deallocate_segment(id_0).unwrap();
+    alloc.deallocate_segment(id_1).unwrap();
+
+    let err = alloc.allocate_segment(60).unwrap_err();
+    assert_eq!(err, Error::NoSuitableSegmentFound);
+
+    alloc.merge_segments();
+
+    alloc.allocate_segment(60).unwrap();
+}

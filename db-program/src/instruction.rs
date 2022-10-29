@@ -10,13 +10,13 @@ pub enum DBInstruction {
     SetRow(SetRowParams),
     DeleteRow(DeleteRowParams),
     DeleteRowSecondary(DeleteRowSecondaryParams),
-    /// Create a new data base
+    /// Create a new database
     ///
     /// Accounts expected:
     ///
     /// 0. `[]` Global DB-program state account
     /// 1. `[signer]` Access Token account
-    /// 2-... `[]` FS accounts
+    /// 2. `[]` FS accounts
     CreateDB(CreateDBParams),
     DropDB(SegmentId),
     MintNewAccessToken,

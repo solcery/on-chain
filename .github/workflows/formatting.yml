@@ -21,7 +21,7 @@ jobs:
           path: |
             ~/.cargo/
             ~/.rustup/
-            ~/runner/work/on-chain/on-chain/target/
+            target/
           key: ${{ runner.os }}-cargo-lints
 
       - name: Install nightly toolchain

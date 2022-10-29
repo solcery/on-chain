@@ -26,6 +26,10 @@ impl Inode {
         u32::from_be_bytes(self.end_idx) as usize
     }
 
+    pub unsafe fn set_end_idx(&mut self, idx: usize) {
+        self.end_idx = u32::to_be_bytes(idx as u32);
+    }
+
     pub fn id(&self) -> Option<u32> {
         if self.flags == 0 {
             Some(u32::from_be_bytes(self.id))

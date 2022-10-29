@@ -72,6 +72,7 @@
 #![deny(missing_debug_implementations)]
 #![deny(missing_docs)]
 #![feature(cell_leak)]
+#![feature(slice_partition_dedup)]
 
 use solana_program::{account_info::AccountInfo, pubkey::Pubkey};
 
@@ -203,6 +204,15 @@ impl<'long: 'short, 'short> FS<'long, 'short> {
 
     #[doc(hidden)]
     pub fn defragment(&mut self) {
+        for (_, (alloc, _)) in self.allocators.iter_mut() {
+            alloc.defragment();
+        }
+    }
+
+    /// Merge segments in all accounts
+    ///
+    /// This function acts as a defragmentation for free space in the account.
+    pub fn merge_segments(&mut self) {
         for (_, (alloc, _)) in self.allocators.iter_mut() {
             alloc.merge_segments();
         }
