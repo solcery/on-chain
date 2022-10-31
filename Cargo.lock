@@ -14,7 +14,7 @@ dependencies = [
 
 [[package]]
 name = "account-fs"
-version = "0.0.0"
+version = "0.1.0-alpha"
 dependencies = [
  "borsh",
  "bytemuck",
@@ -1190,7 +1190,7 @@ dependencies = [
 
 [[package]]
 name = "fs_test"
-version = "0.0.0"
+version = "0.1.0-alpha"
 dependencies = [
  "account-fs",
  "borsh",
@@ -3978,7 +3978,7 @@ dependencies = [
 
 [[package]]
 name = "solcery-db"
-version = "0.0.0"
+version = "0.1.0-alpha"
 dependencies = [
  "account-fs",
  "borsh",
@@ -3996,7 +3996,7 @@ dependencies = [
 
 [[package]]
 name = "solcery-db-program"
-version = "0.0.0"
+version = "0.1.0-alpha"
 dependencies = [
  "account-fs",
  "borsh",
@@ -4011,7 +4011,7 @@ dependencies = [
 
 [[package]]
 name = "solcery-game"
-version = "0.0.0"
+version = "0.1.0-alpha"
 dependencies = [
  "borsh",
  "pretty_assertions",
@@ -4025,7 +4025,7 @@ dependencies = [
 
 [[package]]
 name = "solcery-impl-generator"
-version = "0.0.0"
+version = "0.1.0-alpha"
 dependencies = [
  "proc-macro2 1.0.43",
  "quote 1.0.21",
@@ -4037,7 +4037,7 @@ dependencies = [
 
 [[package]]
 name = "solcery-reltab"
-version = "0.0.0"
+version = "0.1.0-alpha"
 dependencies = [
  "borsh",
  "bytemuck",
@@ -4047,7 +4047,7 @@ dependencies = [
 
 [[package]]
 name = "solcery-vm"
-version = "0.0.0"
+version = "0.1.0-alpha"
 dependencies = [
  "borsh",
  "bytemuck",

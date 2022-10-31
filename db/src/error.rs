@@ -35,8 +35,23 @@ impl From<RBTreeError> for Error {
     }
 }
 
+const DB_IDENT: u8 = 0xDB;
+
 impl From<Error> for ProgramError {
     fn from(err: Error) -> Self {
-        todo!("Error conversion");
+        use Error::*;
+        let errno: u16 = match err {
+            FSError(fs_err) => (1 << 8) + fs_err as u16,
+            NoColumnsLeft => 2,
+            RBTreeError(rb_err) => (3 << 8) + rb_err as u16,
+            WrongSegment => 4,
+            NoSuchColumn => 5,
+            SecondaryKeyWithNonExistentPrimaryKey => 6,
+            NotAllColumnsArePresent => 7,
+            NonUniqueSecondaryKey => 8,
+        };
+
+        let error_code = (DB_IDENT as u32) << 24 + errno as u32;
+        ProgramError::Custom(error_code)
     }
 }
