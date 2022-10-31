@@ -595,6 +595,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "client"
+version = "0.0.0"
+dependencies = [
+ "borsh",
+ "bytemuck",
+ "solana-client",
+ "solana-program",
+ "solana-sdk",
+ "solcery-db",
+ "solcery-db-program",
+ "spl-token",
+]
+
+[[package]]
 name = "combine"
 version = "3.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
