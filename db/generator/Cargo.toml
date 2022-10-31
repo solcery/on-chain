@@ -1,0 +1,18 @@
+[package]
+name = "solcery-impl-generator"
+version = "0.1.0-alpha"
+edition = "2021"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+proc-macro2 = "1.0.24"
+quote = "1.0.8"
+syn = { version = "1.0.58", features = ["full", "visit", "parsing", "extra-traits"] }
+
+[dev-dependencies]
+slice-rbtree = { path = "../../slice-rbtree", version = "0.1.0-alpha.1" }
+solcery-reltab = { path = "../../reltab" }
+trybuild = "1.0.71"
+
+[lib]
+proc-macro = true

@@ -1,0 +1,44 @@
+name: Lints and formatting
+
+on: [push, pull_request]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  formatting:
+    name: Formatting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: Cache toolchain
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/
+            ~/.rustup/
+            target/
+          key: ${{ runner.os }}-cargo-lints
+
+      - name: Install nightly toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          default: true
+          override: true
+          components: rustfmt
+
+      - name: Run cargo fmt
+        run: cargo fmt --all -- --check
+
+      #- name: Run cargo clippy
+        #uses: actions-rs/cargo@v1
+        #continue-on-error: true  # WARNING: only for this example, remove it!
+        #with:
+          #command: clippy
+          #args: -- -D warnings
