@@ -37,33 +37,23 @@ fn main() {
     let program_id = Pubkey::try_from("6HT39VNwNJFuKPFkHchwiRnxDx157ppwMJ618jzRLNb1").unwrap();
     println!("Hello, world!{}", program_id);
 
+    let new_token_key = Keypair::new();
+    let new_token_id = new_token_key.pubkey();
+    println!("New token: {}", new_token_key.to_base58_string());
+
     let (mint_id, mint_bump) = Pubkey::find_program_address(&[MINT_SEED], &program_id);
     let (global_state_id, state_bump) =
         Pubkey::find_program_address(&[GLOBAL_STATE_SEED], &program_id);
 
-    let params = BootstrapParams {
-        mint_bump,
-        state_bump,
-        lamports_to_global_state: AMOUNT,
-        lamports_to_mint: AMOUNT,
-    };
-
-    let mut vec = vec![];
-    DBInstruction::Bootstrap(params.clone())
-        .serialize(&mut vec)
-        .unwrap();
-    println!("{:?}", vec);
-    println!("{}", std::mem::size_of::<DBGlobalState>());
-
-    let bootstrap_db_program = SolanaInstruction::new_with_borsh(
+    let mint_new_token = SolanaInstruction::new_with_borsh(
         program_id,
-        &DBInstruction::Bootstrap(params),
+        &DBInstruction::MintNewAccessToken,
         vec![
             AccountMeta::new(admin.pubkey(), true),
             AccountMeta::new(mint_id, false),
             AccountMeta::new(global_state_id, false),
             AccountMeta::new(token_id, true),
-            AccountMeta::new_readonly(SystemID, false),
+            AccountMeta::new(new_token_id, true),
             AccountMeta::new_readonly(TokenID, false),
             AccountMeta::new(RentSysvar, false),
         ],
@@ -71,14 +61,14 @@ fn main() {
 
     let create_token_account = create_account(
         &admin.pubkey(),
-        &token_id,
+        &new_token_id,
         AMOUNT,
         TokenAccount::get_packed_len() as u64,
         &TokenID,
     );
 
     let mut token_transaction = Transaction::new_with_payer(
-        &[create_token_account, bootstrap_db_program],
+        &[create_token_account, mint_new_token],
         Some(&admin.try_pubkey().unwrap()),
     );
 
@@ -86,7 +76,7 @@ fn main() {
     let client = RpcClient::new(url);
     let recent_blockhash = client.get_latest_blockhash().unwrap();
 
-    token_transaction.sign(&[&admin, &token_key], recent_blockhash);
+    token_transaction.sign(&[&admin, &token_key, &new_token_key], recent_blockhash);
 
     let signature = client.send_transaction(&token_transaction).unwrap();
 
