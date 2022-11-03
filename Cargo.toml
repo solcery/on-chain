@@ -2,6 +2,7 @@
 members = [
 	"db",
 	"db-program",
+	"db-program/db-cli",
 	"db/generator",
 	"fs",
 	"fs/fs_test",
