@@ -632,24 +632,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "client"
-version = "0.0.0"
-dependencies = [
- "borsh",
- "bytemuck",
- "clap 4.0.18",
- "serde",
- "serde_json",
- "shellexpand",
- "solana-client",
- "solana-program",
- "solana-sdk",
- "solcery-db",
- "solcery-db-program",
- "spl-token",
-]
-
-[[package]]
 name = "combine"
 version = "3.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -920,6 +902,24 @@ name = "data-encoding"
 version = "2.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ee2393c4a91429dffb4bedf19f4d6abf27d8a732c8ce4980305d782e5426d57"
+
+[[package]]
+name = "db-cli"
+version = "0.0.0"
+dependencies = [
+ "borsh",
+ "bytemuck",
+ "clap 4.0.18",
+ "serde",
+ "serde_json",
+ "shellexpand",
+ "solana-client",
+ "solana-program",
+ "solana-sdk",
+ "solcery-db",
+ "solcery-db-program",
+ "spl-token",
+]
 
 [[package]]
 name = "der"

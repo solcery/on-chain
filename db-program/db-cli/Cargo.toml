@@ -1,5 +1,5 @@
 [package]
-name = "client"
+name = "db-cli"
 version = "0.0.0"
 edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -14,7 +14,7 @@ shellexpand = "2.1"
 solana-client = "1.7.8"
 solana-program = "1.7.8"
 solana-sdk = "1.7.8"
-solcery-db = { path = "../db" }
-solcery-db-program = { path = "../db-program" }
+solcery-db = { path = "../../db" }
+solcery-db-program = { path = ".." }
 spl-token = { version = "3.3.0", features = ["no-entrypoint"] }
 

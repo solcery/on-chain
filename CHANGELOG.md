@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # [Unreleased]
 ## Added
-- `client`: Added minimal CLI interface to DB-program client
+- `db-cli`: small utility for automating bootstrapping `db-program` and minting new access tokens
 
 # [0.1.0-alpha]
 Initial release
