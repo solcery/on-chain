@@ -7,7 +7,7 @@ edition = "2021"
 [dependencies]
 borsh = "0.9.1"
 bytemuck = { version = "1.7.2", features = ['derive','min_const_generics'] }
-clap = "2.33.0"
+clap = { version = "4.0.0", features = ["derive", "cargo"] }
 serde = "1.0.0"
 serde_json = "1.0.0"
 shellexpand = "2.1"
