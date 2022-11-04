@@ -12,7 +12,7 @@ fn add_item(
     supply: u64,
     decimals: u8,
     in_game: bool,
-    expected_result: Result<(), Error>,
+    expected_result: Result<(), CrateError>,
 ) {
     let payer_key = dbg!(Pubkey::new_unique());
     let player_id = dbg!(Pubkey::new_unique());
@@ -154,30 +154,38 @@ fn correct_token() {
 
 #[test]
 fn not_in_game() {
-    add_item(true, true, false, 1, 0, false, Err(Error::NotInGame));
+    add_item(true, true, false, 1, 0, false, Err(CrateError::NotInGame));
 }
 
 #[test]
 fn wrong_account_mint() {
-    add_item(false, true, false, 1, 0, true, Err(Error::WrongAccountMint));
+    add_item(
+        false,
+        true,
+        false,
+        1,
+        0,
+        true,
+        Err(CrateError::WrongAccountMint),
+    );
 }
 
 #[test]
 fn not_owned_nft() {
-    add_item(true, false, false, 1, 0, true, Err(Error::NotOwnedNFT));
+    add_item(true, false, false, 1, 0, true, Err(CrateError::NotOwnedNFT));
 }
 
 #[test]
 fn authority_present() {
-    add_item(true, true, true, 1, 0, true, Err(Error::NotAnNFT));
+    add_item(true, true, true, 1, 0, true, Err(CrateError::NotAnNFT));
 }
 
 #[test]
 fn oversupplied() {
-    add_item(true, true, false, 2, 0, true, Err(Error::NotAnNFT));
+    add_item(true, true, false, 2, 0, true, Err(CrateError::NotAnNFT));
 }
 
 #[test]
 fn decimals() {
-    add_item(true, true, false, 1, 2, true, Err(Error::NotAnNFT));
+    add_item(true, true, false, 1, 2, true, Err(CrateError::NotAnNFT));
 }

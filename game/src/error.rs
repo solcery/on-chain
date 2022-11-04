@@ -1,4 +1,4 @@
-use super::state::game::Error as GameError;
+use crate::state::game::Error as GameError;
 use solana_program::program_error::ProgramError;
 use thiserror::Error;
 
