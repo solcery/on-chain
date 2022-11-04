@@ -23,7 +23,8 @@ use std::iter;
 use std::num::NonZeroU32;
 
 use solcery_game::{
-    process_instruction_bytes,
+    entrypoint::process_instruction_bytes,
+    instruction::Instruction as GameInstruction,
     state::{
         container::Container,
         game::{
@@ -33,7 +34,6 @@ use solcery_game::{
         player::{Player, CURRENT_PLAYER_VERSION},
         state::{Event, State, CURRENT_GAME_STATE_VERSION},
     },
-    Instruction as GameInstruction,
 };
 
 #[tokio::test]
