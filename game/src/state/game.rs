@@ -3,7 +3,7 @@ use solana_program::pubkey::Pubkey;
 use std::num::NonZeroU32;
 use thiserror::Error;
 
-use crate::player::Player as PlayerInfo;
+use crate::state::player::Player as PlayerInfo;
 pub const CURRENT_GAME_VERSION: u32 = 1;
 pub const CURRENT_GAME_PROJECT_VERSION: u32 = 1;
 

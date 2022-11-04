@@ -18,7 +18,5 @@ pub mod instruction;
 pub mod processor;
 pub mod state;
 
-mod bundled;
 mod game;
 mod game_state;
-mod player;

@@ -7,12 +7,12 @@ use solana_program::{
 };
 use spl_token::state::{Account, Mint};
 
-pub use super::state::game::{Game, Status};
-use super::state::game::{Project, CURRENT_GAME_PROJECT_VERSION, CURRENT_GAME_VERSION};
+pub use crate::state::game::{Game, Status};
+use crate::state::game::{Project, CURRENT_GAME_PROJECT_VERSION, CURRENT_GAME_VERSION};
 use crate::{
-    bundled::{Bundle, Bundled},
     error::Error,
-    player::Player as PlayerInfo,
+    state::bundled::{Bundle, Bundled},
+    state::player::Player as PlayerInfo,
 };
 
 impl<'s, 't0> Bundled<'s, 't0, Game> {

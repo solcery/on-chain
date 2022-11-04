@@ -6,10 +6,10 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-use crate::bundled::Bundle;
 use crate::error::Error;
 use crate::game_state::Event;
 use crate::instruction::Instruction;
+use crate::state::bundled::Bundle;
 use crate::state::container::Container;
 use crate::state::game::Game;
 use crate::state::player::Player;
