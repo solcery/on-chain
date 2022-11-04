@@ -18,5 +18,4 @@ pub mod instruction;
 pub mod processor;
 pub mod state;
 
-mod game;
 mod game_state;

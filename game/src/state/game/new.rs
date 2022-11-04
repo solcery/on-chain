@@ -11,7 +11,7 @@ fn new(
     game_ver: u32,
     empty_game_state: bool,
     game_state_ver: u32,
-    expected_result: Result<(), Error>,
+    expected_result: Result<(), CrateError>,
 ) {
     let payer_key = Pubkey::new_unique();
     dbg!(&payer_key);
@@ -112,8 +112,8 @@ fn new(
         let game_bundle = result.unwrap();
         assert_eq!(game_bundle.data(), &expected_game);
     } else {
-        let error = result.unwrap_err();
-        assert_eq!(Err(error), expected_result);
+        let CrateError = result.unwrap_err();
+        assert_eq!(Err(CrateError), expected_result);
     }
 }
 
@@ -133,7 +133,7 @@ fn wrong_project_version() {
         0,
         true,
         0,
-        Err(Error::WrongProjectVersion),
+        Err(CrateError::WrongProjectVersion),
     );
 }
 
@@ -148,23 +148,53 @@ fn wrong_project_owner() {
         0,
         true,
         0,
-        Err(Error::WrongAccountOwner),
+        Err(CrateError::WrongAccountOwner),
     );
 }
 
 #[test]
 fn game_info_already_created() {
-    new(1, true, 1, 0, false, 1, true, 0, Err(Error::AlreadyInUse));
+    new(
+        1,
+        true,
+        1,
+        0,
+        false,
+        1,
+        true,
+        0,
+        Err(CrateError::AlreadyInUse),
+    );
 }
 
 #[test]
 fn wrong_account_version() {
-    new(1, true, 1, 0, false, 2, true, 0, Err(Error::AlreadyInUse));
+    new(
+        1,
+        true,
+        1,
+        0,
+        false,
+        2,
+        true,
+        0,
+        Err(CrateError::AlreadyInUse),
+    );
 }
 
 #[test]
 fn already_created_state() {
-    new(1, true, 1, 0, true, 0, false, 1, Err(Error::AlreadyInUse));
+    new(
+        1,
+        true,
+        1,
+        0,
+        true,
+        0,
+        false,
+        1,
+        Err(CrateError::AlreadyInUse),
+    );
 }
 
 #[test]
@@ -178,6 +208,6 @@ fn wrong_players_number() {
         0,
         true,
         0,
-        Err(Error::WrongPlayerNumber),
+        Err(CrateError::WrongPlayerNumber),
     );
 }
