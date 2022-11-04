@@ -31,8 +31,8 @@ use solcery_game::{
             Game, Item, Player as GamePlayer, Project, Status, CURRENT_GAME_PROJECT_VERSION,
             CURRENT_GAME_VERSION,
         },
+        game_state::{Event, State, CURRENT_GAME_STATE_VERSION},
         player::{Player, CURRENT_PLAYER_VERSION},
-        state::{Event, State, CURRENT_GAME_STATE_VERSION},
     },
 };
 

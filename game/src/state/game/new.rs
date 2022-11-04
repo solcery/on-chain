@@ -112,8 +112,8 @@ fn new(
         let game_bundle = result.unwrap();
         assert_eq!(game_bundle.data(), &expected_game);
     } else {
-        let CrateError = result.unwrap_err();
-        assert_eq!(Err(CrateError), expected_result);
+        let err = result.unwrap_err();
+        assert_eq!(Err(err), expected_result);
     }
 }
 

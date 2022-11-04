@@ -1,8 +1,10 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use super::game_state::{Event, State};
-use crate::state::container::Container;
-use crate::state::game::{Game, Status as GameStatus};
+use crate::state::{
+    container::Container,
+    game::{Game, Status as GameStatus},
+    game_state::{Event, State},
+};
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, BorshSerialize, BorshDeserialize)]
 pub enum Instruction {

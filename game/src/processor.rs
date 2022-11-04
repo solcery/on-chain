@@ -7,13 +7,14 @@ use solana_program::{
 };
 
 use crate::error::Error;
-use crate::game_state::Event;
 use crate::instruction::Instruction;
-use crate::state::bundled::Bundle;
-use crate::state::container::Container;
-use crate::state::game::Game;
-use crate::state::player::Player;
-use crate::state::state::State;
+use crate::state::{
+    bundled::Bundle,
+    container::Container,
+    game::Game,
+    game_state::{Event, State},
+    player::Player,
+};
 
 pub fn process_instruction(
     program_id: &Pubkey,
