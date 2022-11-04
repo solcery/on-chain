@@ -12,6 +12,7 @@ use thiserror::Error;
 use crate::error::Error as CrateError;
 use crate::state::bundled::{Bundle, Bundled};
 use crate::state::player::Player as PlayerInfo;
+
 pub const CURRENT_GAME_VERSION: u32 = 1;
 pub const CURRENT_GAME_PROJECT_VERSION: u32 = 1;
 

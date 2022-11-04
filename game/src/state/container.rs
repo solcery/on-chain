@@ -3,10 +3,11 @@
 //! This type is used for data, which can be either stored directly in the `instruction_data` or in
 //! the separate account.
 use borsh::{BorshDeserialize, BorshSerialize};
-use solana_program::account_info::next_account_info;
-use solana_program::account_info::AccountInfo;
-use solana_program::program_error::ProgramError;
-use solana_program::pubkey::Pubkey;
+use solana_program::{
+    account_info::{next_account_info, AccountInfo},
+    program_error::ProgramError,
+    pubkey::Pubkey,
+};
 use std::fmt::Debug;
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, BorshSerialize, BorshDeserialize)]
