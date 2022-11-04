@@ -5,6 +5,5 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-account-fs = { path = "../" }
 borsh = "0.9.1"
 solana-program = "1.7.8"
