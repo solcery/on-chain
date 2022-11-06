@@ -177,7 +177,8 @@ impl<'long: 'short, 'short> DB<'long, 'short> {
                 container,
             )
         }
-        //FIXME: Document unwrap
+        // init_column may only fail in case of wrong-sized slice. Here we generate the correct
+        // value, so this invocation is infailible.
         .unwrap();
 
         drop(borrowed_fs);

@@ -25,7 +25,6 @@ impl From<Error> for ErrorType {
     }
 }
 
-//TODO: rewtire this with trybuild
 #[generate_column_impls(HolderName, Column, ErrorType, derives(Debug))]
 pub enum Test {
     #[type_params(i32, 4)]

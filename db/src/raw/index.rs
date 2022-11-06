@@ -85,7 +85,7 @@ impl Index {
         self.db_version = u16::to_be_bytes(CURRENT_VERSION);
         table_name
             .serialize(&mut self.table_name.as_mut_slice())
-            .unwrap(); // TODO: Document unwrap
+            .expect("Attempted to fill DB index with too long name");
         self.primary_key_type = u8::from(primary_key_type);
         self.column_count = 0;
         assert!(u8::try_from(column_max).is_ok());

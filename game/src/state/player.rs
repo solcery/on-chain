@@ -11,7 +11,6 @@ use crate::state::bundled::{Bundle, Bundled};
 pub const CURRENT_PLAYER_VERSION: u32 = 1;
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, BorshSerialize, BorshDeserialize)]
-//TODO: Add correct Ord implementation
 pub struct Player {
     pubkey: Pubkey,
     items: Vec<(u32, Pubkey)>,
