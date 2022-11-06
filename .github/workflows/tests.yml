@@ -78,8 +78,8 @@ jobs:
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           cargo-build-bpf --version
         
-      - name: Build BPF
-        run: cargo test-bpf --no-run --verbose
+      - name: Build SBF
+        run: cargo test-sbf --no-run --verbose
         
-      - name: Test BPF
-        run: cargo test-bpf --verbose
+      - name: Test SBF
+        run: cargo test-sbf --verbose
