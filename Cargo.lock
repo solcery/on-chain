@@ -1537,6 +1537,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "hasher"
+version = "0.0.0"
+dependencies = [
+ "borsh",
+ "pretty_assertions",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+]
+
+[[package]]
 name = "heck"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -4,6 +4,7 @@ members = [
 	"db-program",
 	"db-program/db-cli",
 	"db/generator",
+	"experiments/hasher",
 	"fs",
 	"fs/fs_test",
 	"game",
