@@ -5,7 +5,7 @@ use pretty_assertions::assert_eq;
 fn account_initialization() {
     let mut account_vec = vec![0; AccountAllocator::account_size(10, 1000)];
 
-    let alloc = unsafe { AccountAllocator::init_account(&mut account_vec, 10).unwrap() };
+    let alloc = { AccountAllocator::init_account(&mut account_vec, 10).unwrap() };
 
     assert_eq!(alloc.allocation_table.inodes_count(), 1);
     assert_eq!(alloc.allocation_table.inodes_max(), 10);
@@ -13,13 +13,13 @@ fn account_initialization() {
 
     drop(alloc);
 
-    let alloc = unsafe { AccountAllocator::from_account(&mut account_vec).unwrap() };
+    let alloc = { AccountAllocator::from_account(&mut account_vec).unwrap() };
 
     assert_eq!(alloc.allocation_table.inodes_count(), 1);
     assert_eq!(alloc.allocation_table.inodes_max(), 10);
     assert_eq!(alloc.len, 1000);
     assert_eq!(alloc.inode_data.len(), 1);
-    assert_eq!(alloc.inode_data[0], unsafe {
+    assert_eq!(alloc.inode_data[0], {
         Inode::from_raw_parts(0, 1000, None)
     });
 }
@@ -28,16 +28,16 @@ fn account_initialization() {
 fn allocation() {
     let mut account_vec = vec![0; AccountAllocator::account_size(10, 1000)];
 
-    let mut alloc = unsafe { AccountAllocator::init_account(&mut account_vec, 10).unwrap() };
+    let mut alloc = { AccountAllocator::init_account(&mut account_vec, 10).unwrap() };
 
     let id = alloc.allocate_segment(10).unwrap();
 
     assert_eq!(alloc.allocation_table.inodes_count(), 2);
     assert_eq!(id, 0);
-    assert_eq!(alloc.inode_data[0], unsafe {
+    assert_eq!(alloc.inode_data[0], {
         Inode::from_raw_parts(0, 10, Some(0))
     });
-    assert_eq!(alloc.inode_data[1], unsafe {
+    assert_eq!(alloc.inode_data[1], {
         Inode::from_raw_parts(10, 1000, None)
     });
 }
@@ -46,17 +46,15 @@ fn allocation() {
 fn deallocation() {
     let mut account_vec = vec![0; AccountAllocator::account_size(10, 1000)];
 
-    let mut alloc = unsafe { AccountAllocator::init_account(&mut account_vec, 10).unwrap() };
+    let mut alloc = { AccountAllocator::init_account(&mut account_vec, 10).unwrap() };
 
     let id = alloc.allocate_segment(10).unwrap();
 
     alloc.deallocate_segment(id).unwrap();
 
     assert_eq!(alloc.allocation_table.inodes_count(), 2);
-    assert_eq!(alloc.inode_data[0], unsafe {
-        Inode::from_raw_parts(0, 10, None)
-    });
-    assert_eq!(alloc.inode_data[1], unsafe {
+    assert_eq!(alloc.inode_data[0], { Inode::from_raw_parts(0, 10, None) });
+    assert_eq!(alloc.inode_data[1], {
         Inode::from_raw_parts(10, 1000, None)
     });
 }
@@ -66,7 +64,7 @@ fn segments() {
     let mut account_vec = vec![0; AccountAllocator::account_size(10, 1000)];
 
     let slice = &mut account_vec;
-    let mut alloc = unsafe { AccountAllocator::init_account(slice, 10).unwrap() };
+    let mut alloc = { AccountAllocator::init_account(slice, 10).unwrap() };
 
     let id_0 = alloc.allocate_segment(10).unwrap();
     let id_1 = alloc.allocate_segment(100).unwrap();
@@ -124,7 +122,7 @@ fn merge() {
     let mut account_vec = vec![0; AccountAllocator::account_size(10, 210)];
 
     let slice = &mut account_vec;
-    let mut alloc = unsafe { AccountAllocator::init_account(slice, 10).unwrap() };
+    let mut alloc = { AccountAllocator::init_account(slice, 10).unwrap() };
 
     let id_0 = alloc.allocate_segment(50).unwrap();
     let id_1 = alloc.allocate_segment(50).unwrap();

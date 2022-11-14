@@ -351,7 +351,7 @@ impl From<VMCommand> for CommandByteCode {
                 let address_bytes = address.to_le_bytes(); // [u8;4]
                 let mut byte_code: [u8; 5] = [27, 0, 0, 0, 0];
                 byte_code[1..4].copy_from_slice(&address_bytes[0..3]);
-                byte_code[4] = n_args as u8;
+                byte_code[4] = n_args;
                 byte_code
             }
             VMCommand::Return => [28, 0, 0, 0, 0],

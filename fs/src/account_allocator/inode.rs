@@ -26,7 +26,7 @@ impl Inode {
         u32::from_be_bytes(self.end_idx) as usize
     }
 
-    pub unsafe fn set_end_idx(&mut self, idx: usize) {
+    pub fn set_end_idx(&mut self, idx: usize) {
         self.end_idx = u32::to_be_bytes(idx as u32);
     }
 
@@ -52,13 +52,13 @@ impl Inode {
         self.flags = 1;
     }
 
-    pub unsafe fn occupy(&mut self, id: u32) {
+    pub fn occupy(&mut self, id: u32) {
         self.flags = 0;
         self.id = u32::to_be_bytes(id);
     }
 
     /// Generate new [`Inode`] with initial values proper values
-    pub unsafe fn from_raw_parts(start_idx: usize, end_idx: usize, maybe_id: Option<u32>) -> Self {
+    pub fn from_raw_parts(start_idx: usize, end_idx: usize, maybe_id: Option<u32>) -> Self {
         let start_idx = u32::to_be_bytes(start_idx as u32);
         let end_idx = u32::to_be_bytes(end_idx as u32);
         let id;
@@ -83,10 +83,10 @@ impl Inode {
     }
 
     /// initialize the given [`Inode`] with proper values
-    pub unsafe fn fill(&mut self, start_idx: usize, end_idx: usize, id: u32, flags: bool) {
+    pub fn fill(&mut self, start_idx: usize, end_idx: usize, id: u32, flags: bool) {
         self.start_idx = u32::to_be_bytes(start_idx as u32);
         self.end_idx = u32::to_be_bytes(end_idx as u32);
-        self.id = u32::to_be_bytes(id as u32);
+        self.id = u32::to_be_bytes(id);
         if flags {
             self.flags = 0;
         } else {

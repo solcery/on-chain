@@ -115,7 +115,8 @@ impl<'long: 'short, 'short> FS<'long, 'short> {
                 let cell = account.data.borrow_mut();
                 let data = RefMut::<'_, &'long mut [u8]>::leak(cell);
                 unsafe {
-                    AccountAllocator::from_account(data).map(|alloc| (pubkey, (alloc, account)))
+                    AccountAllocator::from_account_unchecked(data)
+                        .map(|alloc| (pubkey, (alloc, account)))
                 }
             })
             .collect();
@@ -145,13 +146,12 @@ impl<'long: 'short, 'short> FS<'long, 'short> {
                 let data = RefMut::<'_, &'long mut [u8]>::leak(data);
                 if AccountAllocator::is_initialized(data) {
                     unsafe {
-                        AccountAllocator::from_account(data).map(|alloc| (pubkey, (alloc, account)))
-                    }
-                } else {
-                    unsafe {
-                        AccountAllocator::init_account(data, inode_table_size)
+                        AccountAllocator::from_account_unchecked(data)
                             .map(|alloc| (pubkey, (alloc, account)))
                     }
+                } else {
+                    AccountAllocator::init_account(data, inode_table_size)
+                        .map(|alloc| (pubkey, (alloc, account)))
                 }
             })
             .collect();

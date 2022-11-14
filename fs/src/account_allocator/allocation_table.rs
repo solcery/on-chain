@@ -37,14 +37,18 @@ impl AllocationTable {
         id
     }
 
-    pub unsafe fn set_inodes_count(&mut self, inodes_count: usize) {
+    pub(super) fn id_autoincrement(&self) -> u32 {
+        u32::from_be_bytes(self.id_autoincrement)
+    }
+
+    pub fn set_inodes_count(&mut self, inodes_count: usize) {
         assert!(inodes_count < u16::MAX as usize);
         let inodes_count = inodes_count as u16;
         self.inodes_count = u16::to_be_bytes(inodes_count);
     }
 
     /// initialize the given [`AllocationTable`] with proper values
-    pub unsafe fn fill(&mut self, inodes_max: usize) {
+    pub fn fill(&mut self, inodes_max: usize) {
         assert!(inodes_max < u16::MAX as usize);
 
         self.magic = ACCOUNT_HEADER_MAGIC;

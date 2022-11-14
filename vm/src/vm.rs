@@ -302,7 +302,7 @@ impl<'a> VM<'a> {
 
                 self.log.push(Event::AddObjectByIndex {
                     object_index: (self.game_state.objects.len() - 1) as u32,
-                    object_type_index: id as u32,
+                    object_type_index: id,
                 });
                 Ok(())
             }
@@ -323,7 +323,7 @@ impl<'a> VM<'a> {
 
                 self.log.push(Event::AddObjectById {
                     object_index: (self.game_state.objects.len() - 1) as u32,
-                    object_type_id: id as u32,
+                    object_type_id: id,
                 });
                 Ok(())
             }
@@ -361,7 +361,7 @@ impl<'a> VM<'a> {
         let object = self.game_state.objects.remove(object_index);
 
         self.log.push(Event::RemoveObject {
-            object_id: object.id() as u32,
+            object_id: object.id(),
         });
         Ok(())
     }
@@ -375,9 +375,7 @@ impl<'a> VM<'a> {
 
         game_state.objects.retain(|object| {
             if object.id() == object_id {
-                log.push(Event::RemoveObject {
-                    object_id: object_id as u32,
-                });
+                log.push(Event::RemoveObject { object_id });
                 true
             } else {
                 false

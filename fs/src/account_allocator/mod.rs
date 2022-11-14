@@ -39,7 +39,7 @@ pub struct AccountAllocator<'long> {
 
 impl<'long: 'short, 'short> AccountAllocator<'long> {
     /// Initialize account, by writing [`AllocationTable`] and [`Inode`]  table at the begining of its data field.
-    pub unsafe fn init_account(data: &'long mut [u8], max_inodes: usize) -> Result<Self, Error> {
+    pub fn init_account(data: &'long mut [u8], max_inodes: usize) -> Result<Self, Error> {
         let account_data = data;
 
         if account_data.len() < mem::size_of::<AllocationTable>() {
@@ -60,12 +60,10 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
             cast_slice_mut(allocation_table);
         let allocation_table: &mut AllocationTable = cast_mut(&mut allocation_table[0]);
 
-        unsafe {
-            allocation_table.fill(max_inodes);
+        allocation_table.fill(max_inodes);
 
-            let inode = Inode::from_raw_parts(0, data.len(), None);
-            inode_data.push(inode);
-        }
+        let inode = Inode::from_raw_parts(0, data.len(), None);
+        inode_data.push(inode);
 
         let len = data.len();
         let ptr = NonNull::new(data.as_mut_ptr()).unwrap();
@@ -79,13 +77,13 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
             _ghost: PhantomData::<&'long mut [u8]>,
         };
 
-        debug_assert!(allocator.is_ordered());
+        debug_assert!(allocator.is_consistent());
 
         Ok(allocator)
     }
 
     /// Get [`AccountAllocator`] from data slice.
-    pub unsafe fn from_account(account_data: &'long mut [u8]) -> Result<Self, Error> {
+    pub unsafe fn from_account_unchecked(account_data: &'long mut [u8]) -> Result<Self, Error> {
         if account_data.len() < mem::size_of::<AllocationTable>() {
             return Err(Error::TooSmall);
         }
@@ -121,9 +119,23 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
             _ghost: PhantomData::<&'long mut [u8]>,
         };
 
-        debug_assert!(allocator.is_ordered());
+        debug_assert!(allocator.is_consistent());
 
         Ok(allocator)
+    }
+
+    pub fn from_account(account_data: &'long mut [u8]) -> Result<Self, Error> {
+        let result = unsafe { Self::from_account_unchecked(account_data) };
+        match result {
+            Ok(alloc) => {
+                if alloc.is_consistent() {
+                    Ok(alloc)
+                } else {
+                    Err(Error::BrokenFSAccount)
+                }
+            }
+            Err(e) => Err(e),
+        }
     }
 
     /// Check if a given byte slice has a [`AllocationTable`]
@@ -163,7 +175,7 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
             _ghost: PhantomData::<&'long mut [u8]>,
         };
 
-        allocator.is_ordered()
+        allocator.is_consistent()
     }
 
     /// Allocates a segment with a given size.
@@ -187,26 +199,24 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
 
             let id = self.allocation_table.generate_id();
 
-            unsafe {
-                if inode.len() == size {
-                    inode.occupy(id);
-                } else {
-                    self.inode_data.swap_remove(index);
-                    //TODO: reimplement without copying
-                    let new_inode1 = Inode::from_raw_parts(start, start + size, Some(id));
-                    let new_inode2 = Inode::from_raw_parts(start + size, end, None);
+            if inode.len() == size {
+                inode.occupy(id);
+            } else {
+                self.inode_data.swap_remove(index);
+                //TODO: reimplement without copying
+                let new_inode1 = Inode::from_raw_parts(start, start + size, Some(id));
+                let new_inode2 = Inode::from_raw_parts(start + size, end, None);
 
-                    self.inode_data.push(new_inode1);
-                    self.inode_data.push(new_inode2);
-                    self.inode_data.sort_by_key(|inode| inode.start_idx());
+                self.inode_data.push(new_inode1);
+                self.inode_data.push(new_inode2);
+                self.inode_data.sort_by_key(|inode| inode.start_idx());
 
-                    self.allocation_table
-                        .set_inodes_count(self.inode_data.len());
-                }
+                self.allocation_table
+                    .set_inodes_count(self.inode_data.len());
             }
 
             debug_assert_eq!(self.allocation_table.inodes_count(), self.inode_data.len());
-            debug_assert!(self.is_ordered());
+            debug_assert!(self.is_consistent());
 
             Ok(id)
         } else {
@@ -230,13 +240,13 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
             .ok_or(Error::NoSuchIndex);
 
         debug_assert_eq!(self.allocation_table.inodes_count(), self.inode_data.len());
-        debug_assert!(self.is_ordered());
+        debug_assert!(self.is_consistent());
 
         result
     }
 
     pub fn segment(&mut self, id: u32) -> Result<&'short mut [u8], Error> {
-        debug_assert!(self.is_ordered());
+        debug_assert!(self.is_consistent());
         if self.borrowed_segments.contains(&id) {
             return Err(Error::AlreadyBorrowed);
         }
@@ -301,16 +311,14 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
         let len = merged_inodes_table.len();
         self.inode_data.set_len(len);
 
-        unsafe {
-            self.allocation_table.set_inodes_count(len);
+        self.allocation_table.set_inodes_count(len);
 
-            for i in 1..len {
-                let end_idx = self.inode_data[i].start_idx();
-                self.inode_data[i - 1].set_end_idx(end_idx);
-            }
+        for i in 1..len {
+            let end_idx = self.inode_data[i].start_idx();
+            self.inode_data[i - 1].set_end_idx(end_idx);
         }
 
-        debug_assert!(self.is_ordered());
+        debug_assert!(self.is_consistent());
     }
 
     pub fn defragment(&mut self) {
@@ -325,7 +333,8 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
         self.borrowed_segments.remove(&id);
     }
 
-    fn is_ordered(&self) -> bool {
+    fn is_consistent(&self) -> bool {
+        // Firstly, we check, that the inodes table is consistent.
         if self.inode_data[0].start_idx() != 0 {
             return false;
         }
@@ -342,7 +351,18 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
             return false;
         }
 
-        true
+        // this is the guarantee, that there will be no index collisions
+        // NOTE: existing index collisions are memory-safe
+        let max_index = self
+            .inode_data
+            .iter()
+            .filter_map(|inode| inode.id())
+            .reduce(std::cmp::max);
+
+        match max_index {
+            Some(idx) => self.allocation_table.id_autoincrement() > idx,
+            None => true,
+        }
     }
 
     fn collect_slices(&self) -> BTreeMap<u32, &[u8]> {
@@ -470,6 +490,8 @@ pub enum Error {
     WrongSize,
     /// The account owner does not match `program_id`, such account can not be used as part of [`FS`](super::FS)
     WrongOwner,
+    /// The internal invariants of [`FS`](super::FS) are no upheld in this account
+    BrokenFSAccount,
 }
 
 #[cfg(test)]
