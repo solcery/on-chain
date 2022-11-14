@@ -4171,6 +4171,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "solcery-game-state"
+version = "0.0.0"
+
+[[package]]
 name = "solcery-impl-generator"
 version = "0.1.0-alpha"
 dependencies = [

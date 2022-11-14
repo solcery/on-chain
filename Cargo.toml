@@ -5,6 +5,7 @@ members = [
 	"db-program/db-cli",
 	"db/generator",
 	"fs",
+	"state",
 	"fs/fs_test",
 	"game",
 	"reltab",
