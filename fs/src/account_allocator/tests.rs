@@ -52,10 +52,9 @@ fn deallocation() {
 
     alloc.deallocate_segment(id).unwrap();
 
-    assert_eq!(alloc.allocation_table.inodes_count(), 2);
-    assert_eq!(alloc.inode_data[0], { Inode::from_raw_parts(0, 10, None) });
-    assert_eq!(alloc.inode_data[1], {
-        Inode::from_raw_parts(10, 1000, None)
+    assert_eq!(alloc.allocation_table.inodes_count(), 1);
+    assert_eq!(alloc.inode_data[0], {
+        Inode::from_raw_parts(0, 1000, None)
     });
 }
 
@@ -131,10 +130,9 @@ fn merge() {
     alloc.deallocate_segment(id_0).unwrap();
     alloc.deallocate_segment(id_1).unwrap();
 
-    let err = alloc.allocate_segment(60).unwrap_err();
+    let err = alloc.allocate_segment(120).unwrap_err();
     assert_eq!(err, Error::NoSuitableSegmentFound);
 
-    alloc.merge_segments();
-
-    alloc.allocate_segment(60).unwrap();
+    alloc.allocate_segment(100).unwrap();
+    alloc.allocate_segment(10).unwrap();
 }

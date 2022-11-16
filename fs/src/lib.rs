@@ -209,15 +209,6 @@ impl<'long: 'short, 'short> FS<'long, 'short> {
         }
     }
 
-    /// Merge segments in all accounts
-    ///
-    /// This function acts as a defragmentation for free space in the account.
-    pub fn merge_segments(&mut self) {
-        for (_, (alloc, _)) in self.allocators.iter_mut() {
-            alloc.merge_segments();
-        }
-    }
-
     /// Borrows a segment with given [`SegmentId`]
     pub fn segment(&mut self, id: &SegmentId) -> Result<&'short mut [u8], FSError> {
         match self.allocators.get_mut(&id.pubkey) {

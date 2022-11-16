@@ -26,6 +26,10 @@ impl Inode {
         u32::from_be_bytes(self.end_idx) as usize
     }
 
+    pub fn set_start_idx(&mut self, idx: usize) {
+        self.start_idx = u32::to_be_bytes(idx as u32);
+    }
+
     pub fn set_end_idx(&mut self, idx: usize) {
         self.end_idx = u32::to_be_bytes(idx as u32);
     }

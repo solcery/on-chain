@@ -232,17 +232,58 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
             return Err(Error::Borrowed);
         }
 
-        let result = self
+        let maybe_index = self
             .inode_data
             .iter_mut()
-            .find(|inode| inode.id() == Some(id))
-            .map(|inode| inode.unoccupy())
-            .ok_or(Error::NoSuchIndex);
+            .enumerate()
+            .find(|(_, inode)| inode.id() == Some(id))
+            .map(|(idx, inode)| {
+                inode.unoccupy();
+                idx
+            });
+
+        let Some(unoccupied_index) = maybe_index
+            else { return Err(Error::NoSuchIndex); };
+
+        let remove_prev = if unoccupied_index > 0 {
+            if self.inode_data[unoccupied_index - 1].id().is_none() {
+                let new_start = self.inode_data[unoccupied_index - 1].start_idx();
+                self.inode_data[unoccupied_index].set_start_idx(new_start);
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
+        let remove_next = if unoccupied_index < self.inode_data.len() - 1 {
+            if self.inode_data[unoccupied_index + 1].id().is_none() {
+                let new_end = self.inode_data[unoccupied_index + 1].end_idx();
+                self.inode_data[unoccupied_index].set_end_idx(new_end);
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
+        if remove_next {
+            self.inode_data.remove(unoccupied_index + 1);
+        }
+
+        if remove_prev {
+            self.inode_data.remove(unoccupied_index - 1);
+        }
+
+        self.allocation_table
+            .set_inodes_count(self.inode_data.len());
 
         debug_assert_eq!(self.allocation_table.inodes_count(), self.inode_data.len());
         debug_assert!(self.is_consistent());
 
-        result
+        Ok(())
     }
 
     pub fn segment(&mut self, id: u32) -> Result<&'short mut [u8], Error> {
@@ -304,21 +345,6 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
         } else {
             Err(Error::NoSuchSegment)
         }
-    }
-
-    pub fn merge_segments(&mut self) {
-        let (merged_inodes_table, _) = self.inode_data.partition_dedup_by_key(|inode| inode.id());
-        let len = merged_inodes_table.len();
-        self.inode_data.set_len(len);
-
-        self.allocation_table.set_inodes_count(len);
-
-        for i in 1..len {
-            let end_idx = self.inode_data[i].start_idx();
-            self.inode_data[i - 1].set_end_idx(end_idx);
-        }
-
-        debug_assert!(self.is_consistent());
     }
 
     pub fn defragment(&mut self) {
