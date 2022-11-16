@@ -242,8 +242,12 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
                 idx
             });
 
-        let Some(unoccupied_index) = maybe_index
-            else { return Err(Error::NoSuchIndex); };
+        let unoccupied_index = match maybe_index {
+            Some(idx) => idx,
+            None => {
+                return Err(Error::NoSuchIndex);
+            }
+        };
 
         let remove_prev = if unoccupied_index > 0 {
             if self.inode_data[unoccupied_index - 1].id().is_none() {
