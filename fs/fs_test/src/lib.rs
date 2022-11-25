@@ -4,9 +4,10 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{account_info::AccountInfo, pubkey::Pubkey};
 
 #[derive(Clone, Debug, Eq, PartialEq, BorshSerialize, BorshDeserialize)]
+#[cfg_attr(fuzzing, derive(arbitrary::Arbitrary))]
 pub struct AccountParams {
-    pub address: Option<Pubkey>,
-    pub owner: Pubkey,
+    pub address: Option<[u8; 32]>,
+    pub owner: [u8; 32],
     pub data: AccountData,
 }
 
@@ -40,15 +41,19 @@ impl InternalAccountInfo {
         };
 
         Self {
-            key: params.address.unwrap_or(Pubkey::new_unique()),
+            key: match params.address {
+                None => Pubkey::new_unique(),
+                Some(arr) => Pubkey::new_from_array(arr),
+            },
             lamports: 1,
             data,
-            owner: params.owner,
+            owner: Pubkey::new_from_array(params.owner),
         }
     }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, BorshSerialize, BorshDeserialize)]
+#[cfg_attr(fuzzing, derive(arbitrary::Arbitrary))]
 pub enum AccountData {
     Filled(Vec<u8>),
     Empty(usize),

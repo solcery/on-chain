@@ -13,7 +13,7 @@ fn initialization() {
 
     let account_params = AccountParams {
         address: None,
-        owner: program_id,
+        owner: program_id.to_bytes(),
         data: AccountData::Empty(1_000),
     };
     let mut fs_data = FSAccounts::replicate_params(account_params, 3);

@@ -20,7 +20,7 @@
 //! # let program_id = Pubkey::new_unique();
 //! # let params = AccountParams {
 //! #     address: None,
-//! #     owner: program_id,
+//! #     owner: program_id.to_bytes(),
 //! #     data: AccountData::Empty(10_000),
 //! # };
 //! let mut fs_data = FSAccounts::replicate_params(params, 3);
@@ -71,6 +71,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(missing_debug_implementations)]
 #![deny(missing_docs)]
+#![deny(clippy::undocumented_unsafe_blocks)]
 #![feature(cell_leak)]
 #![feature(slice_partition_dedup)]
 
