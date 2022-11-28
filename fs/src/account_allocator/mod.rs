@@ -181,6 +181,9 @@ impl<'long: 'short, 'short> AccountAllocator<'long> {
     /// Allocates a segment with a given size.
     /// Returns `id` of the allocated segment on success or [`Error`]
     pub fn allocate_segment(&mut self, size: usize) -> Result<u32, Error> {
+        if size == 0 {
+            return Err(Error::ZeroSize);
+        }
         if self.inode_data.len() == self.inode_data.capacity() {
             return Err(Error::NoInodesLeft);
         }
@@ -522,6 +525,8 @@ pub enum Error {
     WrongOwner,
     /// The internal invariants of [`FS`](super::FS) are no upheld in this account
     BrokenFSAccount,
+    /// zero-sized segments are no allowed
+    ZeroSize,
 }
 
 #[cfg(test)]

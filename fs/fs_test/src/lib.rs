@@ -41,7 +41,7 @@ impl InternalAccountInfo {
     pub fn from_account_params(params: AccountParams) -> Self {
         let data = match params.data {
             AccountData::Filled(vec) => vec,
-            AccountData::Empty(cap) => vec![0; cap],
+            AccountData::Empty(cap) => vec![0; cap as usize],
         };
 
         Self {
@@ -60,7 +60,7 @@ impl InternalAccountInfo {
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum AccountData {
     Filled(Vec<u8>),
-    Empty(usize),
+    Empty(u16),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, BorshSerialize, BorshDeserialize)]

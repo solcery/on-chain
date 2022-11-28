@@ -69,12 +69,12 @@ enum FSMethod {
 }
 
 fn derive_segment_id(params: &Vec<Pubkey>, id: u32, pubkey_id: usize) -> Option<SegmentId> {
-    if pubkey_id > params.len() {
-        None
-    } else {
+    if pubkey_id < params.len() {
         Some(SegmentId {
             id,
             pubkey: params[pubkey_id],
         })
+    } else {
+        None
     }
 }
