@@ -4,9 +4,10 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{account_info::AccountInfo, pubkey::Pubkey};
 
 #[derive(Clone, Debug, Eq, PartialEq, BorshSerialize, BorshDeserialize)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct AccountParams {
-    pub address: Option<Pubkey>,
-    pub owner: Pubkey,
+    pub address: Option<[u8; 32]>,
+    pub owner: [u8; 32],
     pub data: AccountData,
 }
 
@@ -20,6 +21,10 @@ pub struct InternalAccountInfo {
 }
 
 impl InternalAccountInfo {
+    pub fn key(&self) -> Pubkey {
+        self.key
+    }
+
     pub fn account_info<'a>(&'a mut self) -> AccountInfo<'a> {
         AccountInfo::new(
             &self.key,
@@ -36,28 +41,41 @@ impl InternalAccountInfo {
     pub fn from_account_params(params: AccountParams) -> Self {
         let data = match params.data {
             AccountData::Filled(vec) => vec,
-            AccountData::Empty(cap) => vec![0; cap],
+            AccountData::Empty(cap) => vec![0; cap as usize],
         };
 
         Self {
-            key: params.address.unwrap_or(Pubkey::new_unique()),
+            key: match params.address {
+                None => Pubkey::new_unique(),
+                Some(arr) => Pubkey::new_from_array(arr),
+            },
             lamports: 1,
             data,
-            owner: params.owner,
+            owner: Pubkey::new_from_array(params.owner),
         }
     }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, BorshSerialize, BorshDeserialize)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum AccountData {
     Filled(Vec<u8>),
-    Empty(usize),
+    Empty(u16),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, BorshSerialize, BorshDeserialize)]
 pub struct FSAccounts(pub Vec<InternalAccountInfo>);
 
 impl FSAccounts {
+    pub fn from_params_iter<I>(params: I) -> Self
+    where
+        I: Iterator<Item = AccountParams>,
+    {
+        let accounts = params
+            .map(InternalAccountInfo::from_account_params)
+            .collect();
+        Self(accounts)
+    }
     pub fn replicate_params(params: AccountParams, count: usize) -> Self {
         let accounts = std::iter::repeat(params)
             .take(count)

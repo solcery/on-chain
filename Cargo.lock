@@ -1338,6 +1338,7 @@ dependencies = [
 name = "fs_test"
 version = "0.1.0-alpha"
 dependencies = [
+ "arbitrary",
  "borsh",
  "solana-program",
 ]

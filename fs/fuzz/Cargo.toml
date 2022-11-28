@@ -1,0 +1,30 @@
+[package]
+name = "account-fs-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+arbitrary = { version = "1", features = ["derive"] }
+libfuzzer-sys = { version = "0.4.0"}
+fs_test = { path = "../fs_test", features = ["arbitrary"] }
+solana-program = "1.7.8"
+
+[dependencies.account-fs]
+path = ".."
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[profile.release]
+debug = 1
+
+[[bin]]
+name = "fs"
+path = "fuzz_targets/fs.rs"
+test = false
+doc = false
