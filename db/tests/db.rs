@@ -49,28 +49,28 @@ fn creation_of_the_test_db() {
         let col_id = db.add_column(column_name, dtype, true).unwrap();
 
         let id = Data::Int(0);
-        let name = Data::ShortString("Alice".to_string());
-        let old_val = db.set_value(id.clone(), col_id, name.clone()).unwrap();
+        let name = Data::ShortString(ShortString::try_from("Alice").unwrap());
+        let old_val = db.set_value(id, col_id, name).unwrap();
         assert_eq!(old_val, None);
 
         let id = Data::Int(1);
-        let name = Data::ShortString("Bob".to_string());
-        let old_val = db.set_value(id.clone(), col_id, name.clone()).unwrap();
+        let name = Data::ShortString(ShortString::try_from("Bob").unwrap());
+        let old_val = db.set_value(id, col_id, name).unwrap();
         assert_eq!(old_val, None);
 
         let id = Data::Int(2);
-        let name = Data::ShortString("Carol".to_string());
-        let old_val = db.set_value(id.clone(), col_id, name.clone()).unwrap();
+        let name = Data::ShortString(ShortString::try_from("Carol").unwrap());
+        let old_val = db.set_value(id, col_id, name).unwrap();
         assert_eq!(old_val, None);
 
         let id = Data::Int(3);
-        let name = Data::ShortString("Chad".to_string());
-        let old_val = db.set_value(id.clone(), col_id, name.clone()).unwrap();
+        let name = Data::ShortString(ShortString::try_from("Chad").unwrap());
+        let old_val = db.set_value(id, col_id, name).unwrap();
         assert_eq!(old_val, None);
 
         let id = Data::Int(4);
-        let name = Data::ShortString("Eve".to_string());
-        let old_val = db.set_value(id.clone(), col_id, name.clone()).unwrap();
+        let name = Data::ShortString(ShortString::try_from("Eve").unwrap());
+        let old_val = db.set_value(id, col_id, name).unwrap();
         assert_eq!(old_val, None);
     }
 
@@ -82,27 +82,27 @@ fn creation_of_the_test_db() {
 
         let id = Data::Int(0);
         let name = Data::Int(22);
-        let old_val = db.set_value(id.clone(), col_id, name.clone()).unwrap();
+        let old_val = db.set_value(id, col_id, name).unwrap();
         assert_eq!(old_val, None);
 
         let id = Data::Int(1);
         let name = Data::Int(23);
-        let old_val = db.set_value(id.clone(), col_id, name.clone()).unwrap();
+        let old_val = db.set_value(id, col_id, name).unwrap();
         assert_eq!(old_val, None);
 
         let id = Data::Int(2);
         let name = Data::Int(22);
-        let old_val = db.set_value(id.clone(), col_id, name.clone()).unwrap();
+        let old_val = db.set_value(id, col_id, name).unwrap();
         assert_eq!(old_val, None);
 
         let id = Data::Int(3);
         let name = Data::Int(20);
-        let old_val = db.set_value(id.clone(), col_id, name.clone()).unwrap();
+        let old_val = db.set_value(id, col_id, name).unwrap();
         assert_eq!(old_val, None);
 
         let id = Data::Int(4);
         let name = Data::Int(30);
-        let old_val = db.set_value(id.clone(), col_id, name.clone()).unwrap();
+        let old_val = db.set_value(id, col_id, name).unwrap();
         assert_eq!(old_val, None);
     }
 
@@ -153,7 +153,10 @@ fn remove_column() {
 
     let name_column = ColumnId::new(0);
     let obtained_val = db.value(Data::Int(0), name_column).unwrap();
-    assert_eq!(obtained_val, Some(Data::ShortString("Alice".to_string())));
+    assert_eq!(
+        obtained_val,
+        Some(Data::ShortString(ShortString::try_from("Alice").unwrap()))
+    );
     db.remove_column(name_column).unwrap();
 
     let age_column = ColumnId::new(1);
@@ -192,7 +195,7 @@ fn set_value() {
         .set_value(
             Data::Int(5),
             name_column,
-            Data::ShortString("Alec".to_string()),
+            Data::ShortString(ShortString::try_from("Alec").unwrap()),
         )
         .unwrap();
     assert_eq!(old_val, None);
@@ -201,10 +204,13 @@ fn set_value() {
         .set_value(
             Data::Int(5),
             name_column,
-            Data::ShortString("Alex".to_string()),
+            Data::ShortString(ShortString::try_from("Alex").unwrap()),
         )
         .unwrap();
-    assert_eq!(old_val, Some(Data::ShortString("Alec".to_string())));
+    assert_eq!(
+        old_val,
+        Some(Data::ShortString(ShortString::try_from("Alec").unwrap()))
+    );
 
     let name_column = ColumnId::new(1);
 
@@ -248,7 +254,7 @@ fn set_value_secondary() {
     let err = db
         .set_value_secondary(
             name_column,
-            Data::ShortString("Alex".to_string()),
+            Data::ShortString(ShortString::try_from("Alex").unwrap()),
             age_column,
             Data::Int(20),
         )
@@ -258,7 +264,7 @@ fn set_value_secondary() {
     let old_val = db
         .set_value_secondary(
             name_column,
-            Data::ShortString("Alice".to_string()),
+            Data::ShortString(ShortString::try_from("Alice").unwrap()),
             age_column,
             Data::Int(20),
         )
@@ -299,7 +305,10 @@ fn value() {
 
     let val = db.value(Data::Int(0), name_column).unwrap();
 
-    assert_eq!(val, Some(Data::ShortString("Alice".to_string())));
+    assert_eq!(
+        val,
+        Some(Data::ShortString(ShortString::try_from("Alice").unwrap()))
+    );
 
     let val = db.value(Data::Int(6), name_column).unwrap();
 
@@ -332,7 +341,7 @@ fn value_secondary() {
     let val = db
         .value_secondary(
             name_column,
-            Data::ShortString("Bob".to_string()),
+            Data::ShortString(ShortString::try_from("Bob").unwrap()),
             age_column,
         )
         .unwrap();
@@ -342,7 +351,7 @@ fn value_secondary() {
     let val = db
         .value_secondary(
             name_column,
-            Data::ShortString("Alex".to_string()),
+            Data::ShortString(ShortString::try_from("Alex").unwrap()),
             age_column,
         )
         .unwrap();
@@ -411,7 +420,7 @@ fn delete_value_secondary() {
     let val = db
         .delete_value_secondary(
             name_column,
-            Data::ShortString("Bob".to_string()),
+            Data::ShortString(ShortString::try_from("Bob").unwrap()),
             age_column,
         )
         .unwrap();
@@ -421,7 +430,7 @@ fn delete_value_secondary() {
     let val = db
         .delete_value_secondary(
             name_column,
-            Data::ShortString("Bob".to_string()),
+            Data::ShortString(ShortString::try_from("Bob").unwrap()),
             age_column,
         )
         .unwrap();
@@ -457,7 +466,10 @@ fn set_row() {
     assert_eq!(val, None);
 
     let new_row = vec![
-        (ColumnId::new(0), Data::ShortString("Ann".to_string())),
+        (
+            ColumnId::new(0),
+            Data::ShortString(ShortString::try_from("Ann").unwrap()),
+        ),
         (ColumnId::new(1), Data::Int(29)),
     ];
 
@@ -467,31 +479,20 @@ fn set_row() {
 
     let added_row = db.row(Data::Int(6)).unwrap();
 
-    let added_row = BTreeMap::from_iter(
-        added_row
-            .into_iter()
-            .map(|(k, v)| match v {
-                Some(v) => Some((k, v)),
-                None => None,
-            })
-            .flatten(),
-    );
+    let added_row =
+        BTreeMap::from_iter(added_row.into_iter().filter_map(|(k, v)| v.map(|v| (k, v))));
 
     assert_eq!(added_row, new_row);
 
     let added_row = db
-        .row_secondary_key(name_column, Data::ShortString("Ann".to_string()))
+        .row_secondary_key(
+            name_column,
+            Data::ShortString(ShortString::try_from("Ann").unwrap()),
+        )
         .unwrap();
 
-    let added_row = BTreeMap::from_iter(
-        added_row
-            .into_iter()
-            .map(|(k, v)| match v {
-                Some(v) => Some((k, v)),
-                None => None,
-            })
-            .flatten(),
-    );
+    let added_row =
+        BTreeMap::from_iter(added_row.into_iter().filter_map(|(k, v)| v.map(|v| (k, v))));
 
     assert_eq!(added_row, new_row);
 }
@@ -547,10 +548,16 @@ fn delete_row_secondary() {
     let name_column = ColumnId::new(0);
 
     let err = db
-        .delete_row_secondary(name_column, Data::ShortString("Ann".to_string()))
+        .delete_row_secondary(
+            name_column,
+            Data::ShortString(ShortString::try_from("Ann").unwrap()),
+        )
         .unwrap_err();
-    db.delete_row_secondary(name_column, Data::ShortString("Alice".to_string()))
-        .unwrap();
+    db.delete_row_secondary(
+        name_column,
+        Data::ShortString(ShortString::try_from("Alice").unwrap()),
+    )
+    .unwrap();
 
     let row: Vec<_> = db.row(Data::Int(0)).unwrap().into_values().collect();
 

@@ -28,7 +28,7 @@ use data::{from_column_slice, init_column_slice};
 use raw::column::ColumnHeader;
 use raw::index::Index;
 
-pub use data::{Data, DataType};
+pub use data::*;
 pub use error::Error;
 pub use params::{ColumnParams, ColumnType};
 pub use raw::column_id::ColumnId;

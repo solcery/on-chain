@@ -23,7 +23,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use account_fs::FS;
-use solcery_db::DB;
+use solcery_db::{ShortString, DB};
 use solcery_db_program::{
     entrypoint::process_instruction_bytes,
     instruction::*,
@@ -870,7 +870,7 @@ async fn add_value_by_secondary_key() {
             pubkey: fs_account_key.pubkey(),
         },
         key: Data::Int(1),
-        value: Data::ShortString("test".to_string()),
+        value: Data::ShortString(ShortString::try_from("test").unwrap()),
         column: ColumnId::new(1),
         is_initialized: true,
     });
@@ -891,7 +891,7 @@ async fn add_value_by_secondary_key() {
             pubkey: fs_account_key.pubkey(),
         },
         key_column: ColumnId::new(1),
-        secondary_key: Data::ShortString("test".to_string()),
+        secondary_key: Data::ShortString(ShortString::try_from("test").unwrap()),
         value_column: ColumnId::new(0),
         value: Data::Int(324),
         is_initialized: true,
@@ -955,7 +955,10 @@ async fn add_value_by_secondary_key() {
 
     dbg!(&db);
 
-    assert_eq!(value, Some(Data::ShortString("test".to_string())));
+    assert_eq!(
+        value,
+        Some(Data::ShortString(ShortString::try_from("test").unwrap()))
+    );
 
     assert_eq!(secondary_value, Some(Data::Int(324)));
 }

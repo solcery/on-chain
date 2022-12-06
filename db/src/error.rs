@@ -51,7 +51,7 @@ impl From<Error> for ProgramError {
             NonUniqueSecondaryKey => 8,
         };
 
-        let error_code = (DB_IDENT as u32) << 24 + errno as u32;
+        let error_code = ((DB_IDENT as u32) << 24) + errno as u32;
         ProgramError::Custom(error_code)
     }
 }

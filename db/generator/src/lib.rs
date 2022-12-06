@@ -30,6 +30,8 @@ fn column_impls(attrs: &TokenStream, input: proc_macro::TokenStream) -> TokenStr
         #[allow(missing_docs)]
     };
 
+    let holder_try_from_impls = generate_try_from_impls(&holder_ident, &variants);
+
     let column_trait_implementations = variants.iter().map(|key| {
         let key_ident = &key.ident;
         let key_type = &key.typ;
@@ -77,6 +79,7 @@ fn column_impls(attrs: &TokenStream, input: proc_macro::TokenStream) -> TokenStr
                         panic!("It is impossible to delete by value in RBTree");
                     }
                 }
+
                 impl<'a> #trait_ident for solcery_reltab::one_to_one::OneToOne<'a, #key_type, #value_type, #key_size, #value_size> {
                     fn get_key(&self, value: #holder_ident) -> Option<#holder_ident> {
                         if let #holder_ident::#value_ident(unwrapped_value) = value {
@@ -246,6 +249,7 @@ fn column_impls(attrs: &TokenStream, input: proc_macro::TokenStream) -> TokenStr
 
         #holder_attrs
         #holder_enum
+        #holder_try_from_impls
 
         #column_trait_implementations
 
@@ -354,6 +358,35 @@ fn generate_enum_impl(enum_ident: &Ident, variants: &[Params]) -> TokenStream {
             }
         }
     }
+}
+
+fn generate_try_from_impls(holder_enum: &Ident, variants: &[Params]) -> TokenStream {
+    variants
+        .iter()
+        .map(|value| {
+            let ident = &value.ident;
+            let typ = &value.typ;
+
+            quote! {
+                impl From<#typ> for #holder_enum {
+                    fn from(value: #typ) -> Self {
+                        #holder_enum::#ident(value)
+                    }
+                }
+
+                impl TryFrom<#holder_enum> for #typ {
+                    type Error = ();
+
+                    fn try_from(value: #holder_enum) -> Result<Self, Self::Error> {
+                        match value {
+                            #holder_enum::#ident(val) => Ok(val),
+                            _ => Err(()),
+                        }
+                    }
+                }
+            }
+        })
+        .collect()
 }
 
 fn parse_attrs(attrs: &TokenStream) -> (Ident, Ident, Ident, TokenTree) {
