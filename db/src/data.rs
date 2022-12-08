@@ -21,6 +21,7 @@ use solcery_impl_generator::generate_column_impls;
     Serialize,
     Deserialize,
 )]
+//#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 /// Container for short-sized (16-byte) [`String`]
 pub struct ShortString(String);
 
@@ -51,6 +52,7 @@ impl TryFrom<&str> for ShortString {
     Serialize,
     Deserialize,
 )]
+//#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct MediumString(String);
 
 impl TryFrom<&str> for MediumString {
@@ -80,6 +82,7 @@ impl TryFrom<&str> for MediumString {
     Serialize,
     Deserialize,
 )]
+//#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct LongString(String);
 
 impl TryFrom<&str> for LongString {
@@ -127,6 +130,7 @@ impl TryFrom<&str> for LongString {
     IntoPrimitive,
 )]
 #[repr(u8)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 /// Data types, that can be stored in the [`DB`](crate::DB)
 pub enum DataType {
     /// [`i32`]
