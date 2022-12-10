@@ -9,7 +9,7 @@ cargo-fuzz = true
 
 [dependencies]
 arbitrary = { version = "1", features = ["derive"] }
-fs_test = { path = "../fs_test", features = ["arbitrary"] }
+fs_test = { path = "../../fs/fs_test", features = ["arbitrary"] }
 libfuzzer-sys = "0.4"
 solana-program = "1.7.8"
 

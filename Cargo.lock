@@ -4150,6 +4150,7 @@ name = "solcery-db"
 version = "0.1.0-alpha"
 dependencies = [
  "account-fs",
+ "arbitrary",
  "borsh",
  "bytemuck",
  "fs_test",
